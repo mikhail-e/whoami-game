@@ -21,12 +21,20 @@ document.addEventListener('DOMContentLoaded', function() {
     if (joinRoomCode && roomCodeInput) {
         roomCodeInput.value = joinRoomCode.toUpperCase();
         roomCodeInput.style.backgroundColor = '#fff3cd';
-        roomCodeInput.focus();
+        document.getElementById('playerName').focus();
         
         // Update the form text to indicate joining
         const formLabel = document.querySelector('label[for="roomCode"]');
         if (formLabel) {
             formLabel.textContent = 'Room Code (joining game)';
+        }
+        
+        // Enable Join button since room code is pre-filled
+        const joinBtn = document.getElementById('joinBtn');
+        if (joinBtn) {
+            joinBtn.disabled = false;
+            joinBtn.classList.remove('btn-secondary');
+            joinBtn.classList.add('btn-primary');
         }
         
         // Show helpful message
@@ -79,11 +87,36 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Auto-uppercase room code input
+    // Auto-uppercase room code input and manage Join button state
     if (roomCodeInput) {
+        const joinBtn = document.getElementById('joinBtn');
+        
+        // Initially disable Join button if room code is empty
+        if (joinBtn) {
+            updateJoinButtonState();
+        }
+        
         roomCodeInput.addEventListener('input', function(e) {
             e.target.value = e.target.value.toUpperCase();
+            updateJoinButtonState();
         });
+        
+        // Function to update Join button state based on room code
+        function updateJoinButtonState() {
+            if (joinBtn) {
+                const roomCode = roomCodeInput.value.trim();
+                const isValidLength = roomCode.length === 6;
+                joinBtn.disabled = !isValidLength;
+                
+                if (isValidLength) {
+                    joinBtn.classList.remove('btn-secondary');
+                    joinBtn.classList.add('btn-primary');
+                } else {
+                    joinBtn.classList.remove('btn-primary');
+                    joinBtn.classList.add('btn-secondary');
+                }
+            }
+        }
     }
 
     // Create new game button

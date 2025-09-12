@@ -234,6 +234,13 @@ body {
   width: 200px !important;
 }
 
+/* Desktop-only elements - hidden on mobile, visible on desktop (unless overridden by JS) */
+@media (max-width: 767.98px) {
+  .desktop-only {
+    display: none !important;
+  }
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 10px;

@@ -37,15 +37,15 @@
             <div class="row">
                 <div class="col-md-8">
                     <h5>Players (<span id="playerCount">0</span>/12)</h5>
-                    <div id="gameStatus" class="text-muted mb-3">
+                    <div id="gameStatus" class="text-muted mb-3 d-md-block d-none">
                         Waiting for players to join...
                     </div>
                 </div>
                 <div class="col-md-4 text-end">
-                    <button class="btn btn-success" id="startGame" disabled>
+                    <button class="btn btn-success desktop-only" id="startGame" disabled>
                         🎮 Start Game
                     </button>
-                    <button class="btn btn-warning" id="restartGame" style="display: none;">
+                    <button class="btn btn-warning desktop-only" id="restartGame" style="display: none;">
                         🔄 Restart Game
                     </button>
                 </div>
@@ -54,6 +54,21 @@
             <!-- Players Grid -->
             <div class="player-list" id="playerList">
                 <!-- Players will be added here dynamically -->
+            </div>
+            
+            <!-- Mobile Game Controls (Bottom) -->
+            <div class="mobile-game-controls d-md-none mt-3">
+                <div id="gameStatusMobile" class="text-muted mb-3 text-center">
+                    Waiting for players to join...
+                </div>
+                <div class="text-center">
+                    <button class="btn btn-success" id="startGameMobile" disabled>
+                        🎮 Start Game
+                    </button>
+                    <button class="btn btn-warning" id="restartGameMobile" style="display: none;">
+                        🔄 Restart Game
+                    </button>
+                </div>
             </div>
         </div>
 
