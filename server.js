@@ -39,15 +39,19 @@ app.post('/api/create-game', express.json(), (req, res) => {
 
 // API endpoint to join a game
 app.post('/api/join-game', express.json(), (req, res) => {
-    const { gameId, playerName, avatar } = req.body;
+    const { gameId, playerName, avatar, playerId } = req.body;
+    
+    console.log('Join game request:', { gameId, playerName, avatar, playerId });
     
     if (!gameId || !playerName || !avatar) {
+        console.log('Missing required fields:', { gameId: !!gameId, playerName: !!playerName, avatar: !!avatar });
         return res.status(400).json({ error: 'Missing required fields' });
     }
     
-    const result = gameLogic.addPlayerToGame(games, gameId, playerName, avatar);
+    const result = gameLogic.addPlayerToGame(games, gameId, playerName, avatar, playerId);
     
     if (!result.success) {
+        console.log('Failed to add player to game:', result.error);
         return res.status(400).json(result);
     }
     

@@ -35,25 +35,28 @@ function createGame(games) {
 }
 
 // Add or reconnect a player to a game
-function addPlayerToGame(games, gameId, playerName, avatar) {
+function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
     if (!games.has(gameId)) {
         return { success: false, error: 'Game not found' };
     }
     
     const game = games.get(gameId);
     
-    // Check if game has already started (no new players allowed)
-    if (game.state === 'started') {
+    // Check if player is already in the game (reconnection)
+    // First try to match by ID if provided, otherwise fall back to name matching
+    const existingPlayer = playerId 
+        ? game.players.find(p => p.id === playerId)
+        : game.players.find(p => p.name.toLowerCase().trim() === playerName.toLowerCase().trim());
+    
+    // Check if game has already started (only allow existing players to reconnect)
+    if (game.state === 'started' && !existingPlayer) {
         return { success: false, error: 'Game has already started' };
     }
     
-    // Check if game is full (max 12 players)
-    if (game.players.length >= 12) {
+    // Check if game is full (max 12 players, but allow existing players)
+    if (game.players.length >= 12 && !existingPlayer) {
         return { success: false, error: 'Game is full' };
     }
-    
-    // Check if player is already in the game (reconnection)
-    const existingPlayer = game.players.find(p => p.name === playerName);
     
     let player;
     let isNewPlayer = false;

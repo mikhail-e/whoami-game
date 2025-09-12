@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     currentPlayer = JSON.parse(playerDataStr);
+    console.log('Loaded player data from session storage:', currentPlayer);
     
     // Initialize the game room
     initializeGameRoom(roomCode);
@@ -162,19 +163,25 @@ async function joinGameRoom(roomCode) {
     try {
         console.log('Attempting to join game:', roomCode, 'with player:', currentPlayer);
         
+        const requestBody = {
+            gameId: roomCode,
+            playerName: currentPlayer.name,
+            avatar: currentPlayer.avatar,
+            playerId: currentPlayer.id // Include ID if available
+        };
+        console.log('Sending request body:', requestBody);
+        
         const response = await fetch('/api/join-game', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                gameId: roomCode,
-                playerName: currentPlayer.name,
-                avatar: currentPlayer.avatar
-            })
+            body: JSON.stringify(requestBody)
         });
         
         console.log('Response status:', response.status);
         
         if (!response.ok) {
+            const errorText = await response.text();
+            console.log('Error response body:', errorText);
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
@@ -186,6 +193,16 @@ async function joinGameRoom(roomCode) {
             currentGame = result.game;
             // Update currentPlayer with the server-assigned player data
             currentPlayer = result.player;
+            
+            // Save updated player data (with ID) to session storage
+            const playerData = {
+                name: currentPlayer.name,
+                avatar: currentPlayer.avatar,
+                roomCode: currentGame.id,
+                id: currentPlayer.id
+            };
+            sessionStorage.setItem('playerData', JSON.stringify(playerData));
+            
             updateGameDisplay();
         } else {
             console.error('Join game failed:', result.error);
@@ -231,16 +248,25 @@ function updateGameDisplay() {
         const startButton = document.getElementById('startGame');
         const restartButton = document.getElementById('restartGame');
         
+        // Check if all players have characters assigned
+        const allPlayersHaveCharacters = currentGame.players.length >= 2 && 
+            currentGame.players.every(player => {
+                const characterData = currentGame.characters && currentGame.characters[player.id];
+                return characterData && characterData.character && characterData.character.trim() !== '';
+            });
+        
         if (statusEl) {
             if (currentGame.players.length < 2) {
                 statusEl.textContent = 'Need at least 2 players to start';
+            } else if (!allPlayersHaveCharacters) {
+                statusEl.textContent = 'Assign characters to all players before starting!';
             } else {
                 statusEl.textContent = 'Ready to play!';
             }
         }
         
         if (startButton) {
-            startButton.disabled = currentGame.players.length < 2;
+            startButton.disabled = !allPlayersHaveCharacters;
             startButton.style.display = 'inline-block';
         }
         

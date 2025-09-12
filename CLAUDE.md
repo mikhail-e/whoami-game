@@ -3,7 +3,7 @@
 ## Project Overview
 **Project Name:** "Who am I?" game
 **Type:** Simple web application.
-**Main Goal:** Simple web application to play "Who am I?" game remotly with friends and family. The app has adaptive ui and can be played both on desktop and mobile browser.
+**Main Goal:** Simple web application to play "Who am I?" game remotely with friends and family. The app has adaptive ui and can be played both on desktop and mobile browser.
 
 ## My Experience Level
 - **Programming:** Limited experience with Python, HTML, JavaScript
@@ -106,10 +106,7 @@ npm start      # Start server on localhost:3000
 ```
 
 ### 🎯 **Next Goals:**
-- Add actual gameplay mechanics (asking questions, answering yes/no)
-- Implement game persistence (save/load from files)
-- Add game scoring and winner detection
-- Create game history and statistics
+
 
 ## Notes for Claude
 - I learn best with hands-on examples

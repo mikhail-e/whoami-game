@@ -229,6 +229,11 @@ body {
   display: none;
 }
 
+/* Custom button styles */
+#startGame {
+  width: 200px !important;
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 10px;
