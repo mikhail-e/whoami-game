@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Who am I? - Game Room</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="text-center mb-4">
+            <h1 class="text-white mb-2">🎭 Who am I?</h1>
+            <div class="badge bg-light text-dark fs-6 px-3 py-2">
+                Room Code: <span id="roomCode" style="font-family: monospace; font-weight: bold;"></span>
+            </div>
+        </div>
+
+        <!-- Share Room Card -->
+        <div class="game-card mb-3">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h6 class="mb-1">Invite Friends</h6>
+                    <input type="text" class="form-control" id="shareLink" readonly>
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-outline-primary w-100 mt-2 mt-md-0" id="copyLink">
+                        📋 Copy Link
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Status -->
+        <div class="game-card">
+            <div class="row">
+                <div class="col-md-8">
+                    <h5>Players (<span id="playerCount">0</span>/12)</h5>
+                    <div id="gameStatus" class="text-muted mb-3">
+                        Waiting for players to join...
+                    </div>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-success" id="startGame" disabled>
+                        🎮 Start Game
+                    </button>
+                </div>
+            </div>
+
+            <!-- Players Grid -->
+            <div class="player-list" id="playerList">
+                <!-- Players will be added here dynamically -->
+            </div>
+        </div>
+
+        <!-- Character Assignment Instructions -->
+        <div class="game-card">
+            <h6>Character Assignment</h6>
+            <p class="small text-muted mb-0">
+                <strong>🎯 Click the + button</strong> on other players to assign them characters. 
+                <strong>✏️ Click character stickers</strong> to edit them.
+            </p>
+        </div>
+
+        <!-- Game Instructions -->
+        <div class="game-card">
+            <h6>How to Play</h6>
+            <ol class="small">
+                <li>Wait for at least 2 players to join</li>
+                <li>Each player assigns characters to other players</li>
+                <li>Ask yes/no questions to guess your character</li>
+                <li>First to guess correctly wins!</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/game-room.js"></script>
+</body>
+</html>
