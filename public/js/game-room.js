@@ -4,6 +4,8 @@ let socket;
 let currentGame = null;
 let currentPlayer = null;
 let selectedPlayerForAssignment = null;
+let revealModal = null;
+let restartModal = null;
 
 // Color palette for character stickers
 const stickerColors = ['red', 'blue', 'purple', 'orange', 'green', 'pink', 'indigo'];
@@ -117,6 +119,40 @@ function initializeSocket(roomCode) {
         }
     });
     
+    socket.on('game-started', (data) => {
+        console.log('Game started:', data);
+        if (currentGame) {
+            currentGame.state = 'started';
+            updateGameDisplay();
+        }
+    });
+    
+    socket.on('character-revealed', (data) => {
+        console.log('Character revealed:', data);
+        if (currentGame) {
+            currentGame.revealedPlayers = data.revealedPlayers;
+            updateGameDisplay();
+        }
+    });
+    
+    socket.on('game-restarted', (data) => {
+        console.log('Game restarted! Returning to setup phase.');
+        if (currentGame) {
+            currentGame.state = 'waiting';
+            currentGame.revealedPlayers = data.revealedPlayers || [];
+            currentGame.characters = data.characters || {}; // Clear all character assignments
+            updateGameDisplay();
+            
+            // Show a success message
+            showNotification('🔄 Game restarted! Character assignments cleared.', 'success');
+        }
+    });
+    
+    socket.on('error', (error) => {
+        console.error('Socket error:', error);
+        alert(error);
+    });
+    
     socket.on('disconnect', () => {
         console.log('Disconnected from server');
     });
@@ -124,6 +160,8 @@ function initializeSocket(roomCode) {
 
 async function joinGameRoom(roomCode) {
     try {
+        console.log('Attempting to join game:', roomCode, 'with player:', currentPlayer);
+        
         const response = await fetch('/api/join-game', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -134,7 +172,14 @@ async function joinGameRoom(roomCode) {
             })
         });
         
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const result = await response.json();
+        console.log('Join game result:', result);
         
         if (result.success) {
             console.log('Successfully joined game');
@@ -143,12 +188,13 @@ async function joinGameRoom(roomCode) {
             currentPlayer = result.player;
             updateGameDisplay();
         } else {
+            console.error('Join game failed:', result.error);
             alert(result.error || 'Failed to join game');
             window.location.href = '/';
         }
     } catch (error) {
         console.error('Error joining game:', error);
-        alert('Connection error. Please try again.');
+        alert(`Connection error: ${error.message}. Please try again.`);
         window.location.href = '/';
     }
 }
@@ -157,16 +203,50 @@ function updateGameDisplay() {
     if (!currentGame) return;
     
     // Update player count
-    document.getElementById('playerCount').textContent = currentGame.players.length;
+    const playerCountEl = document.getElementById('playerCount');
+    if (playerCountEl) playerCountEl.textContent = currentGame.players.length;
     
-    // Update game status
-    const statusEl = document.getElementById('gameStatus');
-    if (currentGame.players.length < 2) {
-        statusEl.textContent = 'Need at least 2 players to start';
-        document.getElementById('startGame').disabled = true;
+    // Show/hide elements based on game state
+    const shareCard = document.querySelector('.game-card');
+    const gameState = currentGame.state || 'waiting';
+    
+    if (gameState === 'started') {
+        // Hide join functionality when game has started
+        if (shareCard) shareCard.style.display = 'none';
+        
+        // Update status and buttons
+        const gameStatus = document.getElementById('gameStatus');
+        const startButton = document.getElementById('startGame');
+        const restartButton = document.getElementById('restartGame');
+        
+        if (gameStatus) gameStatus.textContent = 'Game in progress - Click your mystery sticker to reveal!';
+        if (startButton) startButton.style.display = 'none';
+        if (restartButton) restartButton.style.display = 'inline-block';
     } else {
-        statusEl.textContent = 'Ready to play!';
-        document.getElementById('startGame').disabled = false;
+        // Show join functionality when waiting
+        if (shareCard) shareCard.style.display = 'block';
+        
+        // Update game status and buttons
+        const statusEl = document.getElementById('gameStatus');
+        const startButton = document.getElementById('startGame');
+        const restartButton = document.getElementById('restartGame');
+        
+        if (statusEl) {
+            if (currentGame.players.length < 2) {
+                statusEl.textContent = 'Need at least 2 players to start';
+            } else {
+                statusEl.textContent = 'Ready to play!';
+            }
+        }
+        
+        if (startButton) {
+            startButton.disabled = currentGame.players.length < 2;
+            startButton.style.display = 'inline-block';
+        }
+        
+        if (restartButton) {
+            restartButton.style.display = 'none';
+        }
     }
     
     // Update players list
@@ -227,14 +307,40 @@ function updatePlayersList() {
             
             playerCard.appendChild(characterSticker);
         } else if (characterData && isCurrentPlayer) {
-            // Current player has a character but can't see it - show mystery sticker
-            const mysterySticker = document.createElement('div');
-            mysterySticker.className = 'character-sticker mystery-character';
-            mysterySticker.textContent = '❓';
-            mysterySticker.title = 'Your character is hidden from you!';
-            mysterySticker.style.cursor = 'default';
+            // Current player has a character
+            const gameState = currentGame.state || 'waiting';
+            const isRevealed = currentGame.revealedPlayers && currentGame.revealedPlayers.includes(player.id);
             
-            playerCard.appendChild(mysterySticker);
+            if (isRevealed) {
+                // Character is revealed - show the actual character
+                const revealedSticker = document.createElement('div');
+                const stickerColor = getStickerColor(player.id);
+                revealedSticker.className = `character-sticker color-${stickerColor} revealed`;
+                revealedSticker.textContent = characterData.character;
+                revealedSticker.title = 'Your revealed character';
+                revealedSticker.style.cursor = 'default';
+                
+                playerCard.appendChild(revealedSticker);
+            } else {
+                // Character is hidden - show mystery sticker
+                const mysterySticker = document.createElement('div');
+                mysterySticker.className = 'character-sticker mystery-character';
+                mysterySticker.textContent = '❓';
+                
+                if (gameState === 'started') {
+                    mysterySticker.title = 'Your character - click to reveal!';
+                    mysterySticker.style.cursor = 'pointer';
+                    mysterySticker.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showRevealModal();
+                    });
+                } else {
+                    mysterySticker.title = 'Your character is hidden from you!';
+                    mysterySticker.style.cursor = 'default';
+                }
+                
+                playerCard.appendChild(mysterySticker);
+            }
         } else if (!isCurrentPlayer) {
             // No character and not current player - show add button
             const addButton = document.createElement('div');
@@ -393,9 +499,99 @@ function setupEventListeners() {
         }, 2000);
     });
     
-    
-    // Start game button (placeholder for now)
+    // Start game button
     document.getElementById('startGame').addEventListener('click', () => {
-        alert('Game starting feature coming soon!');
+        if (!currentGame || !currentPlayer) return;
+        
+        socket.emit('start-game', {
+            gameId: currentGame.id,
+            playerId: currentPlayer.id
+        });
     });
+    
+    // Initialize reveal modal
+    revealModal = new bootstrap.Modal(document.getElementById('revealModal'));
+    
+    // Confirm reveal button in modal
+    document.getElementById('confirmReveal').addEventListener('click', () => {
+        if (!currentGame || !currentPlayer) return;
+        
+        socket.emit('reveal-character', {
+            gameId: currentGame.id,
+            playerId: currentPlayer.id
+        });
+        
+        revealModal.hide();
+    });
+    
+    // Initialize restart modal first
+    const restartModalElement = document.getElementById('restartModal');
+    if (restartModalElement) {
+        restartModal = new bootstrap.Modal(restartModalElement);
+    }
+    
+    // Restart game button
+    const restartButton = document.getElementById('restartGame');
+    if (restartButton) {
+        restartButton.addEventListener('click', () => {
+            console.log('Restart game button clicked');
+            if (restartModal) {
+                console.log('Showing restart modal');
+                restartModal.show();
+            } else {
+                console.error('Restart modal not initialized');
+            }
+        });
+    }
+    
+    // Confirm restart button in modal
+    const confirmRestartButton = document.getElementById('confirmRestart');
+    if (confirmRestartButton) {
+        confirmRestartButton.addEventListener('click', () => {
+            console.log('Confirm restart clicked');
+            console.log('Current game:', currentGame);
+            console.log('Current player:', currentPlayer);
+            
+            if (!currentGame || !currentPlayer) {
+                console.error('Missing game or player data');
+                return;
+            }
+            
+            socket.emit('restart-game', {
+                gameId: currentGame.id,
+                playerId: currentPlayer.id
+            });
+            
+            restartModal.hide();
+        });
+    }
+}
+
+// Function to show the reveal modal
+function showRevealModal() {
+    if (revealModal) {
+        revealModal.show();
+    }
+}
+
+// Function to show notification messages
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 4 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 4000);
 }

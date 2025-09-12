@@ -4,6 +4,9 @@ const {
     createGame,
     addPlayerToGame,
     assignCharacter,
+    startGame,
+    revealCharacter,
+    restartGame,
     isValidRoomCode
 } = require('../game-logic');
 
@@ -80,9 +83,12 @@ describe('Game Creation', () => {
         expect(game).toMatchObject({
             id: result.gameId,
             players: [],
+            state: 'waiting',
             created: expect.any(Date)
         });
         expect(game.characters).toBeInstanceOf(Map);
+        expect(game.revealedPlayers).toBeInstanceOf(Set);
+        expect(game.revealedPlayers.size).toBe(0);
     });
 
     test('creates unique game IDs', () => {
@@ -118,6 +124,8 @@ describe('Player Joining', () => {
         });
         expect(result.player.id).toBeDefined();
         expect(result.game.players).toHaveLength(1);
+        expect(result.game.state).toBe('waiting');
+        expect(result.game.revealedPlayers).toEqual([]);
     });
 
     test('handles player reconnection', () => {
@@ -167,6 +175,19 @@ describe('Player Joining', () => {
         
         expect(result.success).toBe(false);
         expect(result.error).toBe('Game not found');
+    });
+
+    test('prevents joining started games', () => {
+        // Add players and start game
+        const player1Result = addPlayerToGame(games, gameId, 'Alice', '😀');
+        const player2Result = addPlayerToGame(games, gameId, 'Bob', '😎');
+        startGame(games, gameId, player1Result.player.id);
+        
+        // Try to add another player after game started
+        const result = addPlayerToGame(games, gameId, 'Charlie', '🤖');
+        
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Game has already started');
     });
 
     test('validates player data', () => {
@@ -311,5 +332,323 @@ describe('Character Assignment', () => {
         expect(game.characters.get(playerId3).character).toBe('Superman');
         expect(game.characters.get(playerId2).assignedBy).toBe(playerId1);
         expect(game.characters.get(playerId3).assignedBy).toBe(playerId1);
+    });
+});
+
+describe('Game Starting', () => {
+    let games;
+    let gameId;
+    let playerId1;
+    let playerId2;
+
+    beforeEach(() => {
+        games = new Map();
+        const createResult = createGame(games);
+        gameId = createResult.gameId;
+        
+        // Add two players
+        const player1Result = addPlayerToGame(games, gameId, 'Alice', '😀');
+        const player2Result = addPlayerToGame(games, gameId, 'Bob', '😎');
+        
+        playerId1 = player1Result.player.id;
+        playerId2 = player2Result.player.id;
+    });
+
+    test('starts game successfully with enough players', () => {
+        const result = startGame(games, gameId, playerId1);
+        
+        expect(result.success).toBe(true);
+        expect(result.gameId).toBe(gameId);
+        expect(result.state).toBe('started');
+        expect(result.startedBy).toBe(playerId1);
+    });
+
+    test('updates game state in memory', () => {
+        startGame(games, gameId, playerId1);
+        
+        const game = games.get(gameId);
+        expect(game.state).toBe('started');
+        expect(game.startedAt).toBeInstanceOf(Date);
+    });
+
+    test('prevents starting game with insufficient players', () => {
+        // Create new game with only one player
+        const newGameResult = createGame(games);
+        const newGameId = newGameResult.gameId;
+        const onePlayerResult = addPlayerToGame(games, newGameId, 'Solo', '😀');
+        
+        const result = startGame(games, newGameId, onePlayerResult.player.id);
+        
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Need at least 2 players to start');
+    });
+
+    test('prevents starting already started game', () => {
+        // Start game first time
+        startGame(games, gameId, playerId1);
+        
+        // Try to start again
+        const result = startGame(games, gameId, playerId2);
+        
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Game has already started');
+    });
+
+    test('returns error for non-existent game', () => {
+        const result = startGame(games, 'INVALID', playerId1);
+        
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Game not found');
+    });
+
+    test('returns error for non-existent player', () => {
+        const result = startGame(games, gameId, 'invalid-player-id');
+        
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Player not found in game');
+    });
+
+    test('allows any player to start the game', () => {
+        // Player 2 starts the game
+        const result = startGame(games, gameId, playerId2);
+        
+        expect(result.success).toBe(true);
+        expect(result.startedBy).toBe(playerId2);
+    });
+});
+
+describe('Character Revealing', () => {
+    let games;
+    let gameId;
+    let playerId1;
+    let playerId2;
+
+    beforeEach(() => {
+        games = new Map();
+        const createResult = createGame(games);
+        gameId = createResult.gameId;
+        
+        // Add two players
+        const player1Result = addPlayerToGame(games, gameId, 'Alice', '😀');
+        const player2Result = addPlayerToGame(games, gameId, 'Bob', '😎');
+        
+        playerId1 = player1Result.player.id;
+        playerId2 = player2Result.player.id;
+        
+        // Assign characters
+        assignCharacter(games, gameId, playerId1, 'Batman', playerId2);
+        assignCharacter(games, gameId, playerId2, 'Superman', playerId1);
+        
+        // Start the game
+        startGame(games, gameId, playerId1);
+    });
+
+    test('reveals character successfully', () => {
+        const result = revealCharacter(games, gameId, playerId1);
+        
+        expect(result.success).toBe(true);
+        expect(result.playerId).toBe(playerId1);
+        expect(result.character).toBe('Batman');
+        expect(result.revealedPlayers).toContain(playerId1);
+    });
+
+    test('updates revealed players in game state', () => {
+        revealCharacter(games, gameId, playerId1);
+        
+        const game = games.get(gameId);
+        expect(game.revealedPlayers.has(playerId1)).toBe(true);
+        expect(game.revealedPlayers.size).toBe(1);
+    });
+
+    test('allows multiple players to reveal', () => {
+        revealCharacter(games, gameId, playerId1);
+        revealCharacter(games, gameId, playerId2);
+        
+        const game = games.get(gameId);
+        expect(game.revealedPlayers.has(playerId1)).toBe(true);
+        expect(game.revealedPlayers.has(playerId2)).toBe(true);
+        expect(game.revealedPlayers.size).toBe(2);
+    });
+
+    test('allows same player to reveal multiple times (idempotent)', () => {
+        const result1 = revealCharacter(games, gameId, playerId1);
+        const result2 = revealCharacter(games, gameId, playerId1);
+        
+        expect(result1.success).toBe(true);
+        expect(result2.success).toBe(true);
+        expect(result2.character).toBe('Batman');
+        
+        const game = games.get(gameId);
+        expect(game.revealedPlayers.size).toBe(1);
+    });
+
+    test('prevents revealing before game starts', () => {
+        // Create new game that hasn't started
+        const newGameResult = createGame(games);
+        const newGameId = newGameResult.gameId;
+        const newPlayerResult = addPlayerToGame(games, newGameId, 'Charlie', '🤖');
+        assignCharacter(games, newGameId, newPlayerResult.player.id, 'Wonder Woman', playerId1);
+        
+        const result = revealCharacter(games, newGameId, newPlayerResult.player.id);
+        
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Game has not started yet');
+    });
+
+    test('prevents revealing without assigned character', () => {
+        // Create a new game and add a player without character assignment before starting
+        const newGameResult = createGame(games);
+        const newGameId = newGameResult.gameId;
+        const player3Result = addPlayerToGame(games, newGameId, 'Charlie', '🤖');
+        const player4Result = addPlayerToGame(games, newGameId, 'David', '🚀');
+        
+        // Start the game (player3 has no character assigned)
+        startGame(games, newGameId, player3Result.player.id);
+        
+        const result = revealCharacter(games, newGameId, player3Result.player.id);
+        
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('No character assigned to this player');
+    });
+
+    test('returns error for non-existent game', () => {
+        const result = revealCharacter(games, 'INVALID', playerId1);
+        
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Game not found');
+    });
+
+    test('returns error for non-existent player', () => {
+        const result = revealCharacter(games, gameId, 'invalid-player-id');
+        
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Player not found in game');
+    });
+});
+
+describe('Game Restarting', () => {
+    let games;
+    let gameId;
+    let playerId1;
+    let playerId2;
+
+    beforeEach(() => {
+        games = new Map();
+        const createResult = createGame(games);
+        gameId = createResult.gameId;
+        
+        // Add two players
+        const player1Result = addPlayerToGame(games, gameId, 'Alice', '😀');
+        const player2Result = addPlayerToGame(games, gameId, 'Bob', '😎');
+        
+        playerId1 = player1Result.player.id;
+        playerId2 = player2Result.player.id;
+        
+        // Assign characters
+        assignCharacter(games, gameId, playerId1, 'Batman', playerId2);
+        assignCharacter(games, gameId, playerId2, 'Superman', playerId1);
+        
+        // Start the game and reveal some characters
+        startGame(games, gameId, playerId1);
+        revealCharacter(games, gameId, playerId1);
+    });
+
+    test('restarts game successfully', () => {
+        const result = restartGame(games, gameId, playerId1);
+        
+        expect(result.success).toBe(true);
+        expect(result.gameId).toBe(gameId);
+        expect(result.state).toBe('waiting');
+        expect(result.restartedBy).toBe(playerId1);
+        expect(result.revealedPlayers).toEqual([]);
+    });
+
+    test('updates game state in memory', () => {
+        restartGame(games, gameId, playerId1);
+        
+        const game = games.get(gameId);
+        expect(game.state).toBe('waiting');
+        expect(game.revealedPlayers.size).toBe(0);
+        expect(game.restartedAt).toBeInstanceOf(Date);
+    });
+
+    test('preserves players but clears character assignments', () => {
+        const gameBefore = games.get(gameId);
+        const playersBefore = gameBefore.players.length;
+        
+        restartGame(games, gameId, playerId1);
+        
+        const gameAfter = games.get(gameId);
+        expect(gameAfter.players.length).toBe(playersBefore);
+        expect(gameAfter.characters.size).toBe(0); // All characters cleared
+        
+        // Character assignments should be cleared
+        expect(gameAfter.characters.has(playerId1)).toBe(false);
+        expect(gameAfter.characters.has(playerId2)).toBe(false);
+    });
+
+    test('clears revealed players', () => {
+        const game = games.get(gameId);
+        expect(game.revealedPlayers.has(playerId1)).toBe(true); // Was revealed in beforeEach
+        
+        restartGame(games, gameId, playerId1);
+        
+        expect(game.revealedPlayers.has(playerId1)).toBe(false);
+        expect(game.revealedPlayers.size).toBe(0);
+    });
+
+    test('allows any player to restart the game', () => {
+        // Player 2 restarts the game
+        const result = restartGame(games, gameId, playerId2);
+        
+        expect(result.success).toBe(true);
+        expect(result.restartedBy).toBe(playerId2);
+    });
+
+    test('can restart from waiting state', () => {
+        // First restart the game
+        restartGame(games, gameId, playerId1);
+        
+        // Try to restart again while in waiting state
+        const result = restartGame(games, gameId, playerId2);
+        
+        expect(result.success).toBe(true);
+        expect(result.state).toBe('waiting');
+    });
+
+    test('returns error for non-existent game', () => {
+        const result = restartGame(games, 'INVALID', playerId1);
+        
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Game not found');
+    });
+
+    test('returns error for non-existent player', () => {
+        const result = restartGame(games, gameId, 'invalid-player-id');
+        
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Player not found in game');
+    });
+
+    test('allows new players to join after restart', () => {
+        // Restart the game
+        restartGame(games, gameId, playerId1);
+        
+        // Try to add a new player (should succeed now)
+        const newPlayerResult = addPlayerToGame(games, gameId, 'Charlie', '🤖');
+        
+        expect(newPlayerResult.success).toBe(true);
+        expect(newPlayerResult.isNewPlayer).toBe(true);
+        expect(newPlayerResult.game.players.length).toBe(3);
+    });
+
+    test('maintains game history with restart timestamp', () => {
+        const beforeRestart = Date.now();
+        
+        restartGame(games, gameId, playerId1);
+        
+        const game = games.get(gameId);
+        expect(game.restartedAt).toBeInstanceOf(Date);
+        expect(game.restartedAt.getTime()).toBeGreaterThanOrEqual(beforeRestart);
     });
 });

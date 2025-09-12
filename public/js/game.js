@@ -155,24 +155,37 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to create new game
     async function createGame(playerData) {
         try {
+            console.log('Creating game with player data:', playerData);
+            
             const response = await fetch('/api/create-game', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({})
             });
             
+            console.log('Create game response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const result = await response.json();
+            console.log('Create game result:', result);
             
             if (result.success) {
-                // Redirect to game room with the new code
+                // Update player data with the new room code
+                playerData.roomCode = result.gameId;
+                console.log('Updated player data:', playerData);
                 sessionStorage.setItem('playerData', JSON.stringify(playerData));
                 window.location.href = `/game/${result.gameId}`;
             } else {
+                console.error('Create game failed:', result);
                 alert('Failed to create game. Please try again.');
                 resetCreateButton();
             }
         } catch (error) {
-            alert('Connection error. Please check your internet connection.');
+            console.error('Error creating game:', error);
+            alert(`Connection error: ${error.message}. Please check your internet connection.`);
             resetCreateButton();
         }
     }

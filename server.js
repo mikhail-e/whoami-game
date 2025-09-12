@@ -77,7 +77,8 @@ io.on('connection', (socket) => {
             // Convert Map to Object for JSON serialization
             const gameState = {
                 ...game,
-                characters: Object.fromEntries(game.characters)
+                characters: Object.fromEntries(game.characters),
+                revealedPlayers: Array.from(game.revealedPlayers)
             };
             socket.emit('game-state', gameState);
         }
@@ -97,6 +98,54 @@ io.on('connection', (socket) => {
         
         // Broadcast the update to all players in the room
         io.to(gameId).emit('character-assigned', result);
+    });
+    
+    socket.on('start-game', (data) => {
+        const { gameId, playerId } = data;
+        
+        const result = gameLogic.startGame(games, gameId, playerId);
+        
+        if (!result.success) {
+            socket.emit('error', result.error);
+            return;
+        }
+        
+        console.log(`Game ${gameId} started by player ${playerId}`);
+        
+        // Broadcast game start to all players in the room
+        io.to(gameId).emit('game-started', result);
+    });
+    
+    socket.on('reveal-character', (data) => {
+        const { gameId, playerId } = data;
+        
+        const result = gameLogic.revealCharacter(games, gameId, playerId);
+        
+        if (!result.success) {
+            socket.emit('error', result.error);
+            return;
+        }
+        
+        console.log(`Player ${playerId} revealed their character in game ${gameId}`);
+        
+        // Broadcast character reveal to all players in the room
+        io.to(gameId).emit('character-revealed', result);
+    });
+    
+    socket.on('restart-game', (data) => {
+        const { gameId, playerId } = data;
+        
+        const result = gameLogic.restartGame(games, gameId, playerId);
+        
+        if (!result.success) {
+            socket.emit('error', result.error);
+            return;
+        }
+        
+        console.log(`Game ${gameId} restarted by player ${playerId}`);
+        
+        // Broadcast game restart to all players in the room
+        io.to(gameId).emit('game-restarted', result);
     });
     
     socket.on('disconnect', () => {

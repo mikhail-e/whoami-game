@@ -168,6 +168,18 @@ body {
   box-shadow: 0 3px 8px rgba(149, 165, 166, 0.3);
 }
 
+.character-sticker.revealed {
+  border: 3px solid #f1c40f;
+  box-shadow: 0 0 15px rgba(241, 196, 15, 0.5), 0 3px 8px rgba(0,0,0,0.2);
+  animation: revealPulse 2s ease-in-out;
+}
+
+@keyframes revealPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); border-color: #f39c12; }
+  100% { transform: scale(1); }
+}
+
 
 .character-input {
   background: transparent;

@@ -25,6 +25,8 @@ function createGame(games) {
         id: gameId,
         players: [],
         characters: new Map(),
+        state: 'waiting', // waiting, started, ended
+        revealedPlayers: new Set(), // Track who has revealed their character
         created: new Date()
     };
     
@@ -39,6 +41,11 @@ function addPlayerToGame(games, gameId, playerName, avatar) {
     }
     
     const game = games.get(gameId);
+    
+    // Check if game has already started (no new players allowed)
+    if (game.state === 'started') {
+        return { success: false, error: 'Game has already started' };
+    }
     
     // Check if game is full (max 12 players)
     if (game.players.length >= 12) {
@@ -76,7 +83,9 @@ function addPlayerToGame(games, gameId, playerName, avatar) {
         game: { 
             id: game.id, 
             players: game.players,
-            characters: Object.fromEntries(game.characters)
+            characters: Object.fromEntries(game.characters),
+            state: game.state,
+            revealedPlayers: Array.from(game.revealedPlayers)
         },
         isNewPlayer 
     };
@@ -123,6 +132,112 @@ function assignCharacter(games, gameId, playerId, character, assignedBy) {
     };
 }
 
+// Start a game
+function startGame(games, gameId, playerId) {
+    if (!games.has(gameId)) {
+        return { success: false, error: 'Game not found' };
+    }
+    
+    const game = games.get(gameId);
+    
+    // Validate that the player exists in the game
+    const player = game.players.find(p => p.id === playerId);
+    if (!player) {
+        return { success: false, error: 'Player not found in game' };
+    }
+    
+    // Check if game is already started
+    if (game.state === 'started') {
+        return { success: false, error: 'Game has already started' };
+    }
+    
+    // Check if we have at least 2 players
+    if (game.players.length < 2) {
+        return { success: false, error: 'Need at least 2 players to start' };
+    }
+    
+    // Start the game
+    game.state = 'started';
+    game.startedAt = new Date();
+    
+    return { 
+        success: true,
+        gameId,
+        state: game.state,
+        startedBy: playerId
+    };
+}
+
+// Reveal character for a player
+function revealCharacter(games, gameId, playerId) {
+    if (!games.has(gameId)) {
+        return { success: false, error: 'Game not found' };
+    }
+    
+    const game = games.get(gameId);
+    
+    // Validate that the player exists in the game
+    const player = game.players.find(p => p.id === playerId);
+    if (!player) {
+        return { success: false, error: 'Player not found in game' };
+    }
+    
+    // Check if game has started
+    if (game.state !== 'started') {
+        return { success: false, error: 'Game has not started yet' };
+    }
+    
+    // Check if player has a character assigned
+    if (!game.characters.has(playerId)) {
+        return { success: false, error: 'No character assigned to this player' };
+    }
+    
+    // Add player to revealed set
+    game.revealedPlayers.add(playerId);
+    
+    const characterData = game.characters.get(playerId);
+    
+    return { 
+        success: true,
+        playerId,
+        character: characterData.character,
+        revealedPlayers: Array.from(game.revealedPlayers)
+    };
+}
+
+// Restart a game (reset to waiting state)
+function restartGame(games, gameId, playerId) {
+    if (!games.has(gameId)) {
+        return { success: false, error: 'Game not found' };
+    }
+    
+    const game = games.get(gameId);
+    
+    // Validate that the player exists in the game
+    const player = game.players.find(p => p.id === playerId);
+    if (!player) {
+        return { success: false, error: 'Player not found in game' };
+    }
+    
+    // Reset game state
+    game.state = 'waiting';
+    game.revealedPlayers.clear();
+    game.characters.clear(); // Clear all character assignments
+    game.restartedAt = new Date();
+    
+    // Clear all character assignments - players start fresh
+    // This makes restart more visually obvious
+    
+    return { 
+        success: true,
+        gameId,
+        state: game.state,
+        restartedBy: playerId,
+        revealedPlayers: Array.from(game.revealedPlayers),
+        characters: Object.fromEntries(game.characters) // Empty object now
+    };
+}
+
 // Validate room code format
 function isValidRoomCode(code) {
     if (!code || typeof code !== 'string') {
@@ -138,5 +253,8 @@ module.exports = {
     createGame,
     addPlayerToGame,
     assignCharacter,
+    startGame,
+    revealCharacter,
+    restartGame,
     isValidRoomCode
 };
