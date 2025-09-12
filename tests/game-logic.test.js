@@ -177,17 +177,46 @@ describe('Player Joining', () => {
         expect(result.error).toBe('Game not found');
     });
 
-    test('prevents joining started games', () => {
+    test('prevents NEW players from joining started games', () => {
         // Add players and start game
         const player1Result = addPlayerToGame(games, gameId, 'Alice', '😀');
         const player2Result = addPlayerToGame(games, gameId, 'Bob', '😎');
         startGame(games, gameId, player1Result.player.id);
         
-        // Try to add another player after game started
+        // Try to add another NEW player after game started
         const result = addPlayerToGame(games, gameId, 'Charlie', '🤖');
         
         expect(result.success).toBe(false);
         expect(result.error).toBe('Game has already started');
+    });
+    
+    test('allows EXISTING players to reconnect to started games', () => {
+        // Add players and start game
+        const player1Result = addPlayerToGame(games, gameId, 'Alice', '😀');
+        const player2Result = addPlayerToGame(games, gameId, 'Bob', '😎');
+        startGame(games, gameId, player1Result.player.id);
+        
+        // Existing player reconnects with their ID
+        const result = addPlayerToGame(games, gameId, 'Alice', '😀', player1Result.player.id);
+        
+        expect(result.success).toBe(true);
+        expect(result.isNewPlayer).toBe(false);
+        expect(result.player.id).toBe(player1Result.player.id);
+    });
+    
+    test('allows EXISTING players to reconnect to started games by name fallback', () => {
+        // Add players and start game
+        const player1Result = addPlayerToGame(games, gameId, 'Alice', '😀');
+        const player2Result = addPlayerToGame(games, gameId, 'Bob', '😎');
+        startGame(games, gameId, player1Result.player.id);
+        
+        // Existing player reconnects without ID (name matching fallback)
+        const result = addPlayerToGame(games, gameId, 'Alice', '😎');
+        
+        expect(result.success).toBe(true);
+        expect(result.isNewPlayer).toBe(false);
+        expect(result.player.id).toBe(player1Result.player.id);
+        expect(result.player.avatar).toBe('😎'); // Avatar should be updated
     });
 
     test('validates player data', () => {

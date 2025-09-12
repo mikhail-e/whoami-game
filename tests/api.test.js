@@ -20,13 +20,13 @@ function createTestApp() {
     
     // API endpoint to join a game
     app.post('/api/join-game', (req, res) => {
-        const { gameId, playerName, avatar } = req.body;
+        const { gameId, playerName, avatar, playerId } = req.body;
         
         if (!gameId || !playerName || !avatar) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
         
-        const result = gameLogic.addPlayerToGame(games, gameId, playerName, avatar);
+        const result = gameLogic.addPlayerToGame(games, gameId, playerName, avatar, playerId);
         res.status(result.success ? 200 : 400).json(result);
     });
     
@@ -373,6 +373,76 @@ describe('API Integration Tests', () => {
                 success: false,
                 error: 'Assigner not found in game'
             });
+        });
+    });
+
+    describe('Player Reconnection with ID', () => {
+        let gameId, playerId1, playerId2;
+        
+        beforeEach(async () => {
+            // Create a game
+            const gameResponse = await request(app)
+                .post('/api/create-game')
+                .expect(200);
+            gameId = gameResponse.body.gameId;
+            
+            // Add two players
+            const player1Response = await request(app)
+                .post('/api/join-game')
+                .send({ gameId, playerName: 'Alice', avatar: '😀' });
+            playerId1 = player1Response.body.player.id;
+            
+            const player2Response = await request(app)
+                .post('/api/join-game')
+                .send({ gameId, playerName: 'Bob', avatar: '😎' });
+            playerId2 = player2Response.body.player.id;
+        });
+        
+        test('allows player to reconnect using their ID', async () => {
+            // Player reconnects with their ID
+            const response = await request(app)
+                .post('/api/join-game')
+                .send({ 
+                    gameId, 
+                    playerName: 'Alice', 
+                    avatar: '🎯', 
+                    playerId: playerId1 
+                })
+                .expect(200);
+                
+            expect(response.body).toMatchObject({
+                success: true,
+                isNewPlayer: false,
+                player: {
+                    id: playerId1,
+                    name: 'Alice',
+                    avatar: '🎯' // Avatar should be updated
+                }
+            });
+        });
+        
+        test('creates new player if invalid ID provided', async () => {
+            const response = await request(app)
+                .post('/api/join-game')
+                .send({ 
+                    gameId, 
+                    playerName: 'Charlie', 
+                    avatar: '🤖', 
+                    playerId: 'invalid-player-id' 
+                })
+                .expect(200);
+                
+            expect(response.body).toMatchObject({
+                success: true,
+                isNewPlayer: true,
+                player: {
+                    name: 'Charlie',
+                    avatar: '🤖'
+                }
+            });
+            
+            // Should get a new ID, not the invalid one
+            expect(response.body.player.id).not.toBe('invalid-player-id');
         });
     });
 
