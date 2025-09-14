@@ -11,6 +11,7 @@ const server = http.createServer(app);
 const io = socketIo(server);
 
 const PORT = process.env.PORT || 3000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Store games in memory for now (will move to files later)
 const games = new Map();
@@ -158,9 +159,13 @@ io.on('connection', (socket) => {
 });
 
 // Start server
-server.listen(PORT, () => {
-    console.log(`🎭 Who am I? server running on http://localhost:${PORT}`);
-    console.log('Press Ctrl+C to stop the server');
+server.listen(PORT, '0.0.0.0', () => {
+    if (NODE_ENV === 'production') {
+        console.log(`🎭 Who am I? server running in production on port ${PORT}`);
+    } else {
+        console.log(`🎭 Who am I? server running on http://localhost:${PORT}`);
+        console.log('Press Ctrl+C to stop the server');
+    }
 });
 
 // Create games directory if it doesn't exist
