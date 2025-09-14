@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle errors
     if (errorParam === 'room-not-found') {
-        showError('Room not found. Please check the room code and try again.');
+        showError((typeof i18n !== 'undefined' && i18n) ? i18n.getText('roomNotFound') : 'Room not found. Please check the room code and try again.');
     }
     
     if (joinRoomCode && roomCodeInput) {
@@ -37,8 +37,12 @@ document.addEventListener('DOMContentLoaded', function() {
             joinBtn.classList.add('btn-primary');
         }
         
-        // Show helpful message
-        showInfo(`Ready to join room ${joinRoomCode.toUpperCase()}. Just enter your name and avatar!`);
+        // Show helpful message - will be localized after i18n is loaded
+        setTimeout(() => {
+            if (typeof i18n !== 'undefined' && i18n) {
+                showInfo(`${i18n.getText('readyToJoin')} ${joinRoomCode.toUpperCase()}. ${i18n.getText('enterNameAvatar')}`);
+            }
+        }, 100);
     }
     
     // Function to show error messages
@@ -91,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (roomCodeInput) {
         const joinBtn = document.getElementById('joinBtn');
         
-        // Initially disable Join button if room code is empty
+        // Initially update both button states
         if (joinBtn) {
             updateJoinButtonState();
         }
@@ -116,6 +120,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     joinBtn.classList.add('btn-secondary');
                 }
             }
+            
+            // Update Create New Game button state
+            updateCreateButtonState();
+        }
+        
+        // Function to update Create New Game button state based on room code
+        function updateCreateButtonState() {
+            if (createNewGameBtn) {
+                const roomCode = roomCodeInput.value.trim();
+                const hasValidRoomCode = roomCode.length === 6;
+                
+                if (hasValidRoomCode) {
+                    createNewGameBtn.disabled = true;
+                    createNewGameBtn.classList.add('btn-outline-secondary');
+                    createNewGameBtn.classList.remove('btn-outline-primary');
+                    createNewGameBtn.title = 'Clear room code to create a new game';
+                } else {
+                    createNewGameBtn.disabled = false;
+                    createNewGameBtn.classList.remove('btn-outline-secondary');
+                    createNewGameBtn.classList.add('btn-outline-primary');
+                    createNewGameBtn.title = '';
+                }
+            }
         }
     }
 
@@ -126,17 +153,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const selectedAvatar = selectedAvatarInput.value;
             
             if (!playerName) {
-                alert('Please enter your name first');
+                alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('pleaseEnterName') : 'Please enter your name first');
                 document.getElementById('playerName').focus();
                 return;
             }
 
+            // Clear room code first (this will re-enable the button visually)
+            roomCodeInput.value = '';
+            updateJoinButtonState(); // This will also update the create button state
+            
             // Visual feedback
             createNewGameBtn.disabled = true;
             createNewGameBtn.textContent = 'Creating...';
-            
-            // Clear room code and create new game
-            roomCodeInput.value = '';
             
             const playerData = {
                 name: playerName,
@@ -158,13 +186,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const roomCode = roomCodeInput.value.trim();
             
             if (!playerName) {
-                alert('Please enter your name');
+                alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('pleaseEnterName') : 'Please enter your name');
                 return;
             }
 
             // If room code provided, validate it
             if (roomCode && roomCode.length !== 6) {
-                alert('Room code must be exactly 6 characters');
+                alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('roomCodeLength') : 'Room code must be exactly 6 characters');
                 return;
             }
 
@@ -213,12 +241,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.location.href = `/game/${result.gameId}`;
             } else {
                 console.error('Create game failed:', result);
-                alert('Failed to create game. Please try again.');
+                alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('failedCreateGame') : 'Failed to create game. Please try again.');
                 resetCreateButton();
             }
         } catch (error) {
             console.error('Error creating game:', error);
-            alert(`Connection error: ${error.message}. Please check your internet connection.`);
+            alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('connectionError') : `Connection error: ${error.message}. Please check your internet connection.`);
             resetCreateButton();
         }
     }
@@ -226,9 +254,27 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to reset create button state
     function resetCreateButton() {
         const createBtn = document.getElementById('createNewGame');
+        const roomInput = document.getElementById('roomCode');
         if (createBtn) {
             createBtn.disabled = false;
             createBtn.textContent = 'Create New Game';
+            
+            // Also update button states based on current room code
+            if (roomInput) {
+                const roomCode = roomInput.value.trim();
+                const hasValidRoomCode = roomCode.length === 6;
+                
+                if (hasValidRoomCode) {
+                    createBtn.disabled = true;
+                    createBtn.classList.add('btn-outline-secondary');
+                    createBtn.classList.remove('btn-outline-primary');
+                    createBtn.title = 'Clear room code to create a new game';
+                } else {
+                    createBtn.classList.remove('btn-outline-secondary');
+                    createBtn.classList.add('btn-outline-primary');
+                    createBtn.title = '';
+                }
+            }
         }
     }
 
@@ -252,10 +298,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 sessionStorage.setItem('playerData', JSON.stringify(playerData));
                 window.location.href = `/game/${playerData.roomCode}`;
             } else {
-                alert(result.error || 'Failed to join game');
+                alert(result.error || ((typeof i18n !== 'undefined' && i18n) ? i18n.getText('failedJoinGame') : 'Failed to join game'));
             }
         } catch (error) {
-            alert('Connection error. Please check your internet connection.');
+            alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('connectionError') : 'Connection error. Please check your internet connection.');
         }
     }
 });

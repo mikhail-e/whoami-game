@@ -145,7 +145,7 @@ function initializeSocket(roomCode) {
             updateGameDisplay();
             
             // Show a success message
-            showNotification('🔄 Game restarted! Character assignments cleared.', 'success');
+            showNotification((typeof i18n !== 'undefined' && i18n) ? i18n.getText('gameRestarted') : '🔄 Game restarted! Character assignments cleared.', 'success');
         }
     });
     
@@ -243,7 +243,7 @@ function updateGameDisplay() {
         const restartButton = document.getElementById('restartGame');
         const restartButtonMobile = document.getElementById('restartGameMobile');
         
-        const statusText = 'Game in progress - Click your mystery sticker to reveal!';
+        const statusText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('gameInProgress') : 'Game in progress - Click your mystery sticker to reveal!';
         if (gameStatus) gameStatus.textContent = statusText;
         if (gameStatusMobile) gameStatusMobile.textContent = statusText;
         
@@ -274,11 +274,11 @@ function updateGameDisplay() {
         
         let statusText;
         if (currentGame.players.length < 2) {
-            statusText = 'Need at least 2 players to start';
+            statusText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('needPlayers') : 'Need at least 2 players to start';
         } else if (!allPlayersHaveCharacters) {
-            statusText = 'Assign characters to all players before starting!';
+            statusText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('assignCharacters') : 'Assign characters to all players before starting!';
         } else {
-            statusText = 'Ready to play!';
+            statusText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('readyToPlay') : 'Ready to play!';
         }
         
         if (statusEl) statusEl.textContent = statusText;
@@ -340,7 +340,7 @@ function updatePlayersList() {
             characterSticker.className = `character-sticker color-${stickerColor}`;
             characterSticker.dataset.playerId = player.id;
             characterSticker.textContent = characterData.character;
-            characterSticker.title = `Character: ${characterData.character} (click to edit)`;
+            characterSticker.title = `Character: ${characterData.character} (${(typeof i18n !== 'undefined' && i18n) ? i18n.getText('clickToEdit') : 'click to edit'})`;
             
             // Only allow editing if you assigned this character AND game is not started
             const gameState = currentGame.state || 'waiting';

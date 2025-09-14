@@ -32,6 +32,7 @@ When I ask for help, I'm usually looking for:
 - **Clean code:** Help me write code that's easy to read and understand
 - **File organization:** Suggest how to organize my files and folders
 - **Simple solutions:** Prefer straightforward approaches over complex ones
+- **Use unit and integration tests:** Create and update tests to keep things working
 
 ## Technologies I'm Using
 - **HTML5** - Structure and content
@@ -67,6 +68,8 @@ When I ask for help, I'm usually looking for:
 - **Error handling** for invalid rooms and duplicate names
 - **Page refresh functionality** - players can refresh during started games without issues
 - **Smart UI adaptations** - elements hide/show based on game state
+- **Full localization system** - English and Russian with automatic browser detection
+- **Smart button states** - Create/Join buttons adapt based on room code input
 
 ### 🎮 **Core Features Implemented:**
 1. **Room Creation & Joining:**
@@ -104,6 +107,19 @@ When I ask for help, I'm usually looking for:
    - Character assignment instructions hidden during gameplay
    - Context-aware element visibility based on game state
 
+7. **Localization System:**
+   - Full English and Russian language support
+   - Automatic browser language detection
+   - One-click language toggle with flags (🇬🇧/🇷🇺)
+   - Persistent language preference in localStorage
+   - All UI elements, buttons, error messages localized
+
+8. **Smart UX Features:**
+   - Character names become read-only when game starts
+   - Create/Join buttons intelligently enable/disable based on room code
+   - Mobile-optimized avatar selection that fits screen width
+   - Helpful tooltips and visual feedback
+
 ### 🏗️ **Project Structure:**
 ```
 whoami-game/
@@ -113,9 +129,15 @@ whoami-game/
 │   ├── css/style.css       # Custom styles with gradients/animations
 │   └── js/
 │       ├── game.js         # Landing page logic
-│       └── game-room.js    # Game room functionality
+│       ├── game-room.js    # Game room functionality
+│       └── translations.js # Localization system
 ├── server.js               # Node.js backend with Socket.IO
 ├── package.json            # Dependencies
+├── tests/                  # Test suites (Jest)
+│   ├── game-logic.test.js  # Core game logic tests
+│   ├── api.test.js         # API endpoint tests
+│   ├── localization.test.js# Localization tests
+│   └── i18n-initialization.test.js # i18n bug prevention tests
 └── games/                  # Game data storage (future)
 ```
 
@@ -123,22 +145,41 @@ whoami-game/
 ```bash
 npm install    # Install dependencies
 npm start      # Start server on localhost:3000
+npm test       # Run test suite (108 tests)
 ```
 
-### 🎯 **Recent Improvements:**
-- Fixed refresh functionality during started games with ID-based player matching
-- Improved Start Game button behavior (wider, enabled only when ready)
-- Enhanced Join Game button (enabled only with valid room codes)
-- Optimized mobile layout with controls moved to bottom during gameplay
-- Added smart UI state management (hide unnecessary elements during games)
-- Improved focus management for better user experience
-- Added comprehensive test coverage for new functionality
+### 🎯 **Recent Major Updates:**
+- **Full Localization System**: Complete English/Russian support with browser auto-detection
+- **Mobile UI Fixes**: Avatar selection properly fits screen width on all devices
+- **Smart Button Logic**: Create/Join buttons intelligently adapt based on room code input
+- **Bug Fixes**: Fixed i18n initialization issues and language persistence across pages
+- **Test Coverage**: Added comprehensive test suites with 108+ tests covering all functionality
+- **UX Improvements**: Read-only character names during games, better tooltips, flag-based language toggle
 
-### 🎯 **Next Goals:**
+### 🎯 **Next Big Goal: Custom Avatars**
+**Priority:** High - Replace emoji avatars with custom avatar system
+
+**Custom Avatar Features to Implement:**
+- **Avatar Builder**: Let users create personalized avatars instead of choosing from 12 emojis
+- **Avatar Components**: Hair, skin tone, clothing, accessories, facial features
+- **Avatar Storage**: Save custom avatars in localStorage for consistent user experience
+- **Avatar Display**: Show custom avatars in player cards and throughout the game
+- **Fallback System**: Keep emoji avatars as backup/quick option for users who don't want to customize
+
+**Technical Approach:**
+- Research avatar generation libraries (e.g., DiceBear, Avataaars, or custom SVG system)
+- Create avatar builder UI with simple customization options
+- Integrate avatar data into existing player system
+- Ensure avatars work on both desktop and mobile
+- Maintain backward compatibility with existing emoji system
+
+### 🎯 **Future Goals:**
 - Add actual gameplay mechanics (asking questions, answering yes/no)
 - Implement game persistence (save/load from files)
-- Add game scoring and winner detection
+- Add game scoring and winner detection  
 - Create game history and statistics
+- Add more languages (Spanish, French, German)
+- Implement avatar sharing between players
 
 
 ## Notes for Claude
