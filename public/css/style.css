@@ -251,6 +251,12 @@ body {
   }
   
   .avatar-selector {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 8px;
+  }
+  
+  .avatar-option {
+    font-size: 1.8rem;
+    padding: 8px;
   }
 }

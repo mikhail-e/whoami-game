@@ -342,15 +342,20 @@ function updatePlayersList() {
             characterSticker.textContent = characterData.character;
             characterSticker.title = `Character: ${characterData.character} (click to edit)`;
             
-            // Only allow editing if you assigned this character
-            if (characterData.assignedBy === currentPlayer.id) {
+            // Only allow editing if you assigned this character AND game is not started
+            const gameState = currentGame.state || 'waiting';
+            if (characterData.assignedBy === currentPlayer.id && gameState !== 'started') {
                 characterSticker.addEventListener('click', (e) => {
                     e.stopPropagation();
                     editCharacter(player.id, characterData.character, characterSticker);
                 });
             } else {
                 characterSticker.style.cursor = 'default';
-                characterSticker.title = `Character: ${characterData.character} (assigned by another player)`;
+                if (gameState === 'started') {
+                    characterSticker.title = `Character: ${characterData.character} (read-only during game)`;
+                } else {
+                    characterSticker.title = `Character: ${characterData.character} (assigned by another player)`;
+                }
             }
             
             playerCard.appendChild(characterSticker);
