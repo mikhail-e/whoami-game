@@ -36,7 +36,21 @@ function createTestApp() {
         const result = gameLogic.assignCharacter(games, gameId, playerId, character, assignedBy);
         res.status(result.success ? 200 : 400).json(result);
     });
-    
+
+    // API endpoint to reveal character (simplified)
+    app.post('/api/reveal-character', (req, res) => {
+        const { gameId, playerId } = req.body;
+        const result = gameLogic.revealCharacter(games, gameId, playerId);
+        res.status(result.success ? 200 : 400).json(result);
+    });
+
+    // API endpoint to start game (simplified)
+    app.post('/api/start-game', (req, res) => {
+        const { gameId, playerId } = req.body;
+        const result = gameLogic.startGame(games, gameId, playerId);
+        res.status(result.success ? 200 : 400).json(result);
+    });
+
     return app;
 }
 
@@ -443,6 +457,150 @@ describe('API Integration Tests', () => {
             
             // Should get a new ID, not the invalid one
             expect(response.body.player.id).not.toBe('invalid-player-id');
+        });
+    });
+
+    describe('POST /api/reveal-character', () => {
+        let gameId, playerId1, playerId2;
+
+        beforeEach(async () => {
+            // Create game
+            const createResponse = await request(app).post('/api/create-game');
+            gameId = createResponse.body.gameId;
+
+            // Add two players
+            const player1Response = await request(app)
+                .post('/api/join-game')
+                .send({ gameId, playerName: 'Alice', avatar: '😀' });
+            playerId1 = player1Response.body.player.id;
+
+            const player2Response = await request(app)
+                .post('/api/join-game')
+                .send({ gameId, playerName: 'Bob', avatar: '😎' });
+            playerId2 = player2Response.body.player.id;
+
+            // Assign characters
+            await request(app)
+                .post('/api/assign-character')
+                .send({
+                    gameId, playerId: playerId1,
+                    character: 'Batman', assignedBy: playerId2
+                });
+
+            await request(app)
+                .post('/api/assign-character')
+                .send({
+                    gameId, playerId: playerId2,
+                    character: 'Superman', assignedBy: playerId1
+                });
+
+            // Start the game
+            await request(app)
+                .post('/api/start-game')
+                .send({ gameId, playerId: playerId1 });
+        });
+
+        test('reveals character successfully with notification data', async () => {
+            const response = await request(app)
+                .post('/api/reveal-character')
+                .send({ gameId, playerId: playerId1 })
+                .expect(200);
+
+            expect(response.body).toMatchObject({
+                success: true,
+                playerId: playerId1,
+                character: 'Batman',
+                revealedPlayers: [playerId1],
+                revealedPlayer: {
+                    id: playerId1,
+                    name: 'Alice',
+                    character: 'Batman'
+                }
+            });
+        });
+
+        test('returns error for invalid game', async () => {
+            const response = await request(app)
+                .post('/api/reveal-character')
+                .send({ gameId: 'INVALID', playerId: playerId1 })
+                .expect(400);
+
+            expect(response.body).toMatchObject({
+                success: false,
+                error: 'Game not found'
+            });
+        });
+
+        test('returns error for invalid player', async () => {
+            const response = await request(app)
+                .post('/api/reveal-character')
+                .send({ gameId, playerId: 'invalid-player-id' })
+                .expect(400);
+
+            expect(response.body).toMatchObject({
+                success: false,
+                error: 'Player not found in game'
+            });
+        });
+
+        test('returns error if game not started', async () => {
+            // Create a new game that hasn't started
+            const newGameResponse = await request(app).post('/api/create-game');
+            const newGameId = newGameResponse.body.gameId;
+
+            const playerResponse = await request(app)
+                .post('/api/join-game')
+                .send({ gameId: newGameId, playerName: 'Charlie', avatar: '🤖' });
+
+            const response = await request(app)
+                .post('/api/reveal-character')
+                .send({ gameId: newGameId, playerId: playerResponse.body.player.id })
+                .expect(400);
+
+            expect(response.body).toMatchObject({
+                success: false,
+                error: 'Game has not started yet'
+            });
+        });
+
+        test('returns error if no character assigned', async () => {
+            // Create new game and player without character
+            const newGameResponse = await request(app).post('/api/create-game');
+            const newGameId = newGameResponse.body.gameId;
+
+            const playerResponse = await request(app)
+                .post('/api/join-game')
+                .send({ gameId: newGameId, playerName: 'Charlie', avatar: '🤖' });
+
+            // Add second player (needed to start game)
+            const player2Response = await request(app)
+                .post('/api/join-game')
+                .send({ gameId: newGameId, playerName: 'Dave', avatar: '🎮' });
+
+            // Assign character to second player only
+            await request(app)
+                .post('/api/assign-character')
+                .send({
+                    gameId: newGameId,
+                    playerId: player2Response.body.player.id,
+                    character: 'Wonder Woman',
+                    assignedBy: playerResponse.body.player.id
+                });
+
+            // Start game with only one player having character
+            await request(app)
+                .post('/api/start-game')
+                .send({ gameId: newGameId, playerId: playerResponse.body.player.id });
+
+            const response = await request(app)
+                .post('/api/reveal-character')
+                .send({ gameId: newGameId, playerId: playerResponse.body.player.id })
+                .expect(400);
+
+            expect(response.body).toMatchObject({
+                success: false,
+                error: 'No character assigned to this player'
+            });
         });
     });
 

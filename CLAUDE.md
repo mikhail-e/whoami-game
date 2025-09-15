@@ -120,6 +120,15 @@ When I ask for help, I'm usually looking for:
    - Mobile-optimized avatar selection that fits screen width
    - Helpful tooltips and visual feedback
 
+9. **Reveal Notification System:**
+   - Real-time notifications when players reveal their characters
+   - Broadcast to all players in the room with player name and character
+   - Auto-dismissing messages after 4 seconds (like other notifications)
+   - Yellow background marking for revealed players using Bootstrap warning colors
+   - Enhanced tooltips showing "(revealed by player)" status
+   - Prevention of character editing for revealed players
+   - Full bilingual support with placeholder system for dynamic content
+
 ### 🏗️ **Project Structure:**
 ```
 whoami-game/
@@ -174,7 +183,12 @@ npm test       # Run test suite (108 tests)
 - Maintain backward compatibility with existing emoji system
 
 ### 🎯 **Future Goals:**
-- Show notification message to all players when somebody reveal themself and mark revealed player
+- Add actual gameplay mechanics (asking questions, answering yes/no)
+- Implement game persistence (save/load from files)
+- Add game scoring and winner detection
+- Create game history and statistics
+- Add more languages (Spanish, French, German)
+- Implement avatar sharing between players
 - Clean up abandoned games on server
 
 ## Notes for Claude

@@ -122,6 +122,7 @@ describe('Localization System', () => {
                 rule3: "Other players answer your questions",
                 rule4: "First to guess their character wins!",
                 players: "Players",
+                playerRevealedNotification: "🎭 {playerName} revealed their character: \"{character}\"",
                 language: "Language",
                 english: "English",
                 russian: "Русский"
@@ -152,6 +153,7 @@ describe('Localization System', () => {
                 rule3: "Другие игроки отвечают на ваши вопросы",
                 rule4: "Первый, кто угадает своего персонажа, побеждает!",
                 players: "Игроки",
+                playerRevealedNotification: "🎭 {playerName} раскрыл своего персонажа: \"{character}\"",
                 language: "Язык",
                 english: "English",
                 russian: "Русский"
@@ -182,8 +184,15 @@ describe('Localization System', () => {
                 this.updateTexts();
             }
             
-            getText(key) {
-                return translations[this.currentLanguage][key] || translations['en'][key] || key;
+            getText(key, placeholders = {}) {
+                let text = translations[this.currentLanguage][key] || translations['en'][key] || key;
+
+                // Replace placeholders in the format {placeholder}
+                for (const [placeholder, value] of Object.entries(placeholders)) {
+                    text = text.replace(new RegExp(`\\{${placeholder}\\}`, 'g'), value);
+                }
+
+                return text;
             }
             
             updateTexts() {
@@ -266,7 +275,8 @@ describe('Localization System', () => {
                 'chooseAvatar', 'roomCode', 'joinGame', 'createNewGame',
                 'howToPlay', 'rule1', 'rule2', 'rule3', 'rule4',
                 'needPlayers', 'assignCharacters', 'readyToPlay', 'gameInProgress',
-                'startGame', 'restartGame', 'players', 'language', 'english', 'russian'
+                'startGame', 'restartGame', 'players', 'playerRevealedNotification',
+                'language', 'english', 'russian'
             ];
             
             requiredKeys.forEach(key => {
@@ -523,6 +533,64 @@ describe('Localization System', () => {
             expect(i18n.getText('connectionError')).toBe('Ошибка соединения. Попробуйте ещё раз.');
             expect(i18n.getText('roomNotFound')).toBe('Комната не найдена');
             expect(i18n.getText('failedJoinGame')).toBe('Не удалось присоединиться к игре');
+        });
+    });
+
+    describe('Placeholder Support for Reveal Notifications', () => {
+        test('supports placeholders in English reveal notifications', () => {
+            const i18n = new Localization();
+            i18n.currentLanguage = 'en';
+
+            const result = i18n.getText('playerRevealedNotification', {
+                playerName: 'Alice',
+                character: 'Batman'
+            });
+
+            expect(result).toBe('🎭 Alice revealed their character: "Batman"');
+        });
+
+        test('supports placeholders in Russian reveal notifications', () => {
+            const i18n = new Localization();
+            i18n.currentLanguage = 'ru';
+
+            const result = i18n.getText('playerRevealedNotification', {
+                playerName: 'Алиса',
+                character: 'Бэтмен'
+            });
+
+            expect(result).toBe('🎭 Алиса раскрыл своего персонажа: "Бэтмен"');
+        });
+
+        test('handles multiple placeholders correctly', () => {
+            const i18n = new Localization();
+            i18n.currentLanguage = 'en';
+
+            const result = i18n.getText('playerRevealedNotification', {
+                playerName: 'Bob',
+                character: 'Superman'
+            });
+
+            expect(result).toBe('🎭 Bob revealed their character: "Superman"');
+        });
+
+        test('works without placeholders for backward compatibility', () => {
+            const i18n = new Localization();
+            i18n.currentLanguage = 'en';
+
+            const result = i18n.getText('title');
+            expect(result).toBe('🎭 Who am I?');
+        });
+
+        test('handles missing placeholders gracefully', () => {
+            const i18n = new Localization();
+            i18n.currentLanguage = 'en';
+
+            const result = i18n.getText('playerRevealedNotification', {
+                playerName: 'Charlie'
+                // Missing character placeholder
+            });
+
+            expect(result).toBe('🎭 Charlie revealed their character: "{character}"');
         });
     });
 });

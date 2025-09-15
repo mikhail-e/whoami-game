@@ -474,11 +474,17 @@ describe('Character Revealing', () => {
 
     test('reveals character successfully', () => {
         const result = revealCharacter(games, gameId, playerId1);
-        
+
         expect(result.success).toBe(true);
         expect(result.playerId).toBe(playerId1);
         expect(result.character).toBe('Batman');
         expect(result.revealedPlayers).toContain(playerId1);
+
+        // Check new revealedPlayer object for notifications
+        expect(result.revealedPlayer).toBeDefined();
+        expect(result.revealedPlayer.id).toBe(playerId1);
+        expect(result.revealedPlayer.name).toBe('Alice');
+        expect(result.revealedPlayer.character).toBe('Batman');
     });
 
     test('updates revealed players in game state', () => {
