@@ -129,17 +129,37 @@ When I ask for help, I'm usually looking for:
    - Prevention of character editing for revealed players
    - Full bilingual support with placeholder system for dynamic content
 
+10. **Progressive Web App (PWA):**
+   - **Web App Manifest**: Complete metadata for app installation (manifest.json)
+   - **Service Worker**: Smart caching strategy for static assets (sw.js)
+   - **PWA Manager**: Automatic installation prompt handling (pwa.js)
+   - **Custom Icons**: 6 SVG icons (48x48 to 512x512) with consistent game branding
+   - **Cross-platform Meta Tags**: iOS Safari, Android Chrome, desktop browser support
+   - **Install Banner**: User-friendly installation prompt with dismiss option
+   - **Offline-ready Static Assets**: CSS, JS, and HTML cached for offline access
+   - **Real-time Preservation**: Socket.IO and API requests bypass cache for live gameplay
+
 ### 🏗️ **Project Structure:**
 ```
 whoami-game/
 ├── public/
-│   ├── index.html          # Landing page
-│   ├── game.html           # Game room page
+│   ├── index.html          # Landing page (with PWA meta tags)
+│   ├── game.html           # Game room page (with PWA meta tags)
+│   ├── manifest.json       # PWA manifest for app installation
+│   ├── sw.js              # Service Worker for caching
 │   ├── css/style.css       # Custom styles with gradients/animations
+│   ├── icons/              # PWA icons (6 SVG files)
+│   │   ├── icon-48x48.svg
+│   │   ├── icon-72x72.svg
+│   │   ├── icon-96x96.svg
+│   │   ├── icon-144x144.svg
+│   │   ├── icon-192x192.svg
+│   │   └── icon-512x512.svg
 │   └── js/
 │       ├── game.js         # Landing page logic
 │       ├── game-room.js    # Game room functionality
-│       └── translations.js # Localization system
+│       ├── translations.js # Localization system
+│       └── pwa.js         # PWA Manager for installation
 ├── server.js               # Node.js backend with Socket.IO
 ├── package.json            # Dependencies
 ├── tests/                  # Test suites (Jest)
@@ -154,15 +174,17 @@ whoami-game/
 ```bash
 npm install    # Install dependencies
 npm start      # Start server on localhost:3000
-npm test       # Run test suite (108 tests)
+npm test       # Run test suite (118 tests)
 ```
 
 ### 🎯 **Recent Major Updates:**
+- **PWA Implementation**: Complete Progressive Web App support with installable functionality
+- **Reveal Notification System**: Real-time notifications and yellow highlighting for revealed players
 - **Full Localization System**: Complete English/Russian support with browser auto-detection
 - **Mobile UI Fixes**: Avatar selection properly fits screen width on all devices
 - **Smart Button Logic**: Create/Join buttons intelligently adapt based on room code input
 - **Bug Fixes**: Fixed i18n initialization issues and language persistence across pages
-- **Test Coverage**: Added comprehensive test suites with 108+ tests covering all functionality
+- **Test Coverage**: Added comprehensive test suites with 118+ tests covering all functionality
 - **UX Improvements**: Read-only character names during games, better tooltips, flag-based language toggle
 
 ### 🎯 **Next Big Goal: Custom Avatars**
