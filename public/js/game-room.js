@@ -112,8 +112,9 @@ function initializeSocket(roomCode) {
     });
     
     socket.on('character-assigned', (data) => {
-        console.log('Character assigned:', data);
+        console.log('📢 character-assigned event received:', data);
         if (currentGame) {
+            console.log('🔄 Updating local game state and display');
             // Update local game state
             currentGame.characters = data.characters;
             updateGameDisplay();
@@ -320,13 +321,19 @@ function updateGameDisplay() {
 }
 
 function updatePlayersList() {
+    console.log('🎨 updatePlayersList called');
     const playerListEl = document.getElementById('playerList');
-    
+
     if (!currentGame || !currentGame.players) {
         playerListEl.innerHTML = '<p class="text-muted">No players yet</p>';
         return;
     }
-    
+
+    // Preserve active edit states before updating (temporarily disabled to fix infinite loop)
+    console.log('💾 Edit state preservation temporarily disabled');
+    const activeEdits = new Map();
+    // TODO: Re-enable smart edit state preservation once infinite loop is resolved
+
     playerListEl.innerHTML = '';
     
     currentGame.players.forEach(player => {
@@ -380,9 +387,9 @@ function updatePlayersList() {
             }
             characterSticker.title = titleText;
 
-            // Only allow editing if you assigned this character AND game is not started AND player hasn't revealed
+            // Allow editing if game is not started AND player hasn't revealed (collaborative editing)
             const gameState = currentGame.state || 'waiting';
-            if (characterData.assignedBy === currentPlayer.id && gameState !== 'started' && !isRevealed) {
+            if (gameState !== 'started' && !isRevealed) {
                 characterSticker.addEventListener('click', (e) => {
                     e.stopPropagation();
                     editCharacter(player.id, characterData.character, characterSticker);
@@ -393,8 +400,6 @@ function updatePlayersList() {
                     characterSticker.title = titleText + (isRevealed ? '' : ' (read-only during game)');
                 } else if (isRevealed) {
                     characterSticker.title = titleText;
-                } else {
-                    characterSticker.title = `Character: ${characterData.character} (assigned by another player)`;
                 }
             }
             
@@ -450,6 +455,31 @@ function updatePlayersList() {
         
         playerListEl.appendChild(playerCard);
     });
+
+    // Restore active edit states after UI rebuild (only for preserved ongoing edits)
+    console.log('🔙 Attempting to restore edit states, found', activeEdits.size, 'active edits');
+    activeEdits.forEach((editState, playerId) => {
+        console.log(`🔍 Checking restoration for player ${playerId}:`, editState);
+        const stickerElement = playerListEl.querySelector(`[data-player-id="${playerId}"]`);
+        if (stickerElement && !stickerElement.classList.contains('editing')) {
+            // Find the character data for this player
+            const characterData = currentGame.characters && currentGame.characters[playerId];
+            const gameState = currentGame.state || 'waiting';
+            const isRevealed = currentGame.revealedPlayers && currentGame.revealedPlayers.includes(playerId);
+
+            console.log(`📊 Player ${playerId} - currentChar:"${characterData?.character}" vs originalChar:"${editState.originalCharacter}"`);
+
+            // Only restore if the character hasn't changed (indicating ongoing edit, not completed)
+            if (characterData && gameState !== 'started' && !isRevealed &&
+                characterData.character === editState.originalCharacter) {
+                console.log(`✅ Restoring edit state for player ${playerId}`);
+                // Re-initiate edit mode with preserved state (collaborative editing)
+                editCharacter(playerId, characterData.character, stickerElement, editState);
+            } else {
+                console.log(`❌ Not restoring edit state for player ${playerId} - character changed or conditions not met`);
+            }
+        }
+    });
 }
 
 // Function to add a new character
@@ -458,7 +488,6 @@ function addCharacter(playerId, buttonElement) {
     const inputElement = document.createElement('input');
     inputElement.type = 'text';
     inputElement.className = 'character-input';
-    inputElement.placeholder = 'Character name...';
     inputElement.maxLength = 30;
     
     // Create a wrapper that looks like a sticker with player's color
@@ -520,30 +549,48 @@ function addCharacter(playerId, buttonElement) {
 }
 
 // Function to edit an existing character
-function editCharacter(playerId, currentCharacter, stickerElement) {
+function editCharacter(playerId, currentCharacter, stickerElement, editState = null) {
     // Create input field
     const inputElement = document.createElement('input');
     inputElement.type = 'text';
     inputElement.className = 'character-input';
-    inputElement.value = currentCharacter;
+    inputElement.value = editState ? editState.value : currentCharacter;
     inputElement.maxLength = 30;
-    
+
     // Replace the text content with input
     const originalText = stickerElement.textContent;
     const originalClasses = stickerElement.className;
     stickerElement.textContent = '';
     stickerElement.appendChild(inputElement);
     stickerElement.classList.add('editing');
-    
-    // Focus and select all text
+
+    // Focus and restore cursor position if preserving state
     inputElement.focus();
-    inputElement.select();
-    
+    if (editState) {
+        // Restore cursor position
+        inputElement.setSelectionRange(editState.cursorPosition, editState.cursorPosition);
+    } else {
+        // Select all text for new edits
+        inputElement.select();
+    }
+
+    // Prevent double execution
+    let saveInProgress = false;
+
     // Handle saving
     const saveCharacter = () => {
+        if (saveInProgress) {
+            console.log(`🚫 saveCharacter blocked - already in progress`);
+            return;
+        }
+        saveInProgress = true;
+
         const character = inputElement.value.trim();
+        console.log(`🔧 saveCharacter called: playerId=${playerId}, currentCharacter="${currentCharacter}", newCharacter="${character}"`);
+
         if (character && character !== currentCharacter) {
-            // Send updated character to server
+            console.log(`✅ Sending character update to server`);
+            // Send updated character to server - this will trigger character-assigned event
             socket.emit('assign-character', {
                 gameId: currentGame.id,
                 playerId: playerId,
@@ -551,9 +598,11 @@ function editCharacter(playerId, currentCharacter, stickerElement) {
                 assignedBy: currentPlayer.id
             });
         } else {
-            // No change - restore original
-            stickerElement.textContent = originalText;
-            stickerElement.className = originalClasses;
+            console.log(`❌ No change detected, just cleaning up edit state`);
+            // No change - just remove the input and restore sticker
+            stickerElement.classList.remove('editing');
+            stickerElement.innerHTML = '';
+            stickerElement.textContent = currentCharacter;
         }
     };
     
@@ -571,8 +620,7 @@ function editCharacter(playerId, currentCharacter, stickerElement) {
     inputElement.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             e.preventDefault();
-            stickerElement.textContent = originalText;
-            stickerElement.className = originalClasses;
+            inputElement.blur(); // This will trigger saveCharacter() which handles no-change case
         }
     });
 }
