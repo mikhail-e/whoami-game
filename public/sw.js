@@ -1,7 +1,7 @@
 // Who am I? Game - Service Worker
 // Basic PWA service worker for caching static assets
 
-const CACHE_NAME = 'whoami-game-v1.0.0';
+const CACHE_NAME = 'whoami-game-v1.1.0';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -10,9 +10,14 @@ const urlsToCache = [
     '/js/game.js',
     '/js/game-room.js',
     '/js/translations.js',
+    '/js/pwa.js',
     '/manifest.json',
-    '/icons/icon-192x192.svg',
-    '/icons/icon-512x512.svg',
+    '/icons/icon-48x48.png',
+    '/icons/icon-72x72.png',
+    '/icons/icon-96x96.png',
+    '/icons/icon-144x144.png',
+    '/icons/icon-192x192.png',
+    '/icons/icon-512x512.png',
     // External resources
     'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css',
     'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js'
