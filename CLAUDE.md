@@ -174,13 +174,8 @@ npm test       # Run test suite (108 tests)
 - Maintain backward compatibility with existing emoji system
 
 ### 🎯 **Future Goals:**
-- Add actual gameplay mechanics (asking questions, answering yes/no)
-- Implement game persistence (save/load from files)
-- Add game scoring and winner detection  
-- Create game history and statistics
-- Add more languages (Spanish, French, German)
-- Implement avatar sharing between players
-
+- Show notification message to all players when somebody reveal themself and mark revealed player
+- Clean up abandoned games on server
 
 ## Notes for Claude
 - I learn best with hands-on examples

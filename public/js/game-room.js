@@ -148,7 +148,25 @@ function initializeSocket(roomCode) {
             showNotification((typeof i18n !== 'undefined' && i18n) ? i18n.getText('gameRestarted') : '🔄 Game restarted! Character assignments cleared.', 'success');
         }
     });
-    
+
+    // Handle reveal notification
+    socket.on('player-revealed-notification', (data) => {
+        console.log('Player revealed notification:', data);
+
+        // Show notification to all players
+        const playerName = data.playerName;
+        const character = data.character;
+
+        let message;
+        if (typeof i18n !== 'undefined' && i18n) {
+            message = i18n.getText('playerRevealedNotification', { playerName, character });
+        } else {
+            message = `🎭 ${playerName} revealed their character: "${character}"`;
+        }
+
+        showNotification(message, 'warning');
+    });
+
     socket.on('error', (error) => {
         console.error('Socket error:', error);
         alert(error);
@@ -315,14 +333,20 @@ function updatePlayersList() {
         const playerCard = document.createElement('div');
         playerCard.className = 'player-card';
         playerCard.dataset.playerId = player.id;
-        
+
         // Check if this player has a character assigned
         const characterData = currentGame.characters && currentGame.characters[player.id];
         const isCurrentPlayer = player.id === currentPlayer.id;
-        
+        const isRevealed = currentGame.revealedPlayers && currentGame.revealedPlayers.includes(player.id);
+
         // Add class for players you cannot assign characters to (yourself)
         if (isCurrentPlayer) {
             playerCard.classList.add('cannot-assign');
+        }
+
+        // Add yellow background for revealed players
+        if (isRevealed) {
+            playerCard.classList.add('bg-warning', 'bg-opacity-25');
         }
         
         // Basic player info
@@ -337,14 +361,28 @@ function updatePlayersList() {
             // Character exists and it's NOT the current player - show sticker
             const characterSticker = document.createElement('div');
             const stickerColor = getStickerColor(player.id);
-            characterSticker.className = `character-sticker color-${stickerColor}`;
+            let stickerClass = `character-sticker color-${stickerColor}`;
+
+            // Add revealed class if this player has revealed their character
+            if (isRevealed) {
+                stickerClass += ' revealed';
+            }
+
+            characterSticker.className = stickerClass;
             characterSticker.dataset.playerId = player.id;
             characterSticker.textContent = characterData.character;
-            characterSticker.title = `Character: ${characterData.character} (${(typeof i18n !== 'undefined' && i18n) ? i18n.getText('clickToEdit') : 'click to edit'})`;
-            
-            // Only allow editing if you assigned this character AND game is not started
+
+            let titleText = `Character: ${characterData.character}`;
+            if (isRevealed) {
+                titleText += ' (revealed by player)';
+            } else {
+                titleText += ` (${(typeof i18n !== 'undefined' && i18n) ? i18n.getText('clickToEdit') : 'click to edit'})`;
+            }
+            characterSticker.title = titleText;
+
+            // Only allow editing if you assigned this character AND game is not started AND player hasn't revealed
             const gameState = currentGame.state || 'waiting';
-            if (characterData.assignedBy === currentPlayer.id && gameState !== 'started') {
+            if (characterData.assignedBy === currentPlayer.id && gameState !== 'started' && !isRevealed) {
                 characterSticker.addEventListener('click', (e) => {
                     e.stopPropagation();
                     editCharacter(player.id, characterData.character, characterSticker);
@@ -352,7 +390,9 @@ function updatePlayersList() {
             } else {
                 characterSticker.style.cursor = 'default';
                 if (gameState === 'started') {
-                    characterSticker.title = `Character: ${characterData.character} (read-only during game)`;
+                    characterSticker.title = titleText + (isRevealed ? '' : ' (read-only during game)');
+                } else if (isRevealed) {
+                    characterSticker.title = titleText;
                 } else {
                     characterSticker.title = `Character: ${characterData.character} (assigned by another player)`;
                 }

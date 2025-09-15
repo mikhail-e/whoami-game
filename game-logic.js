@@ -200,11 +200,16 @@ function revealCharacter(games, gameId, playerId) {
     
     const characterData = game.characters.get(playerId);
     
-    return { 
+    return {
         success: true,
         playerId,
         character: characterData.character,
-        revealedPlayers: Array.from(game.revealedPlayers)
+        revealedPlayers: Array.from(game.revealedPlayers),
+        revealedPlayer: {
+            id: playerId,
+            name: player.name,
+            character: characterData.character
+        }
     };
 }
 

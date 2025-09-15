@@ -132,9 +132,18 @@ io.on('connection', (socket) => {
         }
         
         console.log(`Player ${playerId} revealed their character in game ${gameId}`);
-        
+
         // Broadcast character reveal to all players in the room
         io.to(gameId).emit('character-revealed', result);
+
+        // Broadcast notification about the reveal to all players
+        if (result.success && result.revealedPlayer) {
+            io.to(gameId).emit('player-revealed-notification', {
+                playerName: result.revealedPlayer.name,
+                character: result.revealedPlayer.character,
+                playerId: playerId
+            });
+        }
     });
     
     socket.on('restart-game', (data) => {

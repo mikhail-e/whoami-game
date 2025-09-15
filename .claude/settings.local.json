@@ -4,7 +4,8 @@
       "Bash(mkdir:*)",
       "Bash(npm start)",
       "Bash(npm test)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "WebFetch(domain:whoami-game.onrender.com)"
     ],
     "deny": [],
     "ask": []

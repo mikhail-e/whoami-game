@@ -108,7 +108,10 @@ const translations = {
         restartNote: "All players will be able to see this action.",
         
         waiting: "Waiting for players to join...",
-        
+
+        // Reveal notifications
+        playerRevealedNotification: "🎭 {playerName} revealed their character: \"{character}\"",
+
         // Language switcher
         language: "Language",
         english: "English",
@@ -222,7 +225,10 @@ const translations = {
         restartNote: "Все игроки смогут увидеть это действие.",
         
         waiting: "Ожидание присоединения игроков...",
-        
+
+        // Reveal notifications
+        playerRevealedNotification: "🎭 {playerName} раскрыл своего персонажа: \"{character}\"",
+
         // Language switcher
         language: "Язык",
         english: "English",
@@ -266,8 +272,15 @@ class Localization {
         this.updateLanguageSwitcher();
     }
     
-    getText(key) {
-        return translations[this.currentLanguage][key] || translations['en'][key] || key;
+    getText(key, placeholders = {}) {
+        let text = translations[this.currentLanguage][key] || translations['en'][key] || key;
+
+        // Replace placeholders in the format {placeholder}
+        for (const [placeholder, value] of Object.entries(placeholders)) {
+            text = text.replace(new RegExp(`\\{${placeholder}\\}`, 'g'), value);
+        }
+
+        return text;
     }
     
     updateTexts() {
