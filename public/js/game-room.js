@@ -89,7 +89,7 @@ async function recreateRoomFromStorage(roomCode, savedGameState) {
 
     } catch (error) {
         console.error('❌ Error recreating room:', error);
-        alert(`Failed to recover game: ${error.message}. Please create a new room.`);
+        alert(`${(typeof i18n !== 'undefined' && i18n) ? i18n.getText('failedRecoverGame') : 'Failed to recover game'}: ${error.message}. ${(typeof i18n !== 'undefined' && i18n) ? i18n.getText('pleaseCreateNewRoom') : 'Please create a new room.'}`);
         window.location.href = '/';
     }
 }
@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const roomCode = urlPath.split('/').pop();
     
     if (!roomCode || roomCode.length !== 6) {
-        alert('Invalid room code');
+        alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('invalidRoomCode') : 'Invalid room code');
         window.location.href = '/';
         return;
     }
@@ -347,7 +347,7 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
                 // Validate room code format before recreation attempt
                 if (!roomCode || roomCode.length !== 6 || !/^[A-Z0-9]{6}$/.test(roomCode)) {
                     console.log('❌ Invalid room code format, cannot recreate');
-                    alert('Invalid room code format');
+                    alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('invalidRoomCodeFormat') : 'Invalid room code format');
                     window.location.href = '/';
                     return;
                 }
@@ -361,12 +361,12 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
                 }
             }
 
-            alert(result.error || 'Failed to join game');
+            alert(result.error || ((typeof i18n !== 'undefined' && i18n) ? i18n.getText('failedJoinGame') : 'Failed to join game'));
             window.location.href = '/';
         }
     } catch (error) {
         console.error('Error joining game:', error);
-        alert(`Connection error: ${error.message}. Please try again.`);
+        alert(`Connection error: ${error.message}. ${(typeof i18n !== 'undefined' && i18n) ? i18n.getText('connectionErrorTryAgain') : 'Please try again.'}`);
         window.location.href = '/';
     }
 }
@@ -461,7 +461,7 @@ function updatePlayersList() {
     const playerListEl = document.getElementById('playerList');
 
     if (!currentGame || !currentGame.players) {
-        playerListEl.innerHTML = '<p class="text-muted">No players yet</p>';
+        playerListEl.innerHTML = `<p class="text-muted">${(typeof i18n !== 'undefined' && i18n) ? i18n.getText('noPlayersYet') : 'No players yet'}</p>`;
         return;
     }
 
@@ -509,14 +509,14 @@ function updatePlayersList() {
             mysterySticker.className = 'character-sticker mystery-character';
             mysterySticker.textContent = '❓';
             if (gameState === 'started') {
-                mysterySticker.title = 'Your character - click to reveal!';
+                mysterySticker.title = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('yourCharacterClickReveal') : 'Your character - click to reveal!';
                 mysterySticker.style.cursor = 'pointer';
                 mysterySticker.addEventListener('click', (e) => {
                     e.stopPropagation();
                     showRevealModal();
                 });
             } else {
-                mysterySticker.title = 'Your character is hidden from you!';
+                mysterySticker.title = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('yourCharacterHidden') : 'Your character is hidden from you!';
             }
             playerCard.appendChild(mysterySticker);
 
@@ -526,7 +526,9 @@ function updatePlayersList() {
             const stickerColor = player.stickerColor || 'red';
             revealedSticker.className = `character-sticker color-${stickerColor} revealed`;
             revealedSticker.textContent = characterData.character;
-            revealedSticker.title = isCurrentPlayer ? 'Your revealed character' : 'Character revealed by player';
+            revealedSticker.title = isCurrentPlayer ?
+                ((typeof i18n !== 'undefined' && i18n) ? i18n.getText('yourRevealedCharacter') : 'Your revealed character') :
+                ((typeof i18n !== 'undefined' && i18n) ? i18n.getText('characterRevealedByPlayer') : 'Character revealed by player');
             playerCard.appendChild(revealedSticker);
 
         } else if (characterData && !isCurrentPlayer) {
@@ -554,7 +556,7 @@ function updatePlayersList() {
             const addButton = document.createElement('div');
             addButton.className = 'add-character-btn';
             addButton.innerHTML = '+';
-            addButton.title = 'Assign character';
+            addButton.title = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('assignCharacter') : 'Assign character';
             addButton.addEventListener('click', (e) => {
                 e.stopPropagation();
                 addCharacter(player.id, addButton);
@@ -566,7 +568,7 @@ function updatePlayersList() {
             const placeholder = document.createElement('div');
             placeholder.className = 'character-placeholder';
             placeholder.innerHTML = '❓';
-            placeholder.title = 'Someone needs to assign you a character!';
+            placeholder.title = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('someoneNeedsToAssign') : 'Someone needs to assign you a character!';
             playerCard.appendChild(placeholder);
         }
 
@@ -653,7 +655,7 @@ function addCharacter(playerId, buttonElement) {
             const newAddButton = document.createElement('div');
             newAddButton.className = 'add-character-btn';
             newAddButton.innerHTML = '+';
-            newAddButton.title = 'Assign character';
+            newAddButton.title = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('assignCharacter') : 'Assign character';
             newAddButton.addEventListener('click', (e) => {
                 e.stopPropagation();
                 addCharacter(playerId, newAddButton);
@@ -820,7 +822,7 @@ function setupEventListeners() {
         
         const btn = document.getElementById('copyLink');
         const originalText = btn.textContent;
-        btn.textContent = '✅ Copied!';
+        btn.textContent = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('copiedSuccess') : '✅ Copied!';
         setTimeout(() => {
             btn.textContent = originalText;
         }, 2000);

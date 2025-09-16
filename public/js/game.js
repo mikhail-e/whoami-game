@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update the form text to indicate joining
         const formLabel = document.querySelector('label[for="roomCode"]');
         if (formLabel) {
-            formLabel.textContent = 'Room Code (joining game)';
+            formLabel.textContent = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('roomCodeJoining') : 'Room Code (joining game)';
         }
         
         // Enable Join button since room code is pre-filled
@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     createNewGameBtn.disabled = true;
                     createNewGameBtn.classList.add('btn-outline-secondary');
                     createNewGameBtn.classList.remove('btn-outline-primary');
-                    createNewGameBtn.title = 'Clear room code to create a new game';
+                    createNewGameBtn.title = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('clearRoomCodeToCreate') : 'Clear room code to create a new game';
                 } else {
                     createNewGameBtn.disabled = false;
                     createNewGameBtn.classList.remove('btn-outline-secondary');
@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Visual feedback
             createNewGameBtn.disabled = true;
-            createNewGameBtn.textContent = 'Creating...';
+            createNewGameBtn.textContent = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('creating') : 'Creating...';
             
             const playerData = {
                 name: playerName,
@@ -257,7 +257,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const roomInput = document.getElementById('roomCode');
         if (createBtn) {
             createBtn.disabled = false;
-            createBtn.textContent = 'Create New Game';
+            createBtn.textContent = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('createNewGame') : 'Create New Game';
             
             // Also update button states based on current room code
             if (roomInput) {
@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     createBtn.disabled = true;
                     createBtn.classList.add('btn-outline-secondary');
                     createBtn.classList.remove('btn-outline-primary');
-                    createBtn.title = 'Clear room code to create a new game';
+                    createBtn.title = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('clearRoomCodeToCreate') : 'Clear room code to create a new game';
                 } else {
                     createBtn.classList.remove('btn-outline-secondary');
                     createBtn.classList.add('btn-outline-primary');

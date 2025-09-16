@@ -17,7 +17,7 @@ const translations = {
         
         // Game rules
         howToPlay: "How to Play",
-        rule1: "Each player gets a character assigned by other players",
+        rule1: "Each player gets a character assigned by other player",
         rule2: "Ask yes/no questions to guess your character",
         rule3: "Other players answer your questions",
         rule4: "First to guess their character wins!",
@@ -89,7 +89,7 @@ const translations = {
         step2: "Each player assigns characters to other players",
         step3: "Click \"Start Game\" when ready",
         step4: "Click your mystery sticker (❓) to reveal your character",
-        step5: "Try to guess what other players are!",
+        step5: "Try to guess who you are!",
         
         // Modal content
         revealModalTitle: "🎭 Reveal Your Character",
@@ -112,10 +112,33 @@ const translations = {
         // Reveal notifications
         playerRevealedNotification: "🎭 {playerName} revealed their character: \"{character}\"",
 
+        // UI messages
+        noPlayersYet: "No players yet",
+        yourCharacterClickReveal: "Your character - click to reveal!",
+        yourCharacterHidden: "Your character is hidden from you!",
+        yourRevealedCharacter: "Your revealed character",
+        characterRevealedByPlayer: "Character revealed by player",
+        assignCharacter: "Assign character",
+        someoneNeedsToAssign: "Someone needs to assign you a character!",
+        copiedSuccess: "✅ Copied!",
+
+        // Error messages
+        invalidRoomCode: "Invalid room code",
+        invalidRoomCodeFormat: "Invalid room code format",
+        failedJoinGame: "Failed to join game",
+        failedRecoverGame: "Failed to recover game",
+        connectionErrorTryAgain: "Please try again.",
+        pleaseCreateNewRoom: "Please create a new room.",
+
         // Language switcher
         language: "Language",
         english: "English",
-        russian: "Русский"
+        russian: "Русский",
+
+        // Dynamic UI updates
+        roomCodeJoining: "Room Code (joining game)",
+        clearRoomCodeToCreate: "Clear room code to create a new game",
+        creating: "Creating..."
     },
     
     ru: {
@@ -145,7 +168,7 @@ const translations = {
         playerCount: "Количество игроков",
         shareRoom: "Поделиться комнатой",
         shareLink: "Ссылка для друзей",
-        copyLink: "Копировать",
+        copyLink: "Скопировать",
         copied: "✅ Скопировано!",
         
         // Game states
@@ -156,7 +179,7 @@ const translations = {
         
         // Buttons
         startGame: "Начать игру",
-        restartGame: "Перезапустить",
+        restartGame: "Перезапустить игру",
         
         // Character assignment
         assignmentInstructions: "Нажмите кнопку + рядом с другими игроками, чтобы назначить им персонажей",
@@ -176,11 +199,11 @@ const translations = {
         revealCharacter: "Раскрыть персонажа",
         
         restartTitle: "Перезапустить игру?",
-        restartMessage: "Это очистит все назначения персонажей и вернёт к фазе настройки. Вы уверены?",
+        restartMessage: "Это очистит всех персонажей и завершит текущую игру. Вы уверены?",
         confirmRestart: "Да, перезапустить",
         
         // Notifications
-        gameRestarted: "🔄 Игра перезапущена! Назначения персонажей очищены.",
+        gameRestarted: "🔄 Игра перезапущена! Персонажи очищены.",
         
         // Errors
         invalidRoom: "Неверный код комнаты",
@@ -203,36 +226,59 @@ const translations = {
         editInstructions: "чтобы их редактировать.",
         gameInstructions: "Инструкции к игре",
         step1: "Дождитесь присоединения минимум 2 игроков",
-        step2: "Каждый игрок назначает персонажей другим игрокам",
+        step2: "Каждый игрок назначает персонажа другому игроку",
         step3: "Нажмите \"Начать игру\" когда готовы",
         step4: "Нажмите на свой загадочный стикер (❓) чтобы раскрыть персонажа",
-        step5: "Попробуйте угадать, кто другие игроки!",
+        step5: "Попробуйте угадать, кто вы!",
         
         // Modal content
         revealModalTitle: "🎭 Раскрыть вашего персонажа",
         revealConfirmText: "Вы уверены, что хотите раскрыть своего персонажа?",
         revealWarning: "⚠️ Это действие нельзя отменить!",
-        revealNote: "После раскрытия ваш персонаж будет виден всем игрокам до конца игры.",
+        revealNote: "После раскрытия ваш персонаж будет виден вам до конца игры.",
         revealButton: "Да, раскрыть моего персонажа",
         
         restartModalTitle: "🔄 Перезапустить игру",
         restartConfirmText: "Вы уверены, что хотите перезапустить игру?",
-        restartWarning: "⚠️ Это приведёт к:",
-        restartAction1: "Сбросу всех раскрытых персонажей",
-        restartAction2: "Возможности переназначить персонажей",
-        restartAction3: "Возможности присоединения новых игроков",
-        restartAction4: "Возврату всех к фазе настройки",
-        restartNote: "Все игроки смогут увидеть это действие.",
+        restartWarning: "⚠️ После перезапуска:",
+        restartAction1: "Все персонажей будут удалены",
+        restartAction2: "Игроки снвоа смогут назначать персонажей",
+        restartAction3: "К игре смогут присоединиться новые игроки",
+        restartAction4: " ",
+        restartNote: "Это действие повлияет на всех игроков",
         
         waiting: "Ожидание присоединения игроков...",
 
         // Reveal notifications
         playerRevealedNotification: "🎭 {playerName} раскрыл своего персонажа: \"{character}\"",
 
+        // UI messages
+        noPlayersYet: "Игроков пока нет",
+        yourCharacterClickReveal: "Ваш персонаж - нажмите, чтобы раскрыть!",
+        yourCharacterHidden: "Ваш персонаж скрыт от вас!",
+        yourRevealedCharacter: "Ваш раскрытый персонаж",
+        characterRevealedByPlayer: "Персонаж раскрыт игроком",
+        assignCharacter: "Назначить персонажа",
+        someoneNeedsToAssign: "Кто-то должен назначить вам персонажа!",
+        copiedSuccess: "✅ Скопировано!",
+
+        // Error messages
+        invalidRoomCode: "Неверный код комнаты",
+        invalidRoomCodeFormat: "Неверный формат кода комнаты",
+        failedJoinGame: "Не удалось присоединиться к игре",
+        failedRecoverGame: "Не удалось восстановить игру",
+        connectionErrorTryAgain: "Попробуйте еще раз.",
+        pleaseCreateNewRoom: "Пожалуйста, создайте новую комнату.",
+
         // Language switcher
         language: "Язык",
         english: "English",
-        russian: "Русский"
+        russian: "Русский",
+
+        // Dynamic UI updates
+        roomCodeJoining: "Код комнаты (присоединение к игре)",
+        clearRoomCodeToCreate: "Очистите код комнаты для создания новой игры",
+        creating: "Создание..."
     }
 };
 
