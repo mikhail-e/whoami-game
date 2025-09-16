@@ -1,5 +1,50 @@
 // Who am I? Game - Frontend JavaScript
 
+// Avatar pool - 60 emojis total (12 original + 48 new)
+const avatarPool = [
+    // Original 12 avatars
+    '😀', '😎', '🤖', '🐱', '🌟', '🚀', '🎮', '🎨', '🍕', '🦄', '🐢', '⚡',
+
+    // 48 new avatars - diverse, fun, and appropriate selection
+    '😊', '🤩', '😇', '🤗', '🥳', '🧐', '🤓', '😋', '🥰', '😆', '🤪', '🥸',
+    '👻', '🎃', '🤡', '👾', '🤠', '🥷', '👸', '🧙', '🧚', '🦸', '🧛', '👑',
+    '🐶', '🐭', '🐹', '🐰', '🦊', '🐼', '🐨', '🐯', '🦁', '🐸', '🐵', '🦉',
+    '🌈', '🔥', '💎', '🎯', '🎪', '🎭', '🎺', '🎸', '🎲', '🎳', '⚽', '🏀'
+];
+
+// Function to select 12 random avatars from the pool
+function selectRandomAvatars() {
+    const shuffled = [...avatarPool].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, 12);
+}
+
+// Function to populate avatar selector
+function populateAvatars(avatars) {
+    const avatarSelector = document.getElementById('avatarSelector');
+    const selectedAvatarInput = document.getElementById('selectedAvatar');
+
+    if (!avatarSelector) return;
+
+    // Clear existing avatars
+    avatarSelector.innerHTML = '';
+
+    // Create avatar options
+    avatars.forEach((emoji, index) => {
+        const avatarOption = document.createElement('div');
+        avatarOption.className = 'avatar-option';
+        avatarOption.setAttribute('data-avatar', emoji);
+        avatarOption.textContent = emoji;
+
+        // Select first avatar by default
+        if (index === 0) {
+            avatarOption.classList.add('selected');
+            selectedAvatarInput.value = emoji;
+        }
+
+        avatarSelector.appendChild(avatarOption);
+    });
+}
+
 // Avatar selection handling
 document.addEventListener('DOMContentLoaded', function() {
     const avatarSelector = document.getElementById('avatarSelector');
@@ -7,6 +52,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const playerForm = document.getElementById('playerForm');
     const createNewGameBtn = document.getElementById('createNewGame');
     const roomCodeInput = document.getElementById('roomCode');
+
+    // Initialize with random avatars - each player gets their own unique set
+    populateAvatars(selectRandomAvatars());
 
     // Check if there's a room code in URL parameters (for direct links)
     const urlParams = new URLSearchParams(window.location.search);
@@ -22,13 +70,15 @@ document.addEventListener('DOMContentLoaded', function() {
         roomCodeInput.value = joinRoomCode.toUpperCase();
         roomCodeInput.style.backgroundColor = '#fff3cd';
         document.getElementById('playerName').focus();
-        
+
+        // Avatars are already randomly populated for this player
+
         // Update the form text to indicate joining
         const formLabel = document.querySelector('label[for="roomCode"]');
         if (formLabel) {
             formLabel.textContent = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('roomCodeJoining') : 'Room Code (joining game)';
         }
-        
+
         // Enable Join button since room code is pre-filled
         const joinBtn = document.getElementById('joinBtn');
         if (joinBtn) {
@@ -36,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
             joinBtn.classList.remove('btn-secondary');
             joinBtn.classList.add('btn-primary');
         }
-        
+
         // Show helpful message - will be localized after i18n is loaded
         setTimeout(() => {
             if (typeof i18n !== 'undefined' && i18n) {
@@ -67,13 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.game-card'));
     }
 
-    // Set first avatar as selected by default
-    if (avatarSelector) {
-        const firstAvatar = avatarSelector.querySelector('.avatar-option');
-        if (firstAvatar) {
-            firstAvatar.classList.add('selected');
-        }
-    }
+    // Avatar selection is now handled by populateAvatars function
 
     // Avatar selection
     if (avatarSelector) {
@@ -111,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const roomCode = roomCodeInput.value.trim();
                 const isValidLength = roomCode.length === 6;
                 joinBtn.disabled = !isValidLength;
-                
+
                 if (isValidLength) {
                     joinBtn.classList.remove('btn-secondary');
                     joinBtn.classList.add('btn-primary');
@@ -120,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     joinBtn.classList.add('btn-secondary');
                 }
             }
-            
+
             // Update Create New Game button state
             updateCreateButtonState();
         }
@@ -217,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function createGame(playerData) {
         try {
             console.log('Creating game with player data:', playerData);
-            
+
             const response = await fetch('/api/create-game', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -236,6 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (result.success) {
                 // Update player data with the new room code
                 playerData.roomCode = result.gameId;
+
                 console.log('Updated player data:', playerData);
                 sessionStorage.setItem('playerData', JSON.stringify(playerData));
                 window.location.href = `/game/${result.gameId}`;

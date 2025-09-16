@@ -6,6 +6,24 @@ const { v4: uuidv4 } = require('uuid');
 // Color palette for character stickers (must match frontend)
 const stickerColors = ['red', 'blue', 'purple', 'orange', 'green', 'pink', 'indigo'];
 
+// Avatar pool - 60 emojis total (12 current + 48 new)
+const avatarPool = [
+    // Original 12 avatars
+    '😀', '😎', '🤖', '🐱', '🌟', '🚀', '🎮', '🎨', '🍕', '🦄', '🐢', '⚡',
+
+    // 48 new avatars - diverse, fun, and appropriate selection
+    '😊', '🤩', '😇', '🤗', '🥳', '🧐', '🤓', '😋', '🥰', '😆', '🤪', '🥸',
+    '👻', '🎃', '🤡', '👾', '🤠', '🥷', '👸', '🧙', '🧚', '🦸', '🧛', '👑',
+    '🐶', '🐭', '🐹', '🐰', '🦊', '🐼', '🐨', '🐯', '🦁', '🐸', '🐵', '🦉',
+    '🌈', '🔥', '💎', '🎯', '🎪', '🎭', '🎺', '🎸', '🎲', '🎳', '⚽', '🏀'
+];
+
+// Generate random selection of 12 avatars from the pool
+function selectRandomAvatars() {
+    const shuffled = [...avatarPool].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, 12);
+}
+
 // Assign unique color to new player
 function assignUniqueColor(existingPlayers) {
     // Get colors already used by existing players
@@ -40,7 +58,7 @@ function createGame(games) {
     do {
         gameId = generateRoomCode();
     } while (games.has(gameId));
-    
+
     const game = {
         id: gameId,
         players: [],
@@ -49,7 +67,7 @@ function createGame(games) {
         revealedPlayers: new Set(), // Track who has revealed their character
         created: new Date()
     };
-    
+
     games.set(gameId, game);
     return { gameId, success: true };
 }
@@ -104,17 +122,17 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
         isNewPlayer = true;
     }
     
-    return { 
-        success: true, 
-        player, 
-        game: { 
-            id: game.id, 
+    return {
+        success: true,
+        player,
+        game: {
+            id: game.id,
             players: game.players,
             characters: Object.fromEntries(game.characters),
             state: game.state,
             revealedPlayers: Array.from(game.revealedPlayers)
         },
-        isNewPlayer 
+        isNewPlayer
     };
 }
 
@@ -318,6 +336,8 @@ function recreateGameFromState(games, roomCode, savedGameState) {
                 game.revealedPlayers = new Set();
             }
         }
+
+        // Avatar rotation is now per-player, no need to store room-specific avatars
 
         // Store the recreated game
         games.set(roomCode, game);
