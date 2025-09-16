@@ -229,6 +229,7 @@ npm test       # Run test suite (184 tests)
 - "Share" button for link to the room
 - Make the gray sticker (mystery) lighter.
 - How to avoid two players editing the same character at the same time?
+- Avatars rotation
 
 ## Notes for Claude
 - I learn best with hands-on examples
