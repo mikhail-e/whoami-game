@@ -280,6 +280,64 @@ function isValidRoomCode(code) {
     return /^[A-Z0-9]{6}$/.test(code);
 }
 
+// Recreate a game from saved state
+function recreateGameFromState(games, roomCode, savedGameState) {
+    try {
+        // Validate the saved state has required fields
+        if (!savedGameState.players || !Array.isArray(savedGameState.players)) {
+            return { success: false, error: 'Invalid saved game state: missing players' };
+        }
+
+        // Create the game structure
+        const game = {
+            id: roomCode,
+            players: savedGameState.players || [],
+            characters: new Map(),
+            state: savedGameState.gameState || 'waiting',
+            revealedPlayers: new Set(),
+            created: new Date(),
+            recreatedAt: new Date()
+        };
+
+        // Safely handle characters data
+        if (savedGameState.characters && typeof savedGameState.characters === 'object' && !Array.isArray(savedGameState.characters)) {
+            try {
+                game.characters = new Map(Object.entries(savedGameState.characters));
+            } catch (error) {
+                console.warn('Invalid characters data, using empty Map');
+                game.characters = new Map();
+            }
+        }
+
+        // Safely handle revealedPlayers data
+        if (savedGameState.revealedPlayers && Array.isArray(savedGameState.revealedPlayers)) {
+            try {
+                game.revealedPlayers = new Set(savedGameState.revealedPlayers);
+            } catch (error) {
+                console.warn('Invalid revealedPlayers data, using empty Set');
+                game.revealedPlayers = new Set();
+            }
+        }
+
+        // Store the recreated game
+        games.set(roomCode, game);
+
+        console.log(`Game ${roomCode} recreated with ${game.players.length} players in state: ${game.state}`);
+
+        return {
+            success: true,
+            gameId: roomCode,
+            playersRestored: game.players.length,
+            charactersRestored: game.characters.size,
+            gameState: game.state
+        };
+
+    } catch (error) {
+        console.error('Error recreating game from state:', error);
+        return { success: false, error: 'Failed to recreate game from saved state' };
+    }
+}
+
 module.exports = {
     generateRoomCode,
     createGame,
@@ -289,5 +347,6 @@ module.exports = {
     revealCharacter,
     restartGame,
     isValidRoomCode,
-    assignUniqueColor
+    assignUniqueColor,
+    recreateGameFromState
 };

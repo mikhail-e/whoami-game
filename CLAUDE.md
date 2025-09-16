@@ -170,6 +170,7 @@ whoami-game/
 │   ├── start-game-button.test.js # Start Game button behavior tests
 │   ├── blur-event.test.js  # Character input blur event tests
 │   ├── improved-sticker-colors.test.js # Fixed and unique color assignment tests
+│   ├── room-recreation.test.js # Room recreation after server restart tests
 │   ├── localization.test.js# Localization tests
 │   └── i18n-initialization.test.js # i18n bug prevention tests
 └── games/                  # Game data storage (future)
@@ -179,11 +180,19 @@ whoami-game/
 ```bash
 npm install    # Install dependencies
 npm start      # Start server on localhost:3000
-npm test       # Run test suite (168 tests)
+npm test       # Run test suite (184 tests)
 ```
 
 ### 🎯 **Recent Major Updates:**
-- **Improved Sticker Colors** (Latest):
+- **Room Recreation System** (Latest):
+  - **Server Restart Recovery**: Automatic room recreation when players rejoin after server restarts
+  - **LocalStorage Persistence**: Game state, players, characters, and progress automatically backed up
+  - **Seamless Reconnection**: Players can refresh/rejoin with original IDs and preserved character assignments
+  - **Smart Recovery Logic**: Only recreates rooms for valid 6-character codes with matching player data
+  - **Robust Error Handling**: Graceful handling of corrupted or incomplete saved data
+  - **Comprehensive Testing**: Added 16 new tests covering all recreation scenarios (184 total tests)
+
+- **Improved Sticker Colors**:
   - **Fixed Color Assignment**: Colors now assigned when players join and never change
   - **Unique Colors**: Guaranteed unique colors for up to 7 players, intelligent cycling for 8+
   - **No Hover Changes**: Removed all CSS hover color effects for consistent appearance
@@ -221,7 +230,6 @@ npm test       # Run test suite (168 tests)
 - Add mobile-friendly view for confirmations (reveal + restart)
 - Make the gray sticker (mystery) lighter.
 - Increase the size of avatars pictures (x1.2)
-- Keep rooms alive (otherwise they get kicked out after a while and can no longer be accessed). Could it be because of Render Free Tier? Recreate a room on joining to unexisting game.
 - How to avoid two players editing the same character at the same time?
 
 ## Notes for Claude

@@ -68,6 +68,40 @@ app.post('/api/join-game', express.json(), (req, res) => {
     res.json(result);
 });
 
+// API endpoint to recreate a game with saved state
+app.post('/api/recreate-game', express.json(), (req, res) => {
+    const { roomCode, gameState } = req.body;
+
+    console.log('Recreate game request:', { roomCode, gameStateExists: !!gameState });
+
+    if (!roomCode || !gameState) {
+        console.log('Missing required fields for recreation:', { roomCode: !!roomCode, gameState: !!gameState });
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Validate room code format
+    if (!gameLogic.isValidRoomCode(roomCode)) {
+        console.log('Invalid room code format:', roomCode);
+        return res.status(400).json({ error: 'Invalid room code format' });
+    }
+
+    // Check if room already exists
+    if (games.has(roomCode)) {
+        console.log('Room already exists, recreation not needed:', roomCode);
+        return res.json({ success: true, message: 'Room already exists' });
+    }
+
+    const result = gameLogic.recreateGameFromState(games, roomCode, gameState);
+
+    if (!result.success) {
+        console.log('Failed to recreate game:', result.error);
+        return res.status(400).json(result);
+    }
+
+    console.log(`Game ${roomCode} recreated successfully from saved state`);
+    res.json(result);
+});
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
