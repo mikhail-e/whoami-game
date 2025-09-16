@@ -165,6 +165,10 @@ whoami-game/
 ├── tests/                  # Test suites (Jest)
 │   ├── game-logic.test.js  # Core game logic tests
 │   ├── api.test.js         # API endpoint tests
+│   ├── character-update.test.js # Simplified character update system tests
+│   ├── character-race-condition.test.js # Race condition prevention tests
+│   ├── start-game-button.test.js # Start Game button behavior tests
+│   ├── blur-event.test.js  # Character input blur event tests
 │   ├── localization.test.js# Localization tests
 │   └── i18n-initialization.test.js # i18n bug prevention tests
 └── games/                  # Game data storage (future)
@@ -174,38 +178,44 @@ whoami-game/
 ```bash
 npm install    # Install dependencies
 npm start      # Start server on localhost:3000
-npm test       # Run test suite (118 tests)
+npm test       # Run test suite (152 tests)
 ```
 
 ### 🎯 **Recent Major Updates:**
+- **Critical Bug Fixes** (Latest):
+  - **Start Game Button Fix**: Button now properly enables when all characters are assigned
+  - **Character Race Condition Fix**: Eliminated missed updates when multiple players edit simultaneously
+  - **Enhanced Character Editing**: Added blur event submission for better UX (Enter key + click-away)
+  - **Robust Synchronization**: Server sends complete character state on every update
+  - **Comprehensive Testing**: Added 20 new tests covering edge cases and race conditions (152 total tests)
+
+- **Simplified Character Update System**: Major architecture redesign for character synchronization
+  - **Problem Solved**: Fixed "empty color stickers" bug and character update conflicts
+  - **New Approach**: Replaced complex `updateCharacterSticker()` with simple `updatePlayersList()` rebuild
+  - **Input Protection**: Added critical safety checks to prevent DOM rebuilds during active editing
+  - **Socket.IO Fixes**: Changed from `socket.to()` to `io.to()` for proper real-time broadcasting
+  - **Cleaner Code**: Removed 200+ lines of complex edit state preservation logic
+  - **Player ID Handling**: Fixed undefined player ID issues in API requests
+  - **Production Deployment**: Successfully deployed with full git workflow (develop → master)
+
 - **PWA Implementation**: Complete Progressive Web App support with installable functionality
 - **Reveal Notification System**: Real-time notifications and yellow highlighting for revealed players
 - **Full Localization System**: Complete English/Russian support with browser auto-detection
 - **Mobile UI Fixes**: Avatar selection properly fits screen width on all devices
 - **Smart Button Logic**: Create/Join buttons intelligently adapt based on room code input
-- **Bug Fixes**: Fixed i18n initialization issues and language persistence across pages
-- **Test Coverage**: Added comprehensive test suites with 118+ tests covering all functionality
 - **UX Improvements**: Read-only character names during games, better tooltips, flag-based language toggle
 
 ### 🎯 **Next Big Goal: Custom Avatars**
-**Priority:** High - Replace emoji avatars with custom avatar system
+**Priority:** High - Fix critical bugs
 
-**Custom Avatar Features to Implement:**
-- **Avatar Builder**: Let users create personalized avatars instead of choosing from 12 emojis
-- **Avatar Components**: Hair, skin tone, clothing, accessories, facial features
-- **Avatar Storage**: Save custom avatars in localStorage for consistent user experience
-- **Avatar Display**: Show custom avatars in player cards and throughout the game
-- **Fallback System**: Keep emoji avatars as backup/quick option for users who don't want to customize
-
-**Technical Approach:**
-- Research avatar generation libraries (e.g., DiceBear, Avataaars, or custom SVG system)
-- Create avatar builder UI with simple customization options
-- Integrate avatar data into existing player system
-- Ensure avatars work on both desktop and mobile
-- Maintain backward compatibility with existing emoji system
 
 ### 🎯 **Future Goals:**
-- Clean up abandoned games on server
+- "Share" button for link to the room
+- Add mobile-friendly view for confirmations (reveal + restart)
+- Guaranteed different sticker colors (set them when players join and do not change them). Do not change color on hover.
+- Make the gray sticker (mystery) lighter.
+- Increase the size of avatars pictures (x1.2)
+- Keep rooms alive (otherwise they get kicked out after a while and can no longer be accessed). Could it be because of Render Free Tier? Recreate a room on joining to unexisting game.
 
 ## Notes for Claude
 - I learn best with hands-on examples
@@ -213,3 +223,4 @@ npm test       # Run test suite (118 tests)
 - I prefer to understand the "why" behind solutions
 - Break complex tasks into small, clear steps
 - Always show me where to put new code in my existing files
+- Update tests each time the logic is changed
