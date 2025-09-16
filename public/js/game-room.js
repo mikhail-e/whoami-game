@@ -81,8 +81,8 @@ async function recreateRoomFromStorage(roomCode, savedGameState) {
         if (createResult.success) {
             console.log('✅ Room recreated successfully, now joining...');
 
-            // Now join the recreated game
-            await joinGame(roomCode);
+            // Now join the recreated game (with flag to prevent recursion)
+            await joinGameRoom(roomCode, true);
         } else {
             throw new Error(createResult.error || 'Failed to recreate room');
         }
@@ -276,7 +276,7 @@ function initializeSocket(roomCode) {
     });
 }
 
-async function joinGameRoom(roomCode) {
+async function joinGameRoom(roomCode, skipRecreation = false) {
     try {
         console.log('Attempting to join game:', roomCode, 'with player:', currentPlayer);
         
@@ -299,13 +299,7 @@ async function joinGameRoom(roomCode) {
         });
         
         console.log('Response status:', response.status);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.log('Error response body:', errorText);
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
+
         const result = await response.json();
         console.log('Join game result:', result);
         
@@ -331,8 +325,8 @@ async function joinGameRoom(roomCode) {
         } else {
             console.error('Join game failed:', result.error);
 
-            // Check if it's a "Game not found" error and try to recreate the room
-            if (result.error === 'Game not found') {
+            // Check if it's a "Game not found" error and try to recreate the room (only on first attempt)
+            if (result.error === 'Game not found' && !skipRecreation) {
                 console.log('🔄 Game not found - attempting room recreation...');
 
                 // Validate room code format before recreation attempt
