@@ -118,19 +118,29 @@ function initializeSocket(roomCode) {
     console.log('🔧 Setting up character-finalized event handler...');
     socket.on('character-finalized', (data) => {
         console.log('📨 RECEIVED character-finalized event:', data);
-        const { playerId, character } = data;
+        const { playerId, character, allCharacters } = data;
 
-        // Update local game state
-        if (currentGame && currentGame.characters) {
-            currentGame.characters[playerId] = {
-                character: character,
-                assignedBy: 'unknown',
-                assignedAt: new Date()
-            };
-            console.log('✅ Updated local character data');
+        // Update local game state with complete character data
+        if (currentGame && allCharacters) {
+            currentGame.characters = allCharacters;
+            console.log('✅ Updated all character data from server');
 
-            // Simple rebuild - no edit preservation, no complex logic
+            // Update player list (safely)
             updatePlayersList();
+
+            // Update Start Game button state after character assignment
+            if (currentGame.state === 'waiting') {
+                const allPlayersHaveCharacters = currentGame.players.length >= 2 &&
+                    currentGame.players.every(player => {
+                        const characterData = currentGame.characters && currentGame.characters[player.id];
+                        return characterData && characterData.character && characterData.character.trim() !== '';
+                    });
+
+                const startButton = document.getElementById('startGame');
+                const startButtonMobile = document.getElementById('startGameMobile');
+                if (startButton) startButton.disabled = !allPlayersHaveCharacters;
+                if (startButtonMobile) startButtonMobile.disabled = !allPlayersHaveCharacters;
+            }
         }
     });
     
@@ -372,10 +382,10 @@ function updatePlayersList() {
         if (isRevealed) playerCard.classList.add('bg-warning', 'bg-opacity-25');
 
         // Basic player info
+        const youText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('you') : 'You';
         playerCard.innerHTML = `
             <div class="player-avatar">${player.avatar}</div>
-            <div class="player-name">${player.name}</div>
-            ${isCurrentPlayer ? '<small class="text-primary">You</small>' : ''}
+            <div class="player-name">${player.name}${isCurrentPlayer ? ` (<strong>${youText}</strong>)` : ''}</div>
         `;
 
         // Add character sticker, mystery sticker, or add button

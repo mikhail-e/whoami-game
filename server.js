@@ -104,12 +104,16 @@ io.on('connection', (socket) => {
 
         console.log(`✅ Character finalized: "${character}" for player ${playerId} in game ${gameId}`);
 
-        // Just broadcast final confirmation - no DOM rebuild needed
-        console.log(`📡 Broadcasting character-finalized to room ${gameId}:`, { playerId, character });
+        // Send complete character state to all players for consistency
+        const game = games.get(gameId);
+        const allCharacters = Object.fromEntries(game.characters);
+        console.log(`📡 Broadcasting character-finalized to room ${gameId} with all characters:`, allCharacters);
+
         // Use io.to() instead of socket.to() to include the sender (for single-tab testing)
         io.to(gameId).emit('character-finalized', {
             playerId: playerId,
-            character: character
+            character: character,
+            allCharacters: allCharacters
         });
     });
 
