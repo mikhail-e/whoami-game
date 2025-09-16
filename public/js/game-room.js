@@ -197,6 +197,21 @@ function initializeSocket(roomCode) {
             // Save updated game state to localStorage
             saveGameStateToStorage();
 
+            // SURGICAL FIX: Clean up only the specific input for this finalized character
+            // This prevents the safety check from blocking updates for other players
+            const playerListEl = document.getElementById('playerList');
+            const specificPlayerCard = playerListEl.querySelector(`[data-player-id="${playerId}"]`);
+            if (specificPlayerCard) {
+                const specificInput = specificPlayerCard.querySelector('.character-input');
+                if (specificInput) {
+                    console.log(`🧹 Cleaning up input for finalized character (playerId: ${playerId})`);
+                    const stickerWrapper = specificInput.closest('.character-sticker');
+                    if (stickerWrapper) {
+                        stickerWrapper.remove();
+                    }
+                }
+            }
+
             // Update player list (safely)
             updatePlayersList();
 
@@ -454,6 +469,11 @@ function updatePlayersList() {
     const activeInputs = playerListEl.querySelectorAll('.character-input');
     if (activeInputs.length > 0) {
         console.log('🚫 Skipping rebuild - user is actively editing');
+        console.log('🔍 Active inputs found:', activeInputs.length, 'inputs detected');
+        activeInputs.forEach((input, index) => {
+            const playerId = input.closest('[data-player-id]')?.dataset.playerId;
+            console.log(`   Input ${index + 1}: playerId=${playerId}, value="${input.value}"`);
+        });
         return;
     }
 
