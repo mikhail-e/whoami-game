@@ -226,11 +226,8 @@ npm test       # Run test suite (184 tests)
 
 
 ### 🎯 **Future Goals:**
-- Fix the bug: frontend part is not always updated when character name is submitted
 - "Share" button for link to the room
-- Add mobile-friendly view for confirmations (reveal + restart)
 - Make the gray sticker (mystery) lighter.
-- Increase the size of avatars pictures (x1.2)
 - How to avoid two players editing the same character at the same time?
 
 ## Notes for Claude
