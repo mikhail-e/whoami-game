@@ -117,7 +117,7 @@
 
     <!-- Character Reveal Confirmation Modal -->
     <div class="modal fade" id="revealModal" tabindex="-1" aria-labelledby="revealModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-centered mobile-friendly-modal">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="revealModalLabel" data-i18n="revealModalTitle">🎭 Reveal Your Character</h5>
@@ -128,9 +128,9 @@
                     <p><strong data-i18n="revealWarning">⚠️ This action cannot be undone!</strong></p>
                     <p class="text-muted small" data-i18n="revealNote">Once revealed, your character will be visible to all players for the rest of the game.</p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="cancel">Cancel</button>
-                    <button type="button" class="btn btn-danger" id="confirmReveal" data-i18n="revealButton">Yes, Reveal My Character</button>
+                <div class="modal-footer mobile-modal-footer">
+                    <button type="button" class="btn btn-secondary mobile-modal-btn" data-bs-dismiss="modal" data-i18n="cancel">Cancel</button>
+                    <button type="button" class="btn btn-danger mobile-modal-btn" id="confirmReveal" data-i18n="revealButton">Yes, Reveal My Character</button>
                 </div>
             </div>
         </div>
@@ -138,7 +138,7 @@
 
     <!-- Restart Game Confirmation Modal -->
     <div class="modal fade" id="restartModal" tabindex="-1" aria-labelledby="restartModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-centered mobile-friendly-modal">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="restartModalLabel" data-i18n="restartModalTitle">🔄 Restart Game</h5>
@@ -155,9 +155,9 @@
                     </ul>
                     <p class="text-muted small" data-i18n="restartNote">All players will be able to see this action.</p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="cancel">Cancel</button>
-                    <button type="button" class="btn btn-warning" id="confirmRestart" data-i18n="confirmRestart">Yes, Restart Game</button>
+                <div class="modal-footer mobile-modal-footer">
+                    <button type="button" class="btn btn-secondary mobile-modal-btn" data-bs-dismiss="modal" data-i18n="cancel">Cancel</button>
+                    <button type="button" class="btn btn-warning mobile-modal-btn" id="confirmRestart" data-i18n="confirmRestart">Yes, Restart Game</button>
                 </div>
             </div>
         </div>

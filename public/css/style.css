@@ -275,18 +275,97 @@ body {
   .container {
     padding: 10px;
   }
-  
+
   .game-card {
     padding: 20px;
   }
-  
+
   .avatar-selector {
     grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
     gap: 8px;
   }
-  
+
   .avatar-option {
     font-size: 2.7rem;
     padding: 8px;
+  }
+
+  /* Mobile-friendly modal styles */
+  .mobile-friendly-modal {
+    margin: 15px;
+    max-width: none;
+    width: calc(100% - 30px);
+  }
+
+  .mobile-friendly-modal .modal-content {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  }
+
+  .mobile-friendly-modal .modal-header {
+    padding: 20px 20px 15px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .mobile-friendly-modal .modal-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+  }
+
+  .mobile-friendly-modal .modal-body {
+    padding: 20px;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .mobile-friendly-modal .modal-body p {
+    margin-bottom: 15px;
+  }
+
+  .mobile-friendly-modal .modal-body ul {
+    padding-left: 20px;
+    margin-bottom: 15px;
+  }
+
+  .mobile-friendly-modal .modal-body li {
+    margin-bottom: 8px;
+  }
+
+  .mobile-modal-footer {
+    padding: 15px 20px 20px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .mobile-modal-btn {
+    padding: 12px 20px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    border-radius: 10px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    touch-action: manipulation;
+  }
+
+  .mobile-modal-btn:active {
+    transform: scale(0.98);
+  }
+
+  /* Close button mobile optimization */
+  .mobile-friendly-modal .btn-close {
+    padding: 12px;
+    font-size: 1.2rem;
+    opacity: 0.6;
+  }
+
+  .mobile-friendly-modal .btn-close:hover,
+  .mobile-friendly-modal .btn-close:focus {
+    opacity: 0.8;
   }
 }
