@@ -3,6 +3,26 @@
 
 const { v4: uuidv4 } = require('uuid');
 
+// Color palette for character stickers (must match frontend)
+const stickerColors = ['red', 'blue', 'purple', 'orange', 'green', 'pink', 'indigo'];
+
+// Assign unique color to new player
+function assignUniqueColor(existingPlayers) {
+    // Get colors already used by existing players
+    const usedColors = new Set(existingPlayers.map(player => player.stickerColor).filter(Boolean));
+
+    // Find first available color
+    for (const color of stickerColors) {
+        if (!usedColors.has(color)) {
+            return color;
+        }
+    }
+
+    // If all colors are used (more than 7 players), cycle through colors
+    // Use modulo to ensure we don't go out of bounds
+    return stickerColors[existingPlayers.length % stickerColors.length];
+}
+
 // Generate short room code (6 characters)
 function generateRoomCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -39,43 +59,47 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
     if (!games.has(gameId)) {
         return { success: false, error: 'Game not found' };
     }
-    
+
     const game = games.get(gameId);
-    
+
     // Check if player is already in the game (reconnection)
     // First try to match by ID if provided, otherwise fall back to name matching
-    const existingPlayer = playerId 
+    const existingPlayer = playerId
         ? game.players.find(p => p.id === playerId)
         : game.players.find(p => p.name.toLowerCase().trim() === playerName.toLowerCase().trim());
-    
+
     // Check if game has already started (only allow existing players to reconnect)
     if (game.state === 'started' && !existingPlayer) {
         return { success: false, error: 'Game has already started' };
     }
-    
+
     // Check if game is full (max 12 players, but allow existing players)
     if (game.players.length >= 12 && !existingPlayer) {
         return { success: false, error: 'Game is full' };
     }
-    
+
     let player;
     let isNewPlayer = false;
-    
+
     if (existingPlayer) {
         // Player reconnecting - update their connection status
         existingPlayer.connected = true;
         existingPlayer.avatar = avatar; // Allow avatar update
         player = existingPlayer;
     } else {
+        // Assign unique sticker color for new player
+        const stickerColor = assignUniqueColor(game.players);
+
         // New player joining
         player = {
             id: uuidv4(),
             name: playerName,
             avatar: avatar,
             connected: true,
-            joinedAt: new Date()
+            joinedAt: new Date(),
+            stickerColor: stickerColor
         };
-        
+
         game.players.push(player);
         isNewPlayer = true;
     }
@@ -264,5 +288,6 @@ module.exports = {
     startGame,
     revealCharacter,
     restartGame,
-    isValidRoomCode
+    isValidRoomCode,
+    assignUniqueColor
 };

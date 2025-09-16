@@ -169,6 +169,7 @@ whoami-game/
 │   ├── character-race-condition.test.js # Race condition prevention tests
 │   ├── start-game-button.test.js # Start Game button behavior tests
 │   ├── blur-event.test.js  # Character input blur event tests
+│   ├── improved-sticker-colors.test.js # Fixed and unique color assignment tests
 │   ├── localization.test.js# Localization tests
 │   └── i18n-initialization.test.js # i18n bug prevention tests
 └── games/                  # Game data storage (future)
@@ -178,16 +179,22 @@ whoami-game/
 ```bash
 npm install    # Install dependencies
 npm start      # Start server on localhost:3000
-npm test       # Run test suite (152 tests)
+npm test       # Run test suite (168 tests)
 ```
 
 ### 🎯 **Recent Major Updates:**
-- **Critical Bug Fixes** (Latest):
+- **Improved Sticker Colors** (Latest):
+  - **Fixed Color Assignment**: Colors now assigned when players join and never change
+  - **Unique Colors**: Guaranteed unique colors for up to 7 players, intelligent cycling for 8+
+  - **No Hover Changes**: Removed all CSS hover color effects for consistent appearance
+  - **Blur Submission Fix**: Character names properly submit on both Enter key and losing focus
+  - **Enhanced Testing**: Added 16 new tests for color system (168 total tests)
+
+- **Critical Bug Fixes**:
   - **Start Game Button Fix**: Button now properly enables when all characters are assigned
   - **Character Race Condition Fix**: Eliminated missed updates when multiple players edit simultaneously
   - **Enhanced Character Editing**: Added blur event submission for better UX (Enter key + click-away)
   - **Robust Synchronization**: Server sends complete character state on every update
-  - **Comprehensive Testing**: Added 20 new tests covering edge cases and race conditions (152 total tests)
 
 - **Simplified Character Update System**: Major architecture redesign for character synchronization
   - **Problem Solved**: Fixed "empty color stickers" bug and character update conflicts
@@ -212,10 +219,10 @@ npm test       # Run test suite (152 tests)
 ### 🎯 **Future Goals:**
 - "Share" button for link to the room
 - Add mobile-friendly view for confirmations (reveal + restart)
-- Guaranteed different sticker colors (set them when players join and do not change them). Do not change color on hover.
 - Make the gray sticker (mystery) lighter.
 - Increase the size of avatars pictures (x1.2)
 - Keep rooms alive (otherwise they get kicked out after a while and can no longer be accessed). Could it be because of Render Free Tier? Recreate a room on joining to unexisting game.
+- How to avoid two players editing the same character at the same time?
 
 ## Notes for Claude
 - I learn best with hands-on examples

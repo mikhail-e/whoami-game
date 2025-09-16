@@ -10,20 +10,7 @@ let restartModal = null;
 // Color palette for character stickers
 const stickerColors = ['red', 'blue', 'purple', 'orange', 'green', 'pink', 'indigo'];
 
-// Function to get consistent color for a player based on their ID
-function getStickerColor(playerId) {
-    if (!playerId) return 'red';
-    
-    // Create a simple hash from the player ID
-    let hash = 0;
-    for (let i = 0; i < playerId.length; i++) {
-        hash = playerId.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    
-    // Use the hash to pick a color consistently
-    const colorIndex = Math.abs(hash) % stickerColors.length;
-    return stickerColors[colorIndex];
-}
+// Removed getStickerColor function - using player.stickerColor directly
 
 document.addEventListener('DOMContentLoaded', function() {
     // Get room code from URL
@@ -409,7 +396,7 @@ function updatePlayersList() {
         } else if (characterData && isRevealed) {
             // Revealed character - show actual character
             const revealedSticker = document.createElement('div');
-            const stickerColor = getStickerColor(player.id);
+            const stickerColor = player.stickerColor || 'red';
             revealedSticker.className = `character-sticker color-${stickerColor} revealed`;
             revealedSticker.textContent = characterData.character;
             revealedSticker.title = isCurrentPlayer ? 'Your revealed character' : 'Character revealed by player';
@@ -418,7 +405,7 @@ function updatePlayersList() {
         } else if (characterData && !isCurrentPlayer) {
             // Other player with character - show editable sticker
             const characterSticker = document.createElement('div');
-            const stickerColor = getStickerColor(player.id);
+            const stickerColor = player.stickerColor || 'red';
             characterSticker.className = `character-sticker color-${stickerColor}`;
             characterSticker.dataset.playerId = player.id;
             characterSticker.textContent = characterData.character;
@@ -472,7 +459,8 @@ function addCharacter(playerId, buttonElement) {
 
     // Create a wrapper that looks like a sticker with player's color
     const stickerWrapper = document.createElement('div');
-    const stickerColor = getStickerColor(playerId);
+    const player = currentGame.players.find(p => p.id === playerId);
+    const stickerColor = player?.stickerColor || 'red';
     stickerWrapper.className = `character-sticker color-${stickerColor} editing`;
     stickerWrapper.appendChild(inputElement);
 
@@ -514,10 +502,6 @@ function addCharacter(playerId, buttonElement) {
             savedViaEnter = true;
         }
 
-        // Immediately disable the input to prevent further submissions
-        inputElement.disabled = true;
-        inputElement.style.pointerEvents = 'none';
-
         const character = inputElement.value.trim();
         console.log(`🔧 saveCharacter called: playerId=${playerId}, newCharacter="${character}", triggeredBy=${triggeredBy}`);
 
@@ -531,14 +515,14 @@ function addCharacter(playerId, buttonElement) {
         console.log(`🔧 Sending assign-character:`, assignData);
         socket.emit('assign-character', assignData);
 
-        if (character) {
-            // Character saved - clean up edit state
-            stickerWrapper.classList.remove('editing');
-            stickerWrapper.innerHTML = '';
-            stickerWrapper.textContent = character;
-            console.log(`✅ New character finalized and edit cleaned up`);
-        } else {
-            // Cancel - restore the + button
+        // Input will be cleaned up when server confirms via character-finalized event
+
+        // Don't update UI immediately - wait for server confirmation via character-finalized event
+        // This ensures all players see the update at the same time and prevents desync issues
+        console.log(`⏳ Waiting for server confirmation before updating UI`);
+
+        if (!character) {
+            // Only handle cancel case immediately (empty character)
             const newAddButton = document.createElement('div');
             newAddButton.className = 'add-character-btn';
             newAddButton.innerHTML = '+';
@@ -654,10 +638,6 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
             savedViaEnter = true;
         }
 
-        // Immediately disable the input to prevent further submissions
-        inputElement.disabled = true;
-        inputElement.style.pointerEvents = 'none';
-
         const character = inputElement.value.trim();
         console.log(`🔧 saveCharacter called: playerId=${playerId}, newCharacter="${character}", triggeredBy=${triggeredBy}`);
 
@@ -671,16 +651,11 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
         console.log(`🔧 Sending assign-character:`, assignData);
         socket.emit('assign-character', assignData);
 
-        // Clean up edit state
-        stickerElement.classList.remove('editing');
-        stickerElement.innerHTML = '';
-        if (character) {
-            stickerElement.textContent = character;
-        } else {
-            stickerElement.textContent = '+';
-        }
+        // Input will be cleaned up when server confirms via character-finalized event
 
-        console.log(`✅ Character finalized and edit cleaned up`);
+        // Don't update UI immediately - wait for server confirmation via character-finalized event
+        // This ensures all players see the update at the same time and prevents desync issues
+        console.log(`⏳ Waiting for server confirmation before updating UI`);
     };
     
     // Save on Enter
