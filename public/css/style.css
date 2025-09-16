@@ -29,7 +29,7 @@ body {
 }
 
 .avatar-option {
-  font-size: 2rem;
+  font-size: 3rem;
   padding: 10px;
   border: 2px solid #ddd;
   border-radius: 10px;
@@ -71,7 +71,7 @@ body {
 }
 
 .player-avatar {
-  font-size: 2rem;
+  font-size: 3rem;
   margin-bottom: 10px;
 }
 
@@ -286,7 +286,7 @@ body {
   }
   
   .avatar-option {
-    font-size: 1.8rem;
+    font-size: 2.7rem;
     padding: 8px;
   }
 }
