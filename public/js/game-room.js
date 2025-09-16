@@ -553,7 +553,7 @@ function addCharacter(playerId, buttonElement) {
         }
     };
     
-    // Save only on Enter - no blur event to avoid double firing
+    // Save on Enter
     inputElement.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -561,7 +561,12 @@ function addCharacter(playerId, buttonElement) {
             saveCharacter('enter');
         }
     });
-    
+
+    // Save on blur (focus loss) for better UX
+    inputElement.addEventListener('blur', () => {
+        saveCharacter('blur');
+    });
+
     // Cancel on Escape
     inputElement.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
@@ -678,7 +683,7 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
         console.log(`✅ Character finalized and edit cleaned up`);
     };
     
-    // Save only on Enter - no blur event to avoid double firing
+    // Save on Enter
     inputElement.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -686,8 +691,11 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
             saveCharacter('enter');
         }
     });
-    
-    // Mobile-specific: No blur handler, Enter key only to avoid double submissions
+
+    // Save on blur (focus loss) for better UX
+    inputElement.addEventListener('blur', () => {
+        saveCharacter('blur');
+    });
 
     // Cancel on Escape
     inputElement.addEventListener('keydown', (e) => {
