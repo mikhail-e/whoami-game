@@ -89,22 +89,32 @@ io.on('connection', (socket) => {
         }
     });
     
+    // Real-time streaming removed - keeping it simple
+
+    // Final character assignment (when editing completes)
     socket.on('assign-character', (data) => {
         const { gameId, playerId, character, assignedBy } = data;
-        
+
         const result = gameLogic.assignCharacter(games, gameId, playerId, character, assignedBy);
-        
+
         if (!result.success) {
             socket.emit('error', result.error);
             return;
         }
-        
-        console.log(`Character "${character}" assigned to player ${playerId} in game ${gameId}`);
-        
-        // Broadcast the update to all players in the room
-        io.to(gameId).emit('character-assigned', result);
+
+        console.log(`✅ Character finalized: "${character}" for player ${playerId} in game ${gameId}`);
+
+        // Just broadcast final confirmation - no DOM rebuild needed
+        console.log(`📡 Broadcasting character-finalized to room ${gameId}:`, { playerId, character });
+        // Use io.to() instead of socket.to() to include the sender (for single-tab testing)
+        io.to(gameId).emit('character-finalized', {
+            playerId: playerId,
+            character: character
+        });
     });
-    
+
+    // Note: Old edit state synchronization removed - using real-time streaming instead
+
     socket.on('start-game', (data) => {
         const { gameId, playerId } = data;
         

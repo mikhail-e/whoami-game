@@ -71,7 +71,8 @@ function initializeSocket(roomCode) {
     
     socket.on('connect', () => {
         console.log('Connected to server');
-        
+        console.log('🔧 About to set up all Socket.IO event handlers...');
+
         // First join the game via API, then join the socket room
         joinGameRoom(roomCode).then(() => {
             // Join the socket room after successful API join
@@ -111,13 +112,25 @@ function initializeSocket(roomCode) {
         }
     });
     
-    socket.on('character-assigned', (data) => {
-        console.log('📢 character-assigned event received:', data);
-        if (currentGame) {
-            console.log('🔄 Updating local game state and display');
-            // Update local game state
-            currentGame.characters = data.characters;
-            updateGameDisplay();
+    // Real-time updates removed - keeping it simple
+
+    // Handle final character confirmation
+    console.log('🔧 Setting up character-finalized event handler...');
+    socket.on('character-finalized', (data) => {
+        console.log('📨 RECEIVED character-finalized event:', data);
+        const { playerId, character } = data;
+
+        // Update local game state
+        if (currentGame && currentGame.characters) {
+            currentGame.characters[playerId] = {
+                character: character,
+                assignedBy: 'unknown',
+                assignedAt: new Date()
+            };
+            console.log('✅ Updated local character data');
+
+            // Simple rebuild - no edit preservation, no complex logic
+            updatePlayersList();
         }
     });
     
@@ -185,9 +198,13 @@ async function joinGameRoom(roomCode) {
         const requestBody = {
             gameId: roomCode,
             playerName: currentPlayer.name,
-            avatar: currentPlayer.avatar,
-            playerId: currentPlayer.id // Include ID if available
+            avatar: currentPlayer.avatar
         };
+
+        // Only include playerId if it exists (for reconnection)
+        if (currentPlayer.id) {
+            requestBody.playerId = currentPlayer.id;
+        }
         console.log('Sending request body:', requestBody);
         
         const response = await fetch('/api/join-game', {
@@ -321,7 +338,7 @@ function updateGameDisplay() {
 }
 
 function updatePlayersList() {
-    console.log('🎨 updatePlayersList called');
+    console.log('🎨 Simple updatePlayersList called');
     const playerListEl = document.getElementById('playerList');
 
     if (!currentGame || !currentGame.players) {
@@ -329,118 +346,87 @@ function updatePlayersList() {
         return;
     }
 
-    // Preserve active edit states before updating (temporarily disabled to fix infinite loop)
-    console.log('💾 Edit state preservation temporarily disabled');
-    const activeEdits = new Map();
-    // TODO: Re-enable smart edit state preservation once infinite loop is resolved
+    // CRITICAL: Check for active editing - prevent rebuilds that lose user input
+    const activeInputs = playerListEl.querySelectorAll('.character-input');
+    if (activeInputs.length > 0) {
+        console.log('🚫 Skipping rebuild - user is actively editing');
+        return;
+    }
 
+    // Simple approach: complete rebuild only when safe
     playerListEl.innerHTML = '';
-    
+
+    // Simple player rendering
     currentGame.players.forEach(player => {
         const playerCard = document.createElement('div');
         playerCard.className = 'player-card';
         playerCard.dataset.playerId = player.id;
 
-        // Check if this player has a character assigned
         const characterData = currentGame.characters && currentGame.characters[player.id];
         const isCurrentPlayer = player.id === currentPlayer.id;
         const isRevealed = currentGame.revealedPlayers && currentGame.revealedPlayers.includes(player.id);
+        const gameState = currentGame.state || 'waiting';
 
-        // Add class for players you cannot assign characters to (yourself)
-        if (isCurrentPlayer) {
-            playerCard.classList.add('cannot-assign');
-        }
+        // Add visual classes
+        if (isCurrentPlayer) playerCard.classList.add('cannot-assign');
+        if (isRevealed) playerCard.classList.add('bg-warning', 'bg-opacity-25');
 
-        // Add yellow background for revealed players
-        if (isRevealed) {
-            playerCard.classList.add('bg-warning', 'bg-opacity-25');
-        }
-        
         // Basic player info
         playerCard.innerHTML = `
             <div class="player-avatar">${player.avatar}</div>
             <div class="player-name">${player.name}</div>
             ${isCurrentPlayer ? '<small class="text-primary">You</small>' : ''}
         `;
-        
-        // Add character sticker or add button
-        if (characterData && !isCurrentPlayer) {
-            // Character exists and it's NOT the current player - show sticker
+
+        // Add character sticker, mystery sticker, or add button
+        if (characterData && isCurrentPlayer && !isRevealed) {
+            // Current player with character - show mystery sticker
+            const mysterySticker = document.createElement('div');
+            mysterySticker.className = 'character-sticker mystery-character';
+            mysterySticker.textContent = '❓';
+            if (gameState === 'started') {
+                mysterySticker.title = 'Your character - click to reveal!';
+                mysterySticker.style.cursor = 'pointer';
+                mysterySticker.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showRevealModal();
+                });
+            } else {
+                mysterySticker.title = 'Your character is hidden from you!';
+            }
+            playerCard.appendChild(mysterySticker);
+
+        } else if (characterData && isRevealed) {
+            // Revealed character - show actual character
+            const revealedSticker = document.createElement('div');
+            const stickerColor = getStickerColor(player.id);
+            revealedSticker.className = `character-sticker color-${stickerColor} revealed`;
+            revealedSticker.textContent = characterData.character;
+            revealedSticker.title = isCurrentPlayer ? 'Your revealed character' : 'Character revealed by player';
+            playerCard.appendChild(revealedSticker);
+
+        } else if (characterData && !isCurrentPlayer) {
+            // Other player with character - show editable sticker
             const characterSticker = document.createElement('div');
             const stickerColor = getStickerColor(player.id);
-            let stickerClass = `character-sticker color-${stickerColor}`;
-
-            // Add revealed class if this player has revealed their character
-            if (isRevealed) {
-                stickerClass += ' revealed';
-            }
-
-            characterSticker.className = stickerClass;
+            characterSticker.className = `character-sticker color-${stickerColor}`;
             characterSticker.dataset.playerId = player.id;
             characterSticker.textContent = characterData.character;
+            characterSticker.title = gameState === 'started' ?
+                `Character: ${characterData.character} (read-only during game)` :
+                `Character: ${characterData.character} (click to edit)`;
 
-            let titleText = `Character: ${characterData.character}`;
-            if (isRevealed) {
-                titleText += ' (revealed by player)';
-            } else {
-                titleText += ` (${(typeof i18n !== 'undefined' && i18n) ? i18n.getText('clickToEdit') : 'click to edit'})`;
-            }
-            characterSticker.title = titleText;
-
-            // Allow editing if game is not started AND player hasn't revealed (collaborative editing)
-            const gameState = currentGame.state || 'waiting';
-            if (gameState !== 'started' && !isRevealed) {
+            if (gameState === 'waiting') {
+                characterSticker.style.cursor = 'pointer';
                 characterSticker.addEventListener('click', (e) => {
                     e.stopPropagation();
                     editCharacter(player.id, characterData.character, characterSticker);
                 });
-            } else {
-                characterSticker.style.cursor = 'default';
-                if (gameState === 'started') {
-                    characterSticker.title = titleText + (isRevealed ? '' : ' (read-only during game)');
-                } else if (isRevealed) {
-                    characterSticker.title = titleText;
-                }
             }
-            
             playerCard.appendChild(characterSticker);
-        } else if (characterData && isCurrentPlayer) {
-            // Current player has a character
-            const gameState = currentGame.state || 'waiting';
-            const isRevealed = currentGame.revealedPlayers && currentGame.revealedPlayers.includes(player.id);
-            
-            if (isRevealed) {
-                // Character is revealed - show the actual character
-                const revealedSticker = document.createElement('div');
-                const stickerColor = getStickerColor(player.id);
-                revealedSticker.className = `character-sticker color-${stickerColor} revealed`;
-                revealedSticker.textContent = characterData.character;
-                revealedSticker.title = 'Your revealed character';
-                revealedSticker.style.cursor = 'default';
-                
-                playerCard.appendChild(revealedSticker);
-            } else {
-                // Character is hidden - show mystery sticker
-                const mysterySticker = document.createElement('div');
-                mysterySticker.className = 'character-sticker mystery-character';
-                mysterySticker.textContent = '❓';
-                
-                if (gameState === 'started') {
-                    mysterySticker.title = 'Your character - click to reveal!';
-                    mysterySticker.style.cursor = 'pointer';
-                    mysterySticker.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        showRevealModal();
-                    });
-                } else {
-                    mysterySticker.title = 'Your character is hidden from you!';
-                    mysterySticker.style.cursor = 'default';
-                }
-                
-                playerCard.appendChild(mysterySticker);
-            }
+
         } else if (!isCurrentPlayer) {
-            // No character and not current player - show add button
+            // No character for other player - show add button
             const addButton = document.createElement('div');
             addButton.className = 'add-character-btn';
             addButton.innerHTML = '+';
@@ -449,72 +435,100 @@ function updatePlayersList() {
                 e.stopPropagation();
                 addCharacter(player.id, addButton);
             });
-            
             playerCard.appendChild(addButton);
+
+        } else {
+            // Current player with no character - show placeholder
+            const placeholder = document.createElement('div');
+            placeholder.className = 'character-placeholder';
+            placeholder.innerHTML = '❓';
+            placeholder.title = 'Someone needs to assign you a character!';
+            playerCard.appendChild(placeholder);
         }
-        
+
         playerListEl.appendChild(playerCard);
-    });
-
-    // Restore active edit states after UI rebuild (only for preserved ongoing edits)
-    console.log('🔙 Attempting to restore edit states, found', activeEdits.size, 'active edits');
-    activeEdits.forEach((editState, playerId) => {
-        console.log(`🔍 Checking restoration for player ${playerId}:`, editState);
-        const stickerElement = playerListEl.querySelector(`[data-player-id="${playerId}"]`);
-        if (stickerElement && !stickerElement.classList.contains('editing')) {
-            // Find the character data for this player
-            const characterData = currentGame.characters && currentGame.characters[playerId];
-            const gameState = currentGame.state || 'waiting';
-            const isRevealed = currentGame.revealedPlayers && currentGame.revealedPlayers.includes(playerId);
-
-            console.log(`📊 Player ${playerId} - currentChar:"${characterData?.character}" vs originalChar:"${editState.originalCharacter}"`);
-
-            // Only restore if the character hasn't changed (indicating ongoing edit, not completed)
-            if (characterData && gameState !== 'started' && !isRevealed &&
-                characterData.character === editState.originalCharacter) {
-                console.log(`✅ Restoring edit state for player ${playerId}`);
-                // Re-initiate edit mode with preserved state (collaborative editing)
-                editCharacter(playerId, characterData.character, stickerElement, editState);
-            } else {
-                console.log(`❌ Not restoring edit state for player ${playerId} - character changed or conditions not met`);
-            }
-        }
     });
 }
 
-// Function to add a new character
+// Function to add a new character - now uses streaming like editCharacter
 function addCharacter(playerId, buttonElement) {
+    console.log(`🎯 addCharacter called for player ${playerId} (using streaming)`);
+
     // Replace the + button with an input field
     const inputElement = document.createElement('input');
     inputElement.type = 'text';
     inputElement.className = 'character-input';
     inputElement.maxLength = 30;
-    
+
     // Create a wrapper that looks like a sticker with player's color
     const stickerWrapper = document.createElement('div');
     const stickerColor = getStickerColor(playerId);
     stickerWrapper.className = `character-sticker color-${stickerColor} editing`;
     stickerWrapper.appendChild(inputElement);
-    
+
     // Replace the button with the input
     buttonElement.parentNode.replaceChild(stickerWrapper, buttonElement);
-    
+
     // Focus and select the input
     inputElement.focus();
-    
+
+    // Initial character stream when edit starts
+    console.log(`🔔 SENDING initial character-stream for new character (player ${playerId})`);
+    socket.emit('character-stream', {
+        gameId: currentGame.id,
+        playerId: playerId,
+        character: inputElement.value.trim()
+    });
+
+    // No real-time streaming - Keep it simple
+
+    // Prevent double execution
+    let saveInProgress = false;
+    let savedViaEnter = false;
+
     // Handle saving
-    const saveCharacter = () => {
+    const saveCharacter = (triggeredBy = 'unknown') => {
+        if (saveInProgress) {
+            console.log(`🚫 saveCharacter blocked - already in progress`);
+            return;
+        }
+
+        // If saved via Enter, ignore subsequent blur events
+        if (triggeredBy === 'blur' && savedViaEnter) {
+            console.log(`🚫 saveCharacter blocked - already saved via Enter`);
+            return;
+        }
+
+        saveInProgress = true;
+        if (triggeredBy === 'enter') {
+            savedViaEnter = true;
+        }
+
+        // Immediately disable the input to prevent further submissions
+        inputElement.disabled = true;
+        inputElement.style.pointerEvents = 'none';
+
         const character = inputElement.value.trim();
+        console.log(`🔧 saveCharacter called: playerId=${playerId}, newCharacter="${character}", triggeredBy=${triggeredBy}`);
+
+        // Send final character assignment
+        const assignData = {
+            gameId: currentGame.id,
+            playerId: playerId,
+            character: character,
+            assignedBy: currentPlayer.id
+        };
+        console.log(`🔧 Sending assign-character:`, assignData);
+        socket.emit('assign-character', assignData);
+
         if (character) {
-            // Send to server
-            socket.emit('assign-character', {
-                gameId: currentGame.id,
-                playerId: playerId,
-                character: character,
-                assignedBy: currentPlayer.id
-            });
+            // Character saved - clean up edit state
+            stickerWrapper.classList.remove('editing');
+            stickerWrapper.innerHTML = '';
+            stickerWrapper.textContent = character;
+            console.log(`✅ New character finalized and edit cleaned up`);
         } else {
-            // Cancel - restore the + button  
+            // Cancel - restore the + button
             const newAddButton = document.createElement('div');
             newAddButton.className = 'add-character-btn';
             newAddButton.innerHTML = '+';
@@ -523,20 +537,20 @@ function addCharacter(playerId, buttonElement) {
                 e.stopPropagation();
                 addCharacter(playerId, newAddButton);
             });
-            
+
             stickerWrapper.parentNode.replaceChild(newAddButton, stickerWrapper);
+            console.log(`❌ Character creation cancelled - restored + button`);
         }
     };
     
-    // Save on Enter or blur
-    inputElement.addEventListener('keypress', (e) => {
+    // Save only on Enter - no blur event to avoid double firing
+    inputElement.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            saveCharacter();
+            e.stopPropagation();
+            saveCharacter('enter');
         }
     });
-    
-    inputElement.addEventListener('blur', saveCharacter);
     
     // Cancel on Escape
     inputElement.addEventListener('keydown', (e) => {
@@ -550,6 +564,8 @@ function addCharacter(playerId, buttonElement) {
 
 // Function to edit an existing character
 function editCharacter(playerId, currentCharacter, stickerElement, editState = null) {
+    console.log(`🎯 editCharacter called for player ${playerId} with character "${currentCharacter}"`);
+
     // Create input field
     const inputElement = document.createElement('input');
     inputElement.type = 'text';
@@ -564,67 +580,117 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
     stickerElement.appendChild(inputElement);
     stickerElement.classList.add('editing');
 
-    // Focus and restore cursor position if preserving state
-    inputElement.focus();
-    if (editState) {
-        // Restore cursor position
-        inputElement.setSelectionRange(editState.cursorPosition, editState.cursorPosition);
+    // Track when this edit started (for smart preservation)
+    stickerElement.dataset.editStartTime = Date.now().toString();
+
+    // Mobile-specific: delay focus to avoid virtual keyboard issues
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    const focusInput = () => {
+        inputElement.focus();
+        if (editState) {
+            // Restore cursor position and preserve original timestamp
+            inputElement.setSelectionRange(editState.cursorPosition, editState.cursorPosition);
+            if (editState.editStartTime) {
+                stickerElement.dataset.editStartTime = editState.editStartTime;
+            }
+        } else {
+            // Select all text for new edits
+            inputElement.select();
+        }
+    };
+
+    if (isMobile) {
+        // On mobile, delay focus slightly to avoid keyboard interference
+        setTimeout(focusInput, 100);
     } else {
-        // Select all text for new edits
-        inputElement.select();
+        focusInput();
     }
+
+    // Initial character stream when edit starts
+    console.log(`🔔 SENDING initial character-stream for player ${playerId}`);
+    socket.emit('character-stream', {
+        gameId: currentGame.id,
+        playerId: playerId,
+        character: inputElement.value.trim()
+    });
+
+    // No real-time streaming - Keep it simple
 
     // Prevent double execution
     let saveInProgress = false;
+    let savedViaEnter = false;
 
     // Handle saving
-    const saveCharacter = () => {
+    const saveCharacter = (triggeredBy = 'unknown') => {
         if (saveInProgress) {
             console.log(`🚫 saveCharacter blocked - already in progress`);
             return;
         }
+
+        // If saved via Enter, ignore subsequent blur events
+        if (triggeredBy === 'blur' && savedViaEnter) {
+            console.log(`🚫 saveCharacter blocked - already saved via Enter`);
+            return;
+        }
+
         saveInProgress = true;
+        if (triggeredBy === 'enter') {
+            savedViaEnter = true;
+        }
+
+        // Immediately disable the input to prevent further submissions
+        inputElement.disabled = true;
+        inputElement.style.pointerEvents = 'none';
 
         const character = inputElement.value.trim();
-        console.log(`🔧 saveCharacter called: playerId=${playerId}, currentCharacter="${currentCharacter}", newCharacter="${character}"`);
+        console.log(`🔧 saveCharacter called: playerId=${playerId}, newCharacter="${character}", triggeredBy=${triggeredBy}`);
 
-        if (character && character !== currentCharacter) {
-            console.log(`✅ Sending character update to server`);
-            // Send updated character to server - this will trigger character-assigned event
-            socket.emit('assign-character', {
-                gameId: currentGame.id,
-                playerId: playerId,
-                character: character,
-                assignedBy: currentPlayer.id
-            });
+        // Send final character assignment
+        const assignData = {
+            gameId: currentGame.id,
+            playerId: playerId,
+            character: character,
+            assignedBy: currentPlayer.id
+        };
+        console.log(`🔧 Sending assign-character:`, assignData);
+        socket.emit('assign-character', assignData);
+
+        // Clean up edit state
+        stickerElement.classList.remove('editing');
+        stickerElement.innerHTML = '';
+        if (character) {
+            stickerElement.textContent = character;
         } else {
-            console.log(`❌ No change detected, just cleaning up edit state`);
-            // No change - just remove the input and restore sticker
-            stickerElement.classList.remove('editing');
-            stickerElement.innerHTML = '';
-            stickerElement.textContent = currentCharacter;
+            stickerElement.textContent = '+';
         }
+
+        console.log(`✅ Character finalized and edit cleaned up`);
     };
     
-    // Save on Enter or blur
-    inputElement.addEventListener('keypress', (e) => {
+    // Save only on Enter - no blur event to avoid double firing
+    inputElement.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            saveCharacter();
+            e.stopPropagation();
+            saveCharacter('enter');
         }
     });
     
-    inputElement.addEventListener('blur', saveCharacter);
-    
+    // Mobile-specific: No blur handler, Enter key only to avoid double submissions
+
     // Cancel on Escape
     inputElement.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             e.preventDefault();
-            inputElement.blur(); // This will trigger saveCharacter() which handles no-change case
+            // Cancel editing - restore original character or hide input
+            inputElement.value = '';
+            saveCharacter('escape');
         }
     });
 }
 
+// Update only a specific character sticker (no DOM rebuild)
 function setupEventListeners() {
     // Copy link button
     document.getElementById('copyLink').addEventListener('click', () => {

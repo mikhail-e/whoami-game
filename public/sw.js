@@ -1,7 +1,7 @@
 // Who am I? Game - Service Worker
 // Basic PWA service worker for caching static assets
 
-const CACHE_NAME = 'whoami-game-v1.1.0';
+const CACHE_NAME = 'whoami-game-v1.2.0-fix';
 const urlsToCache = [
     '/',
     '/index.html',
