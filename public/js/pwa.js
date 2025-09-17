@@ -32,7 +32,17 @@ class PWAManager {
                 // Handle updates
                 registration.addEventListener('updatefound', () => {
                     console.log('🔄 New service worker version available');
+                    const newWorker = registration.installing;
+
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            this.showUpdateAvailable();
+                        }
+                    });
                 });
+
+                // Start auto-update checking
+                this.startUpdateChecking(registration);
 
             } catch (error) {
                 console.error('❌ Service Worker registration failed:', error);
@@ -171,6 +181,73 @@ class PWAManager {
         }
     }
 
+    // Auto-update checking
+    startUpdateChecking(registration) {
+        // Check for updates every 30 seconds
+        setInterval(() => {
+            console.log('🔍 Checking for app updates...');
+            registration.update();
+        }, 30000);
+
+        // Also check when page becomes visible
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                console.log('🔍 Page visible, checking for updates...');
+                registration.update();
+            }
+        });
+    }
+
+    // Show update available notification
+    showUpdateAvailable() {
+        console.log('🆕 App update is available!');
+
+        const updateBanner = document.createElement('div');
+        updateBanner.className = 'alert alert-warning alert-dismissible fade show';
+        updateBanner.innerHTML = `
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <strong>🆕 Update Available!</strong><br>
+                    <small>A new version of the app is ready. Reload to get the latest features.</small>
+                </div>
+                <div class="ms-3">
+                    <button type="button" class="btn btn-warning btn-sm" onclick="window.location.reload()">
+                        Update Now
+                    </button>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+
+        const container = document.querySelector('.container');
+        if (container) {
+            container.insertAdjacentElement('afterbegin', updateBanner);
+        }
+    }
+
+    // Force update method
+    async forceUpdate() {
+        try {
+            const registration = await navigator.serviceWorker.getRegistration();
+            if (registration) {
+                console.log('🔄 Forcing service worker update...');
+                await registration.update();
+
+                // Send message to service worker to skip waiting
+                if (registration.waiting) {
+                    registration.waiting.postMessage('CHECK_UPDATE');
+                }
+
+                // Reload page after a short delay
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            }
+        } catch (error) {
+            console.error('❌ Error forcing update:', error);
+        }
+    }
+
     // Public method to manually trigger install
     triggerInstall() {
         this.showInstallPrompt();
@@ -184,3 +261,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Make PWA manager available globally
 window.PWAManager = PWAManager;
+
+// Global helper function for force updates (can be called from console)
+window.forceAppUpdate = () => {
+    if (window.pwaManager) {
+        window.pwaManager.forceUpdate();
+    } else {
+        console.log('PWA Manager not initialized yet');
+    }
+};
