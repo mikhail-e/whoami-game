@@ -36,3 +36,4 @@ pids
 # Game data (if you add file-based storage later)
 games/*.json
 !games/.gitkeep
+.claude/settings.local.json

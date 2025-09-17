@@ -5,7 +5,21 @@
       "Bash(npm start)",
       "Bash(npm test)",
       "Bash(git commit:*)",
-      "WebFetch(domain:whoami-game.onrender.com)"
+      "WebFetch(domain:whoami-game.onrender.com)",
+      "Bash(git add:*)",
+      "Bash(pkill:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(sed:*)",
+      "Bash(node:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git push:*)",
+      "Bash(npm test:*)",
+      "Bash(npx jest:*)",
+      "Bash(jest --clearCache)",
+      "Bash(kill:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
