@@ -48,6 +48,8 @@ body {
   background: #f0f4ff;
 }
 
+
+
 .player-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

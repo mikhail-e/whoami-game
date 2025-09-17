@@ -43,6 +43,22 @@ function populateAvatars(avatars) {
 
         avatarSelector.appendChild(avatarOption);
     });
+
+    // Add refresh button
+    const refreshButton = document.createElement('div');
+    refreshButton.className = 'btn btn-outline-primary d-flex align-items-center justify-content-center';
+    refreshButton.innerHTML = '🔄';
+    refreshButton.title = 'Refresh avatars';
+    refreshButton.style.fontSize = '2rem'; // Match avatar font size
+    refreshButton.style.borderRadius = '10px'; // Match avatar border radius
+    refreshButton.style.minHeight = '60px'; // Match avatar grid item minimum height
+    refreshButton.addEventListener('click', function() {
+        // Generate new random avatars
+        const newAvatars = selectRandomAvatars();
+        populateAvatars(newAvatars);
+    });
+
+    avatarSelector.appendChild(refreshButton);
 }
 
 // Avatar selection handling
@@ -127,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.querySelectorAll('.avatar-option').forEach(avatar => {
                     avatar.classList.remove('selected');
                 });
-                
+
                 // Add selection to clicked avatar
                 e.target.classList.add('selected');
                 selectedAvatarInput.value = e.target.dataset.avatar;

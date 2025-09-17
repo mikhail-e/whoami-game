@@ -199,11 +199,35 @@ describe('Simplified Character Update System', () => {
         });
 
         test('handles empty character name', () => {
+            // First assign a character
+            gameLogic.assignCharacter(games, gameId, playerId1, 'Batman', playerId2);
+
+            // Then remove it with empty string
             const result = gameLogic.assignCharacter(games, gameId, playerId1, '', playerId2);
 
             // Should still succeed - empty string is a valid character removal
             expect(result.success).toBe(true);
             expect(result.character).toBe('');
+
+            // Character should be removed from game state
+            const game = games.get(gameId);
+            expect(game.characters.has(playerId1)).toBe(false);
+        });
+
+        test('handles whitespace-only character name', () => {
+            // First assign a character
+            gameLogic.assignCharacter(games, gameId, playerId1, 'Batman', playerId2);
+
+            // Then remove it with whitespace-only string
+            const result = gameLogic.assignCharacter(games, gameId, playerId1, '   ', playerId2);
+
+            // Should still succeed - whitespace-only is also character removal
+            expect(result.success).toBe(true);
+            expect(result.character).toBe('');
+
+            // Character should be removed from game state
+            const game = games.get(gameId);
+            expect(game.characters.has(playerId1)).toBe(false);
         });
 
         test('handles special characters in character names', () => {

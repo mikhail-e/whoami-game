@@ -161,17 +161,22 @@ function assignCharacter(games, gameId, playerId, character, assignedBy) {
         return { success: false, error: 'Cannot assign character to yourself' };
     }
     
-    // Assign the character
-    game.characters.set(playerId, {
-        character: character,
-        assignedBy: assignedBy,
-        assignedAt: new Date()
-    });
+    // Assign the character or remove it if empty
+    if (character && character.trim() !== '') {
+        game.characters.set(playerId, {
+            character: character,
+            assignedBy: assignedBy,
+            assignedAt: new Date()
+        });
+    } else {
+        // Remove character assignment if empty or whitespace-only
+        game.characters.delete(playerId);
+    }
     
-    return { 
+    return {
         success: true,
         playerId,
-        character,
+        character: character && character.trim() !== '' ? character : '', // Return empty string for removed characters
         assignedBy,
         characters: Object.fromEntries(game.characters)
     };

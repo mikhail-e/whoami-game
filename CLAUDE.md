@@ -147,6 +147,20 @@ When I ask for help, I'm usually looking for:
    - **Offline-ready Static Assets**: CSS, JS, and HTML cached for offline access
    - **Real-time Preservation**: Socket.IO and API requests bypass cache for live gameplay
 
+11. **Enhanced Avatar System:**
+   - **Avatar Pool**: 60 diverse emojis (12 original + 48 new additions)
+   - **Random Selection**: Each player gets 12 randomly selected avatars from the pool
+   - **Refresh Button**: 🔄 button with Bootstrap outline-primary styling for new avatar sets
+   - **Grid Layout**: Responsive avatar selector that adapts to screen size
+   - **Unlimited Variety**: Players can refresh avatars unlimited times for personalization
+
+12. **Smart Character Management:**
+   - **Player-Specific Colors**: Mystery stickers use each player's unique assigned color instead of generic gray
+   - **Empty Character Handling**: Editing a character to empty text returns the sticker to "+" state
+   - **Whitespace Protection**: Both empty strings and whitespace-only inputs properly remove character assignments
+   - **Real-time Updates**: Character removal triggers immediate UI updates across all players
+   - **Enhanced Mobile Keyboard**: Multi-strategy focus approach for reliable virtual keyboard on mobile devices
+
 ### 🏗️ **Project Structure:**
 ```
 whoami-game/
@@ -190,12 +204,20 @@ whoami-game/
 ```bash
 npm install    # Install dependencies
 npm start      # Start server on localhost:3000
-npm test       # Run test suite (184 tests)
+npm test       # Run test suite (185 tests)
 ```
 
 ### 🎯 **Recent Major Updates:**
 
-- **PWA Optimization & Browser Extension Compatibility** (Latest):
+- **Enhanced UX Features** (Latest):
+  - **Avatar Refresh System**: 🔄 button in avatar selector provides unlimited random selections from 60-emoji pool
+  - **Smart Mystery Stickers**: Mystery stickers now use player-specific colors instead of generic gray
+  - **Empty Character Handling**: Editing character to empty/whitespace automatically returns to "+" state
+  - **Enhanced Mobile Keyboard**: Multi-strategy focus approach for reliable virtual keyboard on smartphones
+  - **Bootstrap Integration**: Refresh button uses clean Bootstrap outline-primary styling
+  - **Real-time Character Removal**: Backend properly removes empty characters with immediate UI sync across all players
+
+- **PWA Optimization & Browser Extension Compatibility**:
   - **Hybrid Caching Strategy**: Network-first for CSS/JS files (immediate updates), cache-first for static assets (performance)
   - **Browser Extension Fix**: Resolved chrome-extension:// console errors with comprehensive request validation
   - **Removed Aggressive Install Banner**: No more intrusive blue "Install App" prompts for cleaner UX
@@ -260,7 +282,6 @@ npm test       # Run test suite (184 tests)
 - **Share button** for link to the room (direct share functionality)
 - **Visual improvements**: Make the gray mystery sticker lighter for better visibility
 - **Concurrent editing protection**: Prevent two players from editing the same character simultaneously
-- **Enhanced mobile UX**: Mobile-friendly confirmations for reveal + restart actions
 - **Advanced features**: Rooms persistence, custom game rules, spectator mode
 
 ## Notes for Claude

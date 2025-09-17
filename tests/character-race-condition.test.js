@@ -174,9 +174,8 @@ describe('Character Editing Race Conditions', () => {
         const result3 = assignCharacter(games, gameId, player1Id, '   ', player2Id);
         expect(result3.success).toBe(true);
 
-        // Backend should allow these assignments (frontend validation handles this)
+        // Backend should remove whitespace-only characters
         const game = games.get(gameId);
-        expect(game.characters.get(player1Id).character).toBe('   ');
-        expect(game.characters.get(player1Id).assignedBy).toBe(player2Id);
+        expect(game.characters.has(player1Id)).toBe(false); // Character should be removed
     });
 });

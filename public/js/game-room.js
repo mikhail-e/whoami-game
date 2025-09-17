@@ -651,20 +651,9 @@ function addCharacter(playerId, buttonElement) {
         // This ensures all players see the update at the same time and prevents desync issues
         console.log(`⏳ Waiting for server confirmation before updating UI`);
 
-        if (!character) {
-            // Only handle cancel case immediately (empty character)
-            const newAddButton = document.createElement('div');
-            newAddButton.className = 'add-character-btn';
-            newAddButton.innerHTML = '+';
-            newAddButton.title = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('assignCharacter') : 'Assign character';
-            newAddButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                addCharacter(playerId, newAddButton);
-            });
-
-            stickerWrapper.parentNode.replaceChild(newAddButton, stickerWrapper);
-            console.log(`❌ Character creation cancelled - restored + button`);
-        }
+        // Note: Empty characters are now handled by the backend
+        // The server will remove the character and trigger a 'character-finalized' event
+        // which will update the UI appropriately (show + button for removed characters)
     };
     
     // Save on Enter
