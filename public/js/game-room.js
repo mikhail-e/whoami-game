@@ -701,8 +701,7 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
     // Track when this edit started (for smart preservation)
     stickerElement.dataset.editStartTime = Date.now().toString();
 
-    // Enhanced mobile keyboard handling
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // Mobile browsers require immediate focus response to user gesture
 
     const focusInput = () => {
         inputElement.focus();
@@ -718,12 +717,8 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
         }
     };
 
-    if (isMobile) {
-        // On mobile, delay focus slightly to avoid keyboard interference
-        setTimeout(focusInput, 100);
-    } else {
-        focusInput();
-    }
+    // Focus immediately on all platforms - delays break mobile gesture chain
+    focusInput();
 
     // Initial character stream when edit starts
     console.log(`🔔 SENDING initial character-stream for player ${playerId}`);
