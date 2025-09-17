@@ -131,11 +131,15 @@ When I ask for help, I'm usually looking for:
 
 10. **Progressive Web App (PWA):**
    - **Web App Manifest**: Complete metadata for app installation (manifest.json)
-   - **Service Worker**: Smart caching strategy for static assets (sw.js)
-   - **PWA Manager**: Automatic installation prompt handling (pwa.js)
+   - **Hybrid Service Worker**: Network-first for game logic, cache-first for static assets (sw.js v1.3.1)
+   - **PWA Manager**: Smart update detection and browser extension compatibility (pwa.js)
    - **Custom Icons**: 6 SVG icons (48x48 to 512x512) with consistent game branding
+   - **Custom Favicon**: Professional .ico favicon for browser tab recognition
    - **Cross-platform Meta Tags**: iOS Safari, Android Chrome, desktop browser support
-   - **Install Banner**: User-friendly installation prompt with dismiss option
+   - **Clean Installation**: No intrusive banners - users can install via browser menu
+   - **Smart Caching**: Immediate updates for game logic, fast loading for static assets
+   - **Browser Extension Compatible**: Works with ad blockers, password managers, dev tools
+   - **Auto-Update System**: Detects updates every 30 seconds with user-friendly notifications
    - **Offline-ready Static Assets**: CSS, JS, and HTML cached for offline access
    - **Real-time Preservation**: Socket.IO and API requests bypass cache for live gameplay
 
@@ -145,8 +149,9 @@ whoami-game/
 ├── public/
 │   ├── index.html          # Landing page (with PWA meta tags)
 │   ├── game.html           # Game room page (with PWA meta tags)
+│   ├── favicon.ico         # Custom favicon for browser tab recognition
 │   ├── manifest.json       # PWA manifest for app installation
-│   ├── sw.js              # Service Worker for caching
+│   ├── sw.js              # Hybrid Service Worker v1.3.1 for smart caching
 │   ├── css/style.css       # Custom styles with gradients/animations
 │   ├── icons/              # PWA icons (6 SVG files)
 │   │   ├── icon-48x48.svg
@@ -156,13 +161,14 @@ whoami-game/
 │   │   ├── icon-192x192.svg
 │   │   └── icon-512x512.svg
 │   └── js/
-│       ├── game.js         # Landing page logic
+│       ├── game.js         # Landing page logic with avatar rotation
 │       ├── game-room.js    # Game room functionality
 │       ├── translations.js # Localization system
-│       └── pwa.js         # PWA Manager for installation
+│       └── pwa.js         # PWA Manager for updates & browser compatibility
 ├── server.js               # Node.js backend with Socket.IO
+├── game-logic.js           # Extracted game logic functions for testing
 ├── package.json            # Dependencies
-├── tests/                  # Test suites (Jest)
+├── tests/                  # Test suites (Jest) - 184 tests total
 │   ├── game-logic.test.js  # Core game logic tests
 │   ├── api.test.js         # API endpoint tests
 │   ├── character-update.test.js # Simplified character update system tests
@@ -184,7 +190,29 @@ npm test       # Run test suite (184 tests)
 ```
 
 ### 🎯 **Recent Major Updates:**
-- **Room Recreation System** (Latest):
+
+- **PWA Optimization & Browser Extension Compatibility** (Latest):
+  - **Hybrid Caching Strategy**: Network-first for CSS/JS files (immediate updates), cache-first for static assets (performance)
+  - **Browser Extension Fix**: Resolved chrome-extension:// console errors with comprehensive request validation
+  - **Removed Aggressive Install Banner**: No more intrusive blue "Install App" prompts for cleaner UX
+  - **Smart Update System**: Auto-update detection every 30 seconds with user-friendly update notifications
+  - **Extension Compatibility**: Works flawlessly with Chrome, Firefox, Safari, and Edge browser extensions
+  - **Service Worker v1.3.1**: Enhanced caching with protected operations and error handling
+  - **Force Update Capability**: Available via `forceAppUpdate()` console command for developers
+  - **PWA Benefits Preserved**: Offline functionality, fast loading, and installability maintained
+
+- **Avatar Rotation System**:
+  - **Per-Player Random Selection**: Each player gets unique 12 avatars from 60-emoji pool (12 original + 48 new)
+  - **Client-Side Implementation**: Simple, robust approach without complex server synchronization
+  - **Diverse Emoji Pool**: Carefully curated collection with people, animals, objects, and symbols
+  - **No Room Binding**: Each player gets their own random selection for better variety
+
+- **Favicon Implementation**:
+  - **Professional Branding**: Added custom favicon for better browser tab recognition
+  - **Multi-Format Support**: Proper .ico format with HTML meta tag integration
+  - **Cross-Platform**: Works on all browsers and PWA installations
+
+- **Room Recreation System**:
   - **Server Restart Recovery**: Automatic room recreation when players rejoin after server restarts
   - **LocalStorage Persistence**: Game state, players, characters, and progress automatically backed up
   - **Seamless Reconnection**: Players can refresh/rejoin with original IDs and preserved character assignments
@@ -221,15 +249,15 @@ npm test       # Run test suite (184 tests)
 - **Smart Button Logic**: Create/Join buttons intelligently adapt based on room code input
 - **UX Improvements**: Read-only character names during games, better tooltips, flag-based language toggle
 
-### 🎯 **Next Big Goal: Custom Avatars**
-**Priority:** High - Fix critical bugs
-
+### 🎯 **Current Status: Optimization Complete**
+**Priority:** Low - All critical systems working smoothly
 
 ### 🎯 **Future Goals:**
-- "Share" button for link to the room
-- Make the gray sticker (mystery) lighter.
-- How to avoid two players editing the same character at the same time?
-- Avatars rotation
+- **Share button** for link to the room (direct share functionality)
+- **Visual improvements**: Make the gray mystery sticker lighter for better visibility
+- **Concurrent editing protection**: Prevent two players from editing the same character simultaneously
+- **Enhanced mobile UX**: Mobile-friendly confirmations for reveal + restart actions
+- **Advanced features**: Rooms persistence, custom game rules, spectator mode
 
 ## Notes for Claude
 - I learn best with hands-on examples
