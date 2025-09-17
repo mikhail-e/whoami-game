@@ -719,30 +719,8 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
     };
 
     if (isMobile) {
-        // Enhanced mobile focus strategy for reliable virtual keyboard
-        const attemptFocus = () => {
-            // Strategy 1: Immediate focus (works if called directly from user gesture)
-            focusInput();
-
-            // Strategy 2: Short delay for DOM settling
-            setTimeout(() => {
-                if (document.activeElement !== inputElement) {
-                    inputElement.focus();
-                    inputElement.click(); // Fallback: click event can trigger keyboard
-                }
-            }, 50);
-
-            // Strategy 3: Longer delay for stubborn virtual keyboards
-            setTimeout(() => {
-                if (document.activeElement !== inputElement) {
-                    inputElement.focus();
-                    inputElement.setSelectionRange(0, inputElement.value.length);
-                }
-            }, 200);
-        };
-
-        // Use requestAnimationFrame to ensure DOM is ready
-        requestAnimationFrame(attemptFocus);
+        // On mobile, delay focus slightly to avoid keyboard interference
+        setTimeout(focusInput, 100);
     } else {
         focusInput();
     }
@@ -799,28 +777,23 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
         console.log(`⏳ Waiting for server confirmation before updating UI`);
     };
     
-    // Save on Enter
+    // Handle keyboard events (Enter and Escape)
     inputElement.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             e.stopPropagation();
             saveCharacter('enter');
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            // Cancel editing - restore original character or hide input
+            inputElement.value = '';
+            saveCharacter('escape');
         }
     });
 
     // Save on blur (focus loss) for better UX
     inputElement.addEventListener('blur', () => {
         saveCharacter('blur');
-    });
-
-    // Cancel on Escape
-    inputElement.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            e.preventDefault();
-            // Cancel editing - restore original character or hide input
-            inputElement.value = '';
-            saveCharacter('escape');
-        }
     });
 }
 

@@ -159,7 +159,7 @@ When I ask for help, I'm usually looking for:
    - **Empty Character Handling**: Editing a character to empty text returns the sticker to "+" state
    - **Whitespace Protection**: Both empty strings and whitespace-only inputs properly remove character assignments
    - **Real-time Updates**: Character removal triggers immediate UI updates across all players
-   - **Enhanced Mobile Keyboard**: Multi-strategy focus approach for reliable virtual keyboard on mobile devices
+   - **Reliable Mobile Keyboard**: Simple, robust focus handling for consistent virtual keyboard behavior on mobile devices
 
 ### 🏗️ **Project Structure:**
 ```
@@ -213,7 +213,7 @@ npm test       # Run test suite (185 tests)
   - **Avatar Refresh System**: 🔄 button in avatar selector provides unlimited random selections from 60-emoji pool
   - **Smart Mystery Stickers**: Mystery stickers now use player-specific colors instead of generic gray
   - **Empty Character Handling**: Editing character to empty/whitespace automatically returns to "+" state
-  - **Enhanced Mobile Keyboard**: Multi-strategy focus approach for reliable virtual keyboard on smartphones
+  - **Fixed Mobile Keyboard**: Simple, robust focus handling prevents read-only state issues on mobile character editing
   - **Bootstrap Integration**: Refresh button uses clean Bootstrap outline-primary styling
   - **Real-time Character Removal**: Backend properly removes empty characters with immediate UI sync across all players
 
