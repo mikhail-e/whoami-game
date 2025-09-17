@@ -162,10 +162,6 @@ body {
   outline: none;
 }
 
-.character-sticker.mystery-character {
-  background: linear-gradient(45deg, #95a5a6, #7f8c8d);
-  box-shadow: 0 3px 8px rgba(149, 165, 166, 0.3);
-}
 
 .character-sticker.revealed {
   border: 3px solid #f1c40f;

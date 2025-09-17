@@ -506,7 +506,8 @@ function updatePlayersList() {
         if (characterData && isCurrentPlayer && !isRevealed) {
             // Current player with character - show mystery sticker
             const mysterySticker = document.createElement('div');
-            mysterySticker.className = 'character-sticker mystery-character';
+            const stickerColor = player.stickerColor || 'red';
+            mysterySticker.className = `character-sticker color-${stickerColor}`;
             mysterySticker.textContent = '❓';
             if (gameState === 'started') {
                 mysterySticker.title = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('yourCharacterClickReveal') : 'Your character - click to reveal!';
@@ -711,7 +712,7 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
     // Track when this edit started (for smart preservation)
     stickerElement.dataset.editStartTime = Date.now().toString();
 
-    // Mobile-specific: delay focus to avoid virtual keyboard issues
+    // Enhanced mobile keyboard handling
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     const focusInput = () => {
@@ -729,8 +730,30 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
     };
 
     if (isMobile) {
-        // On mobile, delay focus slightly to avoid keyboard interference
-        setTimeout(focusInput, 100);
+        // Enhanced mobile focus strategy for reliable virtual keyboard
+        const attemptFocus = () => {
+            // Strategy 1: Immediate focus (works if called directly from user gesture)
+            focusInput();
+
+            // Strategy 2: Short delay for DOM settling
+            setTimeout(() => {
+                if (document.activeElement !== inputElement) {
+                    inputElement.focus();
+                    inputElement.click(); // Fallback: click event can trigger keyboard
+                }
+            }, 50);
+
+            // Strategy 3: Longer delay for stubborn virtual keyboards
+            setTimeout(() => {
+                if (document.activeElement !== inputElement) {
+                    inputElement.focus();
+                    inputElement.setSelectionRange(0, inputElement.value.length);
+                }
+            }, 200);
+        };
+
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(attemptFocus);
     } else {
         focusInput();
     }
