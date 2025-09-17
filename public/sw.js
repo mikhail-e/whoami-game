@@ -1,7 +1,7 @@
 // Who am I? Game - Service Worker
 // Hybrid PWA service worker with smart caching strategies
 
-const CACHE_NAME = 'whoami-game-v1.3.0';
+const CACHE_NAME = 'whoami-game-v1.3.1';
 const CACHE_VERSION = Date.now(); // For cache busting critical files
 
 // Static assets that benefit from cache-first strategy
@@ -75,16 +75,46 @@ function isStaticAsset(url) {
     return staticAssets.some(asset => url.includes(asset.replace('/', '')));
 }
 
+// Helper function to check if request is cacheable (avoid browser extension errors)
+function isCacheableRequest(request) {
+    const url = new URL(request.url);
+
+    // Skip non-HTTP(S) schemes (chrome-extension, moz-extension, etc.)
+    if (!url.protocol.startsWith('http')) {
+        return false;
+    }
+
+    // Skip if request is not from same origin and not a known external resource
+    const isFromSameOrigin = url.origin === self.location.origin;
+    const isKnownExternal = url.hostname.includes('cdn.jsdelivr.net');
+
+    if (!isFromSameOrigin && !isKnownExternal) {
+        return false;
+    }
+
+    // Skip requests with unusual schemes or protocols
+    const unsupportedSchemes = ['chrome-extension', 'moz-extension', 'safari-extension', 'webkit-extension', 'file'];
+    if (unsupportedSchemes.some(scheme => request.url.startsWith(scheme))) {
+        return false;
+    }
+
+    return true;
+}
+
 // Network-first strategy for dynamic assets (immediate updates)
 async function networkFirstStrategy(request) {
     try {
         console.log('Network-first for dynamic asset:', request.url);
         const response = await fetch(request);
 
-        // Cache successful responses
-        if (response && response.status === 200) {
-            const cache = await caches.open(CACHE_NAME);
-            cache.put(request, response.clone());
+        // Cache successful responses only if request is cacheable
+        if (response && response.status === 200 && isCacheableRequest(request)) {
+            try {
+                const cache = await caches.open(CACHE_NAME);
+                cache.put(request, response.clone());
+            } catch (cacheError) {
+                console.warn('Failed to cache response:', request.url, cacheError);
+            }
         }
 
         return response;
@@ -109,10 +139,14 @@ async function cacheFirstStrategy(request) {
     console.log('Fetching static asset from network:', request.url);
     const response = await fetch(request);
 
-    // Cache successful responses
-    if (response && response.status === 200) {
-        const cache = await caches.open(CACHE_NAME);
-        cache.put(request, response.clone());
+    // Cache successful responses only if request is cacheable
+    if (response && response.status === 200 && isCacheableRequest(request)) {
+        try {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(request, response.clone());
+        } catch (cacheError) {
+            console.warn('Failed to cache response:', request.url, cacheError);
+        }
     }
 
     return response;
@@ -122,6 +156,12 @@ async function cacheFirstStrategy(request) {
 self.addEventListener('fetch', (event) => {
     // Skip non-GET requests
     if (event.request.method !== 'GET') {
+        return;
+    }
+
+    // Skip non-cacheable requests (browser extensions, file://, etc.)
+    if (!isCacheableRequest(event.request)) {
+        console.log('Skipping non-cacheable request:', event.request.url);
         return;
     }
 
