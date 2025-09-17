@@ -83,15 +83,21 @@ class PWAManager {
 
         const updateBanner = document.createElement('div');
         updateBanner.className = 'alert alert-warning alert-dismissible fade show';
+
+        // Get localized text (fallback to English if i18n not available)
+        const updateAvailableText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('updateAvailable') : '🆕 Update Available!';
+        const updateDescriptionText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('updateDescription') : 'A new version of the app is ready. Reload to get the latest features.';
+        const updateNowText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('updateNow') : 'Update Now';
+
         updateBanner.innerHTML = `
             <div class="d-flex align-items-center">
                 <div class="flex-grow-1">
-                    <strong>🆕 Update Available!</strong><br>
-                    <small>A new version of the app is ready. Reload to get the latest features.</small>
+                    <strong>${updateAvailableText}</strong><br>
+                    <small>${updateDescriptionText}</small>
                 </div>
                 <div class="ms-3">
                     <button type="button" class="btn btn-warning btn-sm" onclick="window.location.reload()">
-                        Update Now
+                        ${updateNowText}
                     </button>
                 </div>
             </div>

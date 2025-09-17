@@ -138,7 +138,12 @@ const translations = {
         // Dynamic UI updates
         roomCodeJoining: "Room Code (joining game)",
         clearRoomCodeToCreate: "Clear room code to create a new game",
-        creating: "Creating..."
+        creating: "Creating...",
+
+        // PWA messages
+        updateAvailable: "🆕 Update Available!",
+        updateDescription: "A new version of the app is ready. Reload to get the latest features.",
+        updateNow: "Update Now"
     },
     
     ru: {
@@ -278,7 +283,12 @@ const translations = {
         // Dynamic UI updates
         roomCodeJoining: "Код комнаты (присоединение к игре)",
         clearRoomCodeToCreate: "Очистите код комнаты для создания новой игры",
-        creating: "Создание..."
+        creating: "Создание...",
+
+        // PWA messages
+        updateAvailable: "🆕 Доступно обновление!",
+        updateDescription: "Новая версия приложения готова. Перезагрузите, чтобы получить последние функции.",
+        updateNow: "Обновить сейчас"
     }
 };
 
