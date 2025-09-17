@@ -58,6 +58,10 @@ When I ask for help, I'm usually looking for:
 
 ## Current Project Status
 
+### Production environment
+- **Production URL** https://whoami-game.onrender.com/
+- **Publishing service** Render.com
+
 ### ✅ **What's Working:**
 - **Complete landing page** with avatar selection and room creation/joining
 - **Real-time game rooms** with Socket.IO

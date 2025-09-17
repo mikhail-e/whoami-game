@@ -19,7 +19,9 @@
       "Bash(npx jest:*)",
       "Bash(jest --clearCache)",
       "Bash(kill:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebFetch(domain:stackoverflow.com)",
+      "Bash(/bashes)"
     ],
     "deny": [],
     "ask": []
