@@ -8,7 +8,15 @@ const gameLogic = require('./game-logic');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+    pingTimeout: 120000,      // 2 minutes - how long to wait for ping response
+    pingInterval: 30000,      // 30 seconds - how often to send pings
+    connectTimeout: 45000,    // 45 seconds - initial connection timeout
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -16,20 +24,51 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // Store games in memory for now (will move to files later)
 const games = new Map();
 
+// Track socket connections for better disconnect handling
+const socketPlayerMap = new Map(); // socketId -> { gameId, playerId }
+const playerSocketMap = new Map(); // playerId -> socketId
+
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Handle game room URLs - serve game page for /game/ROOMCODE
 app.get('/game/:roomCode', (req, res) => {
     const roomCode = req.params.roomCode.toUpperCase();
-    
-    // Check if game exists
+
+    // Check if game exists in memory
     if (games.has(roomCode)) {
         res.sendFile(path.join(__dirname, 'public', 'game.html'));
-    } else {
-        // Redirect to home with error
-        res.redirect('/?error=room-not-found');
+        return;
     }
+
+    // Try to restore game from disk
+    try {
+        const filePath = path.join(gamesDir, `${roomCode}.json`);
+        if (fs.existsSync(filePath)) {
+            const gameState = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            console.log(`🔄 Restoring game ${roomCode} from disk for room access`);
+
+            // Restore game to memory
+            const restoredGame = {
+                id: gameState.id,
+                players: gameState.players || [],
+                characters: new Map(Object.entries(gameState.characters || {})),
+                state: gameState.state || 'waiting',
+                revealedPlayers: new Set(gameState.revealedPlayers || []),
+                created: new Date(gameState.created),
+                restoredAt: new Date()
+            };
+
+            games.set(roomCode, restoredGame);
+            res.sendFile(path.join(__dirname, 'public', 'game.html'));
+            return;
+        }
+    } catch (error) {
+        console.error(`❌ Failed to restore game ${roomCode} from disk:`, error);
+    }
+
+    // Game not found in memory or disk
+    res.redirect('/?error=room-not-found');
 });
 
 // API endpoint to create a new game
@@ -106,9 +145,17 @@ app.post('/api/recreate-game', express.json(), (req, res) => {
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
     
-    socket.on('join-room', (gameId) => {
+    socket.on('join-room', (data) => {
+        const { gameId, playerId } = data;
         socket.join(gameId);
         console.log(`User ${socket.id} joined room ${gameId}`);
+
+        // Track socket-player relationship
+        if (playerId) {
+            socketPlayerMap.set(socket.id, { gameId, playerId });
+            playerSocketMap.set(playerId, socket.id);
+            console.log(`📍 Tracking connection: ${socket.id} → Player ${playerId} in game ${gameId}`);
+        }
         
         // Send current game state to the user
         if (games.has(gameId)) {
@@ -212,6 +259,34 @@ io.on('connection', (socket) => {
     
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
+
+        // Look up player information for this socket
+        const playerInfo = socketPlayerMap.get(socket.id);
+        if (playerInfo) {
+            const { gameId, playerId } = playerInfo;
+            console.log(`🔌 Player ${playerId} disconnected from game ${gameId}`);
+
+            // Mark player as disconnected but keep them in the game
+            if (games.has(gameId)) {
+                const game = games.get(gameId);
+                const player = game.players.find(p => p.id === playerId);
+                if (player) {
+                    player.isConnected = false;
+                    player.disconnectedAt = Date.now();
+                    console.log(`⏰ Player ${playerId} marked as disconnected at ${new Date().toISOString()}`);
+
+                    // Notify other players about the disconnection
+                    socket.to(gameId).emit('player-disconnected', {
+                        playerId: playerId,
+                        playerName: player.name
+                    });
+                }
+            }
+
+            // Clean up tracking maps
+            socketPlayerMap.delete(socket.id);
+            playerSocketMap.delete(playerId);
+        }
     });
 });
 
@@ -230,3 +305,83 @@ const gamesDir = path.join(__dirname, 'games');
 if (!fs.existsSync(gamesDir)) {
     fs.mkdirSync(gamesDir);
 }
+
+// Clean up old game files (older than 4 hours)
+function cleanupOldGameFiles() {
+    try {
+        const files = fs.readdirSync(gamesDir);
+        const fourHoursAgo = Date.now() - (4 * 60 * 60 * 1000); // 4 hours in milliseconds
+        let removedCount = 0;
+
+        for (const file of files) {
+            if (file.endsWith('.json')) {
+                const filePath = path.join(gamesDir, file);
+                const stats = fs.statSync(filePath);
+
+                if (stats.mtime.getTime() < fourHoursAgo) {
+                    const roomCode = file.replace('.json', '');
+
+                    // Only remove if game is not currently active in memory
+                    if (!games.has(roomCode)) {
+                        fs.unlinkSync(filePath);
+                        removedCount++;
+                        console.log(`🗑️ Removed old game file: ${file} (${Math.round((Date.now() - stats.mtime.getTime()) / (60 * 60 * 1000))} hours old)`);
+                    } else {
+                        console.log(`🔒 Keeping old game file: ${file} (game still active in memory)`);
+                    }
+                }
+            }
+        }
+
+        if (removedCount > 0) {
+            console.log(`🧹 Cleanup complete: removed ${removedCount} old game files`);
+        } else {
+            console.log(`✨ Cleanup complete: no old files to remove`);
+        }
+    } catch (error) {
+        console.error(`❌ Failed to cleanup old game files:`, error);
+    }
+}
+
+// Keep-alive functionality for active games
+function keepGamesAlive() {
+    for (const [gameId, game] of games.entries()) {
+        // Only keep alive games that have connected players
+        const connectedPlayers = game.players.filter(p => p.isConnected).length;
+
+        if (connectedPlayers > 0) {
+            console.log(`🔄 Keep-alive: Game ${gameId} has ${connectedPlayers} connected players`);
+
+            // Save game state to disk as backup
+            const gameState = {
+                id: gameId,
+                players: game.players,
+                characters: Object.fromEntries(game.characters || new Map()),
+                state: game.state,
+                revealedPlayers: Array.from(game.revealedPlayers || new Set()),
+                created: game.created,
+                lastKeepAlive: new Date().toISOString()
+            };
+
+            try {
+                const filePath = path.join(gamesDir, `${gameId}.json`);
+                fs.writeFileSync(filePath, JSON.stringify(gameState, null, 2));
+                console.log(`💾 Game ${gameId} state saved to disk`);
+            } catch (error) {
+                console.error(`❌ Failed to save game ${gameId} to disk:`, error);
+            }
+        } else {
+            console.log(`⏳ Game ${gameId} has no connected players, keeping in memory`);
+        }
+    }
+
+    // Clean up old files after keep-alive
+    cleanupOldGameFiles();
+}
+
+// Run keep-alive every 5 minutes
+const KEEP_ALIVE_INTERVAL = 5 * 60 * 1000; // 5 minutes
+setInterval(keepGamesAlive, KEEP_ALIVE_INTERVAL);
+
+// Initial keep-alive after 1 minute
+setTimeout(keepGamesAlive, 60 * 1000);

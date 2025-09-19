@@ -102,7 +102,10 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
     if (existingPlayer) {
         // Player reconnecting - update their connection status
         existingPlayer.connected = true;
+        existingPlayer.isConnected = true;
+        existingPlayer.connectedAt = Date.now();
         existingPlayer.avatar = avatar; // Allow avatar update
+        delete existingPlayer.disconnectedAt; // Clear disconnect timestamp
         player = existingPlayer;
     } else {
         // Assign unique sticker color for new player
@@ -115,7 +118,9 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
             name: playerName,
             avatar: avatar,
             connected: true,
+            isConnected: true,
             joinedAt: new Date(),
+            connectedAt: Date.now(),
             stickerColor: stickerColor
         };
 

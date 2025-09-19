@@ -162,6 +162,16 @@ When I ask for help, I'm usually looking for:
    - **Real-time Updates**: Character removal triggers immediate UI updates across all players
    - **Reliable Mobile Keyboard**: Simple, robust focus handling for consistent virtual keyboard behavior on mobile devices
 
+13. **Timeout Protection System:**
+   - **Extended Socket.IO Timeouts**: 2-minute ping timeout, 30-second ping interval, 45-second connect timeout
+   - **Player State Management**: Players marked as disconnected rather than removed, allowing graceful reconnection
+   - **Connection Tracking**: Socket-to-player mapping with `isConnected`, `connectedAt`, `disconnectedAt` properties
+   - **Server Keep-Alive**: Automatic game state backup to disk every 5 minutes for active games
+   - **Game Restoration**: Automatic game recovery from disk when accessing room URLs after server restart
+   - **File Cleanup**: Automatic removal of game files older than 4 hours (protects active games)
+   - **Render.com Protection**: Prevents app hibernation through periodic activity and state persistence
+   - **Network Resilience**: Extended timeouts accommodate slow networks and temporary disconnections
+
 ### 🏗️ **Project Structure:**
 ```
 whoami-game/
@@ -187,11 +197,12 @@ whoami-game/
 ├── server.js               # Node.js backend with Socket.IO
 ├── game-logic.js           # Extracted game logic functions for testing
 ├── package.json            # Dependencies
-├── tests/                  # Test suites (Jest) - 184 tests total
+├── tests/                  # Test suites (Jest) - 220 tests total
 │   ├── game-logic.test.js  # Core game logic tests
 │   ├── api.test.js         # API endpoint tests
 │   ├── character-update.test.js # Simplified character update system tests
 │   ├── character-race-condition.test.js # Race condition prevention tests
+│   ├── timeout-protection.test.js # Socket.IO timeout and keep-alive tests
 │   ├── start-game-button.test.js # Start Game button behavior tests
 │   ├── blur-event.test.js  # Character input blur event tests
 │   ├── improved-sticker-colors.test.js # Fixed and unique color assignment tests
@@ -210,7 +221,15 @@ npm test       # Run test suite (185 tests)
 
 ### 🎯 **Recent Major Updates:**
 
-- **Enhanced UX Features** (Latest):
+- **Timeout Protection System** (Latest):
+  - **Extended Socket.IO Configuration**: 2-minute ping timeout, 30-second intervals, 45-second connect timeout
+  - **Player State Management**: Graceful disconnect handling with reconnection support instead of removal
+  - **Server Keep-Alive**: Automatic game state backup to disk every 5 minutes for active games
+  - **Game Restoration**: Automatic recovery from disk when accessing room URLs after server restart
+  - **File Cleanup**: Smart removal of game files older than 4 hours (protects active games)
+  - **Render.com Protection**: Prevents hosting platform timeouts through periodic activity and persistence
+  - **Comprehensive Testing**: Added 14 new tests for timeout protection (220 total tests)
+- **Enhanced UX Features**:
   - **Avatar Refresh System**: 🔄 button in avatar selector provides unlimited random selections from 60-emoji pool
   - **Smart Mystery Stickers**: Mystery stickers now use player-specific colors instead of generic gray
   - **Empty Character Handling**: Editing character to empty/whitespace automatically returns to "+" state

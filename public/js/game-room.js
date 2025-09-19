@@ -151,8 +151,11 @@ function initializeSocket(roomCode) {
 
         // First join the game via API, then join the socket room
         joinGameRoom(roomCode).then(() => {
-            // Join the socket room after successful API join
-            socket.emit('join-room', roomCode);
+            // Join the socket room after successful API join with player ID
+            socket.emit('join-room', {
+                gameId: roomCode,
+                playerId: currentPlayer.id
+            });
         }).catch((error) => {
             console.error('Failed to join game via API:', error);
         });
