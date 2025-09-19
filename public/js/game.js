@@ -61,6 +61,17 @@ function populateAvatars(avatars) {
     avatarSelector.appendChild(refreshButton);
 }
 
+// Mobile debugging - add global error handler
+window.addEventListener('error', (e) => {
+    console.error('Global JS Error:', {
+        message: e.message,
+        filename: e.filename,
+        lineno: e.lineno,
+        colno: e.colno,
+        error: e.error
+    });
+});
+
 // Avatar selection handling
 document.addEventListener('DOMContentLoaded', function() {
     const avatarSelector = document.getElementById('avatarSelector');
@@ -189,6 +200,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Create new game button
     if (createNewGameBtn) {
         createNewGameBtn.addEventListener('click', function() {
+            console.log('🎮 Create New Game button clicked!');
+            console.log('Button element:', createNewGameBtn);
+            console.log('Button disabled:', createNewGameBtn.disabled);
+
             const playerName = document.getElementById('playerName').value.trim();
             const selectedAvatar = selectedAvatarInput.value;
             
@@ -258,10 +273,14 @@ document.addEventListener('DOMContentLoaded', function() {
     async function createGame(playerData) {
         try {
             console.log('Creating game with player data:', playerData);
+            console.log('Attempting fetch to:', window.location.origin + '/api/create-game');
 
-            const response = await fetch('/api/create-game', {
+            const response = await fetch(`${window.location.origin}/api/create-game`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
                 body: JSON.stringify({})
             });
             
@@ -288,6 +307,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('Error creating game:', error);
+            console.error('Error details:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+                cause: error.cause
+            });
+            console.error('Network info:', {
+                online: navigator.onLine,
+                userAgent: navigator.userAgent,
+                origin: window.location.origin
+            });
             handleApiError(error, 'creating game');
             resetCreateButton();
         }
