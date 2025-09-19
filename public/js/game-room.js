@@ -1,5 +1,6 @@
 // Who am I? Game Room - Frontend JavaScript
 
+
 let socket;
 let currentGame = null;
 let currentPlayer = null;
@@ -29,21 +30,20 @@ function saveGameStateToStorage() {
     };
 
     const storageKey = `whoami-game-${currentGame.id}`;
-    localStorage.setItem(storageKey, JSON.stringify(gameState));
+    Storage.set(storageKey, gameState);
     console.log('💾 Game state saved to localStorage:', storageKey);
 }
 
 function loadGameStateFromStorage(roomCode) {
     const storageKey = `whoami-game-${roomCode}`;
-    const savedState = localStorage.getItem(storageKey);
+    const gameState = Storage.get(storageKey);
 
-    if (!savedState) {
+    if (!gameState) {
         console.log('📭 No saved game state found for room:', roomCode);
         return null;
     }
 
     try {
-        const gameState = JSON.parse(savedState);
         console.log('📂 Loaded game state from localStorage:', gameState);
         return gameState;
     } catch (error) {
@@ -54,7 +54,7 @@ function loadGameStateFromStorage(roomCode) {
 
 function clearGameStateFromStorage(roomCode) {
     const storageKey = `whoami-game-${roomCode}`;
-    localStorage.removeItem(storageKey);
+    Storage.remove(storageKey);
     console.log('🗑️ Cleared game state from localStorage:', storageKey);
 }
 
@@ -89,7 +89,7 @@ async function recreateRoomFromStorage(roomCode, savedGameState) {
 
     } catch (error) {
         console.error('❌ Error recreating room:', error);
-        alert(`${(typeof i18n !== 'undefined' && i18n) ? i18n.getText('failedRecoverGame') : 'Failed to recover game'}: ${error.message}. ${(typeof i18n !== 'undefined' && i18n) ? i18n.getText('pleaseCreateNewRoom') : 'Please create a new room.'}`);
+        alert(`${getText('failedRecoverGame', 'Failed to recover game')}: ${error.message}. ${getText('pleaseCreateNewRoom', 'Please create a new room.')}`);
         window.location.href = '/';
     }
 }
@@ -100,21 +100,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const roomCode = urlPath.split('/').pop();
     
     if (!roomCode || roomCode.length !== 6) {
-        alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('invalidRoomCode') : 'Invalid room code');
+        alert(getText('invalidRoomCode', 'Invalid room code'));
         window.location.href = '/';
         return;
     }
 
     // Get player data from session storage
-    const playerDataStr = sessionStorage.getItem('playerData');
-    if (!playerDataStr) {
+    const playerData = Storage.session.get('playerData');
+    if (!playerData) {
         // If no player data, redirect to landing page with room code pre-filled
         window.location.href = `/?join=${roomCode}`;
         return;
     }
 
-    currentPlayer = JSON.parse(playerDataStr);
-    console.log('Loaded player data from session storage:', currentPlayer);
+    // Always use the global player ID - ignore any ID from sessionStorage
+    currentPlayer = {
+        id: PLAYER_ID,
+        name: playerData.name,
+        avatar: playerData.avatar,
+        roomCode: playerData.roomCode
+    };
+
+    console.log('Using global player ID:', PLAYER_ID);
     
     // Initialize the game room
     initializeGameRoom(roomCode);
@@ -259,7 +266,7 @@ function initializeSocket(roomCode) {
             updateGameDisplay();
 
             // Show a success message
-            showNotification((typeof i18n !== 'undefined' && i18n) ? i18n.getText('gameRestarted') : '🔄 Game restarted! Character assignments cleared.', 'success');
+            showNotification(getText('gameRestarted', '🔄 Game restarted! Character assignments cleared.'), 'success');
         }
     });
 
@@ -271,12 +278,7 @@ function initializeSocket(roomCode) {
         const playerName = data.playerName;
         const character = data.character;
 
-        let message;
-        if (typeof i18n !== 'undefined' && i18n) {
-            message = i18n.getText('playerRevealedNotification', { playerName, character });
-        } else {
-            message = `🎭 ${playerName} revealed their character: "${character}"`;
-        }
+        const message = getText('playerRevealedNotification', `🎭 ${playerName} revealed their character: "${character}"!`, { playerName, character });
 
         showNotification(message, 'warning');
     });
@@ -301,10 +303,12 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
             avatar: currentPlayer.avatar
         };
 
-        // Only include playerId if it exists (for reconnection)
-        if (currentPlayer.id) {
-            requestBody.playerId = currentPlayer.id;
+        // Ensure we always have a player ID
+        if (!currentPlayer.id) {
+            console.log('⚠️ Player ID missing, using shared ID...');
+            currentPlayer.id = PLAYER_ID;
         }
+        requestBody.playerId = currentPlayer.id;
         console.log('Sending request body:', requestBody);
         
         const response = await fetch('/api/join-game', {
@@ -331,7 +335,7 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
                 roomCode: currentGame.id,
                 id: currentPlayer.id
             };
-            sessionStorage.setItem('playerData', JSON.stringify(playerData));
+            Storage.session.set('playerData', playerData);
 
             // Save game state to localStorage for recovery
             saveGameStateToStorage();
@@ -347,7 +351,7 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
                 // Validate room code format before recreation attempt
                 if (!roomCode || roomCode.length !== 6 || !/^[A-Z0-9]{6}$/.test(roomCode)) {
                     console.log('❌ Invalid room code format, cannot recreate');
-                    alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('invalidRoomCodeFormat') : 'Invalid room code format');
+                    alert(getText('invalidRoomCodeFormat', 'Invalid room code format'));
                     window.location.href = '/';
                     return;
                 }
@@ -361,12 +365,12 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
                 }
             }
 
-            alert(result.error || ((typeof i18n !== 'undefined' && i18n) ? i18n.getText('failedJoinGame') : 'Failed to join game'));
+            alert(result.error || getText('failedJoinGame', 'Failed to join game'));
             window.location.href = '/';
         }
     } catch (error) {
         console.error('Error joining game:', error);
-        alert(`Connection error: ${error.message}. ${(typeof i18n !== 'undefined' && i18n) ? i18n.getText('connectionErrorTryAgain') : 'Please try again.'}`);
+        handleApiError(error, 'joining game room');
         window.location.href = '/';
     }
 }
@@ -398,7 +402,7 @@ function updateGameDisplay() {
         const restartButton = document.getElementById('restartGame');
         const restartButtonMobile = document.getElementById('restartGameMobile');
         
-        const statusText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('gameInProgress') : 'Game in progress - Click your mystery sticker to reveal!';
+        const statusText = getText('gameInProgress', 'Game in progress - Click your mystery sticker to reveal!');
         if (gameStatus) gameStatus.textContent = statusText;
         if (gameStatusMobile) gameStatusMobile.textContent = statusText;
         
@@ -429,11 +433,11 @@ function updateGameDisplay() {
         
         let statusText;
         if (currentGame.players.length < 2) {
-            statusText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('needPlayers') : 'Need at least 2 players to start';
+            statusText = getText('needPlayers', 'Need at least 2 players to start');
         } else if (!allPlayersHaveCharacters) {
-            statusText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('assignCharacters') : 'Assign characters to all players before starting!';
+            statusText = getText('assignCharacters', 'Assign characters to all players before starting!');
         } else {
-            statusText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('readyToPlay') : 'Ready to play!';
+            statusText = getText('readyToPlay', 'Ready to play!');
         }
         
         if (statusEl) statusEl.textContent = statusText;
@@ -461,7 +465,7 @@ function updatePlayersList() {
     const playerListEl = document.getElementById('playerList');
 
     if (!currentGame || !currentGame.players) {
-        playerListEl.innerHTML = `<p class="text-muted">${(typeof i18n !== 'undefined' && i18n) ? i18n.getText('noPlayersYet') : 'No players yet'}</p>`;
+        playerListEl.innerHTML = `<p class="text-muted">${getText('noPlayersYet', 'No players yet')}</p>`;
         return;
     }
 
@@ -496,7 +500,7 @@ function updatePlayersList() {
         if (isRevealed) playerCard.classList.add('bg-warning', 'bg-opacity-25');
 
         // Basic player info
-        const youText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('you') : 'You';
+        const youText = getText('you', 'You');
         playerCard.innerHTML = `
             <div class="player-avatar">${player.avatar}</div>
             <div class="player-name">${player.name}${isCurrentPlayer ? ` (<strong>${youText}</strong>)` : ''}</div>
@@ -510,14 +514,14 @@ function updatePlayersList() {
             mysterySticker.className = `character-sticker color-${stickerColor}`;
             mysterySticker.textContent = '❓';
             if (gameState === 'started') {
-                mysterySticker.title = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('yourCharacterClickReveal') : 'Your character - click to reveal!';
+                mysterySticker.title = getText('yourCharacterClickReveal', 'Your character - click to reveal!');
                 mysterySticker.style.cursor = 'pointer';
                 mysterySticker.addEventListener('click', (e) => {
                     e.stopPropagation();
                     showRevealModal();
                 });
             } else {
-                mysterySticker.title = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('yourCharacterHidden') : 'Your character is hidden from you!';
+                mysterySticker.title = getText('yourCharacterHidden', 'Your character is hidden from you!');
             }
             playerCard.appendChild(mysterySticker);
 
@@ -528,8 +532,8 @@ function updatePlayersList() {
             revealedSticker.className = `character-sticker color-${stickerColor} revealed`;
             revealedSticker.textContent = characterData.character;
             revealedSticker.title = isCurrentPlayer ?
-                ((typeof i18n !== 'undefined' && i18n) ? i18n.getText('yourRevealedCharacter') : 'Your revealed character') :
-                ((typeof i18n !== 'undefined' && i18n) ? i18n.getText('characterRevealedByPlayer') : 'Character revealed by player');
+                getText('yourRevealedCharacter', 'Your revealed character') :
+                getText('characterRevealedByPlayer', 'Character revealed by player');
             playerCard.appendChild(revealedSticker);
 
         } else if (characterData && !isCurrentPlayer) {
@@ -557,21 +561,15 @@ function updatePlayersList() {
             const addButton = document.createElement('div');
             addButton.className = 'add-character-btn';
             addButton.innerHTML = '+';
-            addButton.title = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('assignCharacter') : 'Assign character';
+            addButton.title = getText('assignCharacter', 'Assign character');
             addButton.addEventListener('click', (e) => {
                 e.stopPropagation();
                 addCharacter(player.id, addButton);
             });
             playerCard.appendChild(addButton);
 
-        } else {
-            // Current player with no character - show placeholder
-            const placeholder = document.createElement('div');
-            placeholder.className = 'character-placeholder';
-            placeholder.innerHTML = '❓';
-            placeholder.title = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('someoneNeedsToAssign') : 'Someone needs to assign you a character!';
-            playerCard.appendChild(placeholder);
         }
+        // Current player with no character - show nothing (clean look)
 
         playerListEl.appendChild(playerCard);
     });
@@ -802,7 +800,7 @@ function setupEventListeners() {
         
         const btn = document.getElementById('copyLink');
         const originalText = btn.textContent;
-        btn.textContent = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('copiedSuccess') : '✅ Copied!';
+        btn.textContent = getText('copiedSuccess', '✅ Copied!');
         setTimeout(() => {
             btn.textContent = originalText;
         }, 2000);
@@ -908,23 +906,3 @@ function showRevealModal() {
 }
 
 // Function to show notification messages
-function showNotification(message, type = 'info') {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
-    notification.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    // Add to page
-    document.body.appendChild(notification);
-    
-    // Auto-remove after 4 seconds
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.remove();
-        }
-    }, 4000);
-}

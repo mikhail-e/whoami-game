@@ -33,6 +33,7 @@ When I ask for help, I'm usually looking for:
 - **File organization:** Suggest how to organize my files and folders
 - **Simple solutions:** Prefer straightforward approaches over complex ones
 - **Use unit and integration tests:** Create and update tests to keep things working
+- **Prevent code duplication:** Never copy-paste the same code in different files. Always keep code in utils.js
 
 ## Technologies I'm Using
 - **HTML5** - Structure and content
@@ -282,6 +283,7 @@ npm test       # Run test suite (185 tests)
 - **Share button** for link to the room (direct share functionality)
 - **Visual improvements**: Make the gray mystery sticker lighter for better visibility
 - **Concurrent editing protection**: Prevent two players from editing the same character simultaneously
+- **Players with the same names**: support room where two or more players have the same name
 - **Advanced features**: Rooms persistence, custom game rules, spectator mode
 
 ## Notes for Claude
@@ -291,3 +293,4 @@ npm test       # Run test suite (185 tests)
 - Break complex tasks into small, clear steps
 - Always show me where to put new code in my existing files
 - Update tests each time the logic is changed
+- Never copy-paste the same code in different files. Always keep code in utils.js

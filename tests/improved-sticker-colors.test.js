@@ -204,8 +204,8 @@ describe('Improved Sticker Colors System', () => {
             const originalPlayerId = player1Result.player.id;
             const originalColor = player1Result.player.stickerColor;
 
-            // Simulate player reconnection by name matching
-            const reconnectResult = addPlayerToGame(games, gameId, 'Alice', '😀');
+            // Simulate player reconnection by providing player ID
+            const reconnectResult = addPlayerToGame(games, gameId, 'Alice', '😀', originalPlayerId);
 
             expect(reconnectResult.success).toBe(true);
             expect(reconnectResult.isNewPlayer).toBe(false);

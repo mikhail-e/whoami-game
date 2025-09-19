@@ -81,10 +81,10 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
     const game = games.get(gameId);
 
     // Check if player is already in the game (reconnection)
-    // First try to match by ID if provided, otherwise fall back to name matching
+    // Only match by ID - never by name to support duplicate names
     const existingPlayer = playerId
         ? game.players.find(p => p.id === playerId)
-        : game.players.find(p => p.name.toLowerCase().trim() === playerName.toLowerCase().trim());
+        : null;
 
     // Check if game has already started (only allow existing players to reconnect)
     if (game.state === 'started' && !existingPlayer) {
@@ -108,9 +108,10 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
         // Assign unique sticker color for new player
         const stickerColor = assignUniqueColor(game.players);
 
-        // New player joining
+        // New player joining - use provided playerId if valid, otherwise generate one
+        const isValidUUID = playerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(playerId);
         player = {
-            id: uuidv4(),
+            id: isValidUUID ? playerId : uuidv4(),
             name: playerName,
             avatar: avatar,
             connected: true,

@@ -3,13 +3,13 @@
 // Avatar pool - 60 emojis total (12 original + 48 new)
 const avatarPool = [
     // Original 12 avatars
-    '😀', '😎', '🤖', '🐱', '🌟', '🚀', '🎮', '🎨', '🍕', '🦄', '🐢', '⚡',
+    '🐌', '🐧', '🤖', '🐱', '🐣', '🐝', '🐺', '🐴', '🍕', '🦄', '🐢', '🦋',
 
     // 48 new avatars - diverse, fun, and appropriate selection
-    '😊', '🤩', '😇', '🤗', '🥳', '🧐', '🤓', '😋', '🥰', '😆', '🤪', '🥸',
-    '👻', '🎃', '🤡', '👾', '🤠', '🥷', '👸', '🧙', '🧚', '🦸', '🧛', '👑',
+    '🐰', '🐮', '🐽', '🐷', '🐻', '🐦‍⬛', '🦖', '🦕', '🐳', '🦧', '🦣', '🐉',
+    '👻', '🎃', '🤡', '👾', '🐲', '🥷', '👸', '🧙', '🧚', '🦸', '🧛', '👑',
     '🐶', '🐭', '🐹', '🐰', '🦊', '🐼', '🐨', '🐯', '🦁', '🐸', '🐵', '🦉',
-    '🌈', '🔥', '💎', '🎯', '🎪', '🎭', '🎺', '🎸', '🎲', '🎳', '⚽', '🏀'
+    '🌈', '🔥', '🍈', '🎯', '🎪', '🧜‍♀️', '🎺', '🎸', '🎲', '🎳', '⚽', '🏀'
 ];
 
 // Function to select 12 random avatars from the pool
@@ -69,6 +69,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const createNewGameBtn = document.getElementById('createNewGame');
     const roomCodeInput = document.getElementById('roomCode');
 
+    // Player ID is already initialized by player-id.js
+
     // Initialize with random avatars - each player gets their own unique set
     populateAvatars(selectRandomAvatars());
 
@@ -79,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle errors
     if (errorParam === 'room-not-found') {
-        showError((typeof i18n !== 'undefined' && i18n) ? i18n.getText('roomNotFound') : 'Room not found. Please check the room code and try again.');
+        showError(getText('roomNotFound', 'Room not found. Please check the room code and try again.'));
     }
     
     if (joinRoomCode && roomCodeInput) {
@@ -92,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update the form text to indicate joining
         const formLabel = document.querySelector('label[for="roomCode"]');
         if (formLabel) {
-            formLabel.textContent = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('roomCodeJoining') : 'Room Code (joining game)';
+            formLabel.textContent = getText('roomCodeJoining', 'Room Code (joining game)');
         }
 
         // Enable Join button since room code is pre-filled
@@ -105,33 +107,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Show helpful message - will be localized after i18n is loaded
         setTimeout(() => {
-            if (typeof i18n !== 'undefined' && i18n) {
-                showInfo(`${i18n.getText('readyToJoin')} ${joinRoomCode.toUpperCase()}. ${i18n.getText('enterNameAvatar')}`);
-            }
+            const message = `${getText('readyToJoin', 'Ready to join')} ${joinRoomCode.toUpperCase()}. ${getText('enterNameAvatar', 'Enter your name and choose an avatar.')}`;
+            showInfo(message);
         }, 100);
     }
     
-    // Function to show error messages
-    function showError(message) {
-        const alertDiv = document.createElement('div');
-        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
-        alertDiv.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.game-card'));
-    }
-    
-    // Function to show info messages
-    function showInfo(message) {
-        const alertDiv = document.createElement('div');
-        alertDiv.className = 'alert alert-info alert-dismissible fade show';
-        alertDiv.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.game-card'));
-    }
 
     // Avatar selection is now handled by populateAvatars function
 
@@ -195,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     createNewGameBtn.disabled = true;
                     createNewGameBtn.classList.add('btn-outline-secondary');
                     createNewGameBtn.classList.remove('btn-outline-primary');
-                    createNewGameBtn.title = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('clearRoomCodeToCreate') : 'Clear room code to create a new game';
+                    createNewGameBtn.title = getText('clearRoomCodeToCreate', 'Clear room code to create a new game');
                 } else {
                     createNewGameBtn.disabled = false;
                     createNewGameBtn.classList.remove('btn-outline-secondary');
@@ -213,7 +193,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const selectedAvatar = selectedAvatarInput.value;
             
             if (!playerName) {
-                alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('pleaseEnterName') : 'Please enter your name first');
+                alert(getText('pleaseEnterName', 'Please enter your name first'));
                 document.getElementById('playerName').focus();
                 return;
             }
@@ -224,8 +204,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Visual feedback
             createNewGameBtn.disabled = true;
-            createNewGameBtn.textContent = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('creating') : 'Creating...';
+            createNewGameBtn.textContent = getText('creating', 'Creating...');
             
+            // Store player data (ID will be set by game-room.js using global PLAYER_ID)
             const playerData = {
                 name: playerName,
                 avatar: selectedAvatar,
@@ -246,17 +227,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const roomCode = roomCodeInput.value.trim();
             
             if (!playerName) {
-                alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('pleaseEnterName') : 'Please enter your name');
+                alert(getText('pleaseEnterName', 'Please enter your name'));
                 return;
             }
 
             // If room code provided, validate it
             if (roomCode && roomCode.length !== 6) {
-                alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('roomCodeLength') : 'Room code must be exactly 6 characters');
+                alert(getText('roomCodeLength', 'Room code must be exactly 6 characters'));
                 return;
             }
 
-            // Store player data and proceed
+            // Store player data (ID will be set by game-room.js using global PLAYER_ID)
             const playerData = {
                 name: playerName,
                 avatar: selectedAvatar,
@@ -298,16 +279,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 playerData.roomCode = result.gameId;
 
                 console.log('Updated player data:', playerData);
-                sessionStorage.setItem('playerData', JSON.stringify(playerData));
+                Storage.session.set('playerData', playerData);
                 window.location.href = `/game/${result.gameId}`;
             } else {
                 console.error('Create game failed:', result);
-                alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('failedCreateGame') : 'Failed to create game. Please try again.');
+                alert(getText('failedCreateGame', 'Failed to create game. Please try again.'));
                 resetCreateButton();
             }
         } catch (error) {
             console.error('Error creating game:', error);
-            alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('connectionError') : `Connection error: ${error.message}. Please check your internet connection.`);
+            handleApiError(error, 'creating game');
             resetCreateButton();
         }
     }
@@ -318,7 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const roomInput = document.getElementById('roomCode');
         if (createBtn) {
             createBtn.disabled = false;
-            createBtn.textContent = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('createNewGame') : 'Create New Game';
+            createBtn.textContent = getText('createNewGame', 'Create New Game');
             
             // Also update button states based on current room code
             if (roomInput) {
@@ -329,7 +310,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     createBtn.disabled = true;
                     createBtn.classList.add('btn-outline-secondary');
                     createBtn.classList.remove('btn-outline-primary');
-                    createBtn.title = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('clearRoomCodeToCreate') : 'Clear room code to create a new game';
+                    createBtn.title = getText('clearRoomCodeToCreate', 'Clear room code to create a new game');
                 } else {
                     createBtn.classList.remove('btn-outline-secondary');
                     createBtn.classList.add('btn-outline-primary');
@@ -348,7 +329,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({
                     gameId: playerData.roomCode,
                     playerName: playerData.name,
-                    avatar: playerData.avatar
+                    avatar: playerData.avatar,
+                    playerId: PLAYER_ID
                 })
             });
             
@@ -356,13 +338,13 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (result.success) {
                 // Store player data and redirect to game room
-                sessionStorage.setItem('playerData', JSON.stringify(playerData));
+                Storage.session.set('playerData', playerData);
                 window.location.href = `/game/${playerData.roomCode}`;
             } else {
-                alert(result.error || ((typeof i18n !== 'undefined' && i18n) ? i18n.getText('failedJoinGame') : 'Failed to join game'));
+                alert(result.error || getText('failedJoinGame', 'Failed to join game'));
             }
         } catch (error) {
-            alert((typeof i18n !== 'undefined' && i18n) ? i18n.getText('connectionError') : 'Connection error. Please check your internet connection.');
+            handleApiError(error, 'joining game');
         }
     }
 });

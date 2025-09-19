@@ -141,13 +141,14 @@ describe('API Integration Tests', () => {
             
             const playerId = firstResponse.body.player.id;
             
-            // Reconnect with same name but different avatar
+            // Reconnect with same name but different avatar (provide player ID)
             const secondResponse = await request(app)
                 .post('/api/join-game')
                 .send({
                     gameId: gameId,
                     playerName: 'Alice',
-                    avatar: '😎'
+                    avatar: '😎',
+                    playerId: playerId
                 })
                 .expect(200);
             

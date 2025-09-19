@@ -132,10 +132,10 @@ describe('Player Joining', () => {
         // First join
         const firstResult = addPlayerToGame(games, gameId, 'Alice', '😀');
         const playerId = firstResult.player.id;
-        
-        // Reconnect with same name
-        const secondResult = addPlayerToGame(games, gameId, 'Alice', '😎');
-        
+
+        // Reconnect with same name AND player ID
+        const secondResult = addPlayerToGame(games, gameId, 'Alice', '😎', playerId);
+
         expect(secondResult.success).toBe(true);
         expect(secondResult.isNewPlayer).toBe(false);
         expect(secondResult.player.id).toBe(playerId); // Same player ID
@@ -204,25 +204,23 @@ describe('Player Joining', () => {
         expect(result.player.id).toBe(player1Result.player.id);
     });
     
-    test('allows EXISTING players to reconnect to started games by name fallback', () => {
+    test('prevents new players from joining started games (no ID provided)', () => {
         // Add players and start game
         const player1Result = addPlayerToGame(games, gameId, 'Alice', '😀');
         const player2Result = addPlayerToGame(games, gameId, 'Bob', '😎');
         startGame(games, gameId, player1Result.player.id);
-        
-        // Existing player reconnects without ID (name matching fallback)
+
+        // Try to join as "Alice" without providing player ID - should fail since game started
         const result = addPlayerToGame(games, gameId, 'Alice', '😎');
-        
-        expect(result.success).toBe(true);
-        expect(result.isNewPlayer).toBe(false);
-        expect(result.player.id).toBe(player1Result.player.id);
-        expect(result.player.avatar).toBe('😎'); // Avatar should be updated
+
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Game has already started');
     });
 
     test('validates player data', () => {
         const game = games.get(gameId);
         const result = addPlayerToGame(games, gameId, 'Alice', '😀');
-        
+
         expect(result.player).toMatchObject({
             id: expect.any(String),
             name: 'Alice',
@@ -230,6 +228,40 @@ describe('Player Joining', () => {
             connected: true,
             joinedAt: expect.any(Date)
         });
+    });
+
+    test('CRITICAL: backend must use provided player ID, not generate new UUID', () => {
+        // This test prevents the duplicate player bug where backend ignored frontend player IDs
+        const providedPlayerId = 'a1b2c3d4-5678-4abc-8def-123456789012';
+
+        const result = addPlayerToGame(games, gameId, 'TestPlayer', '🎯', providedPlayerId);
+
+        expect(result.success).toBe(true);
+        expect(result.isNewPlayer).toBe(true);
+
+        // CRITICAL: Backend MUST use the exact player ID provided by frontend
+        expect(result.player.id).toBe(providedPlayerId);
+
+        // Verify the player is stored with the correct ID in the game
+        const game = games.get(gameId);
+        const storedPlayer = game.players.find(p => p.id === providedPlayerId);
+        expect(storedPlayer).toBeDefined();
+        expect(storedPlayer.name).toBe('TestPlayer');
+        expect(storedPlayer.avatar).toBe('🎯');
+    });
+
+    test('backend rejects invalid player ID and generates UUID fallback', () => {
+        // Test with invalid player ID format
+        const invalidPlayerId = 'invalid-player-id-format';
+
+        const result = addPlayerToGame(games, gameId, 'TestPlayer2', '🎲', invalidPlayerId);
+
+        expect(result.success).toBe(true);
+        expect(result.isNewPlayer).toBe(true);
+
+        // Backend should reject invalid ID and generate valid UUID instead
+        expect(result.player.id).not.toBe(invalidPlayerId);
+        expect(result.player.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
     });
 });
 
