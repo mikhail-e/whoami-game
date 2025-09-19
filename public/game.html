@@ -55,22 +55,14 @@
             </div>
         </div>
 
-        <!-- Game Status -->
+        <!-- Players Card -->
         <div class="game-card">
             <div class="row">
-                <div class="col-md-8">
+                <div class="col-12">
                     <h5><span data-i18n="players">Players</span> (<span id="playerCount">0</span>/12)</h5>
-                    <div id="gameStatus" class="text-muted mb-3 d-md-block d-none">
+                    <div id="gameStatus" class="text-muted mb-3">
                         <span data-i18n="waiting">Waiting for players to join...</span>
                     </div>
-                </div>
-                <div class="col-md-4 text-end">
-                    <button class="btn btn-success desktop-only" id="startGame" disabled>
-                        🎮 <span data-i18n="startGame">Start Game</span>
-                    </button>
-                    <button class="btn btn-warning desktop-only" id="restartGame" style="display: none;">
-                        🔄 <span data-i18n="restartGame">Restart Game</span>
-                    </button>
                 </div>
             </div>
 
@@ -78,18 +70,25 @@
             <div class="player-list" id="playerList">
                 <!-- Players will be added here dynamically -->
             </div>
-            
-            <!-- Mobile Game Controls (Bottom) -->
-            <div class="mobile-game-controls d-md-none mt-3">
-                <div id="gameStatusMobile" class="text-muted mb-3 text-center">
-                    <span data-i18n="waiting">Waiting for players to join...</span>
+        </div>
+
+        <!-- Game Controls Card -->
+        <div class="game-card">
+            <div class="row">
+                <div class="col-12">
+                    <h6><span data-i18n="gameControls">Game Controls</span></h6>
                 </div>
-                <div class="text-center">
-                    <button class="btn btn-success" id="startGameMobile" disabled>
+            </div>
+            <div class="row">
+                <div class="col-12 text-center">
+                    <button class="btn btn-primary me-2" id="startGame" disabled>
                         🎮 <span data-i18n="startGame">Start Game</span>
                     </button>
-                    <button class="btn btn-warning" id="restartGameMobile" style="display: none;">
-                        🔄 <span data-i18n="restartGame">Restart Game</span>
+                    <button class="btn btn-outline-primary me-2" id="refreshPage">
+                        🔄 <span data-i18n="refresh">Refresh</span>
+                    </button>
+                    <button class="btn btn-outline-danger" id="restartGame" style="display: none;">
+                        ⏮️ <span data-i18n="restartGame">Restart Game</span>
                     </button>
                 </div>
             </div>
@@ -143,7 +142,7 @@
         <div class="modal-dialog modal-dialog-centered mobile-friendly-modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="restartModalLabel" data-i18n="restartModalTitle">🔄 Restart Game</h5>
+                    <h5 class="modal-title" id="restartModalLabel" data-i18n="restartModalTitle">⏮️ Restart Game</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -159,7 +158,7 @@
                 </div>
                 <div class="modal-footer mobile-modal-footer">
                     <button type="button" class="btn btn-secondary mobile-modal-btn" data-bs-dismiss="modal" data-i18n="cancel">Cancel</button>
-                    <button type="button" class="btn btn-warning mobile-modal-btn" id="confirmRestart" data-i18n="confirmRestart">Yes, Restart Game</button>
+                    <button type="button" class="btn btn-outline-danger mobile-modal-btn" id="confirmRestart" data-i18n="confirmRestart">Yes, Restart Game</button>
                 </div>
             </div>
         </div>

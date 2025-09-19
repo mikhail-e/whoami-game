@@ -234,9 +234,7 @@ function initializeSocket(roomCode) {
                     });
 
                 const startButton = document.getElementById('startGame');
-                const startButtonMobile = document.getElementById('startGameMobile');
                 if (startButton) startButton.disabled = !allPlayersHaveCharacters;
-                if (startButtonMobile) startButtonMobile.disabled = !allPlayersHaveCharacters;
             }
         }
     });
@@ -269,7 +267,7 @@ function initializeSocket(roomCode) {
             updateGameDisplay();
 
             // Show a success message
-            showNotification(getText('gameRestarted', '🔄 Game restarted! Character assignments cleared.'), 'success');
+            showNotification(getText('gameRestarted', '⏮️ Game restarted! Character assignments cleared.'), 'success');
         }
     });
 
@@ -397,35 +395,26 @@ function updateGameDisplay() {
         if (roomCodeBadge) roomCodeBadge.style.display = 'none';
         if (assignmentInstructions) assignmentInstructions.style.display = 'none';
         
-        // Update status and buttons (both desktop and mobile)
+        // Update status and buttons
         const gameStatus = document.getElementById('gameStatus');
-        const gameStatusMobile = document.getElementById('gameStatusMobile');
         const startButton = document.getElementById('startGame');
-        const startButtonMobile = document.getElementById('startGameMobile');
         const restartButton = document.getElementById('restartGame');
-        const restartButtonMobile = document.getElementById('restartGameMobile');
-        
+
         const statusText = getText('gameInProgress', 'Game in progress - Click your mystery sticker to reveal!');
         if (gameStatus) gameStatus.textContent = statusText;
-        if (gameStatusMobile) gameStatusMobile.textContent = statusText;
         
         if (startButton) startButton.style.display = 'none';
-        if (startButtonMobile) startButtonMobile.style.display = 'none';
         if (restartButton) restartButton.style.display = 'inline-block';
-        if (restartButtonMobile) restartButtonMobile.style.display = 'inline-block';
     } else {
         // Show room sharing functionality and assignment instructions when waiting
         if (shareCard) shareCard.style.display = 'block';
         if (roomCodeBadge) roomCodeBadge.style.display = 'inline-block';
         if (assignmentInstructions) assignmentInstructions.style.display = 'block';
         
-        // Update game status and buttons (both desktop and mobile)
+        // Update game status and buttons
         const statusEl = document.getElementById('gameStatus');
-        const statusElMobile = document.getElementById('gameStatusMobile');
         const startButton = document.getElementById('startGame');
-        const startButtonMobile = document.getElementById('startGameMobile');
         const restartButton = document.getElementById('restartGame');
-        const restartButtonMobile = document.getElementById('restartGameMobile');
         
         // Check if all players have characters assigned
         const allPlayersHaveCharacters = currentGame.players.length >= 2 && 
@@ -444,19 +433,13 @@ function updateGameDisplay() {
         }
         
         if (statusEl) statusEl.textContent = statusText;
-        if (statusElMobile) statusElMobile.textContent = statusText;
-        
+
         if (startButton) {
             startButton.disabled = !allPlayersHaveCharacters;
             startButton.style.display = 'inline-block';
         }
-        if (startButtonMobile) {
-            startButtonMobile.disabled = !allPlayersHaveCharacters;
-            startButtonMobile.style.display = 'inline-block';
-        }
         
         if (restartButton) restartButton.style.display = 'none';
-        if (restartButtonMobile) restartButtonMobile.style.display = 'none';
     }
     
     // Update players list
@@ -818,17 +801,13 @@ function setupEventListeners() {
             playerId: currentPlayer.id
         });
     });
-    
-    // Start game button (mobile)
-    document.getElementById('startGameMobile').addEventListener('click', () => {
-        if (!currentGame || !currentPlayer) return;
-        
-        socket.emit('start-game', {
-            gameId: currentGame.id,
-            playerId: currentPlayer.id
-        });
+
+    // Refresh page button
+    document.getElementById('refreshPage').addEventListener('click', () => {
+        console.log('Refresh button clicked');
+        window.location.reload();
     });
-    
+
     // Initialize reveal modal
     revealModal = new bootstrap.Modal(document.getElementById('revealModal'));
     
@@ -864,19 +843,6 @@ function setupEventListeners() {
         });
     }
     
-    // Restart game button (mobile)
-    const restartButtonMobile = document.getElementById('restartGameMobile');
-    if (restartButtonMobile) {
-        restartButtonMobile.addEventListener('click', () => {
-            console.log('Restart game button clicked (mobile)');
-            if (restartModal) {
-                console.log('Showing restart modal');
-                restartModal.show();
-            } else {
-                console.error('Restart modal not initialized');
-            }
-        });
-    }
     
     // Confirm restart button in modal
     const confirmRestartButton = document.getElementById('confirmRestart');

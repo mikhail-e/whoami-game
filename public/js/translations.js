@@ -38,8 +38,10 @@ const translations = {
         gameInProgress: "Game in progress - Click your mystery sticker to reveal!",
         
         // Buttons
+        gameControls: "Game Controls",
         startGame: "Start Game",
         restartGame: "Restart Game",
+        refresh: "Refresh",
         
         // Character assignment
         assignmentInstructions: "Click the + button next to other players to assign them characters",
@@ -63,7 +65,7 @@ const translations = {
         confirmRestart: "Yes, Restart",
         
         // Notifications
-        gameRestarted: "🔄 Game restarted! Character assignments cleared.",
+        gameRestarted: "⏮️ Game restarted! Character assignments cleared.",
         
         // Errors
         invalidRoom: "Invalid room code",
@@ -98,7 +100,7 @@ const translations = {
         revealNote: "Once revealed, your character will be visible to all players for the rest of the game.",
         revealButton: "Yes, Reveal My Character",
         
-        restartModalTitle: "🔄 Restart Game",
+        restartModalTitle: "⏮️ Restart Game",
         restartConfirmText: "Are you sure you want to restart the game?",
         restartWarning: "⚠️ This will:",
         restartAction1: "Reset all revealed characters",
@@ -183,8 +185,10 @@ const translations = {
         gameInProgress: "Игра идёт - Кликните на свой загадочный стикер для раскрытия!",
         
         // Buttons
+        gameControls: "Управление игрой",
         startGame: "Начать игру",
         restartGame: "Перезапустить игру",
+        refresh: "Обновить",
         
         // Character assignment
         assignmentInstructions: "Нажмите кнопку + рядом с другими игроками, чтобы назначить им персонажей",
@@ -208,7 +212,7 @@ const translations = {
         confirmRestart: "Да, перезапустить",
         
         // Notifications
-        gameRestarted: "🔄 Игра перезапущена! Персонажи очищены.",
+        gameRestarted: "⏮️ Игра перезапущена! Персонажи очищены.",
         
         // Errors
         invalidRoom: "Неверный код комнаты",
@@ -243,7 +247,7 @@ const translations = {
         revealNote: "После раскрытия ваш персонаж будет виден вам до конца игры.",
         revealButton: "Да, раскрыть моего персонажа",
         
-        restartModalTitle: "🔄 Перезапустить игру",
+        restartModalTitle: "⏮️ Перезапустить игру",
         restartConfirmText: "Вы уверены, что хотите перезапустить игру?",
         restartWarning: "⚠️ После перезапуска:",
         restartAction1: "Все персонажей будут удалены",

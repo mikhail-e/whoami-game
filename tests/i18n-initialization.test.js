@@ -270,14 +270,14 @@ describe('i18n Initialization Bug Prevention', () => {
             const showGameRestartedNotification = () => {
                 const message = (typeof i18n !== 'undefined' && i18n) ? 
                     i18n.getText('gameRestarted') : 
-                    '🔄 Game restarted! Character assignments cleared.';
+                    '⏮️ Game restarted! Character assignments cleared.';
                 
                 return message;
             };
             
             expect(() => {
                 const message = showGameRestartedNotification();
-                expect(message).toBe('🔄 Game restarted! Character assignments cleared.');
+                expect(message).toBe('⏮️ Game restarted! Character assignments cleared.');
             }).not.toThrow();
         });
     });
