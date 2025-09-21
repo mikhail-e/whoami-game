@@ -173,13 +173,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (hasValidRoomCode) {
                     createNewGameBtn.disabled = true;
-                    createNewGameBtn.classList.add('btn-outline-secondary');
-                    createNewGameBtn.classList.remove('btn-outline-primary');
+                    createNewGameBtn.classList.add('btn-secondary');
+                    createNewGameBtn.classList.remove('btn-primary');
                     createNewGameBtn.title = getText('clearRoomCodeToCreate', 'Clear room code to create a new game');
                 } else {
                     createNewGameBtn.disabled = false;
-                    createNewGameBtn.classList.remove('btn-outline-secondary');
-                    createNewGameBtn.classList.add('btn-outline-primary');
+                    createNewGameBtn.classList.remove('btn-secondary');
+                    createNewGameBtn.classList.add('btn-primary');
                     createNewGameBtn.title = '';
                 }
             }
@@ -308,12 +308,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (hasValidRoomCode) {
                     createBtn.disabled = true;
-                    createBtn.classList.add('btn-outline-secondary');
-                    createBtn.classList.remove('btn-outline-primary');
+                    createBtn.classList.add('btn-secondary');
+                    createBtn.classList.remove('btn-primary');
                     createBtn.title = getText('clearRoomCodeToCreate', 'Clear room code to create a new game');
                 } else {
-                    createBtn.classList.remove('btn-outline-secondary');
-                    createBtn.classList.add('btn-outline-primary');
+                    createBtn.classList.remove('btn-secondary');
+                    createBtn.classList.add('btn-primary');
                     createBtn.title = '';
                 }
             }
