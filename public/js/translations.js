@@ -40,8 +40,8 @@ const translations = {
         // Buttons
         gameControls: "Game Controls",
         startGame: "Start Game",
-        restartGame: "Restart Game",
-        refresh: "Refresh",
+        restartGame: "Start New Game",
+        refresh: "Refresh Page",
         
         // Character assignment
         assignmentInstructions: "Click the + button next to other players to assign them characters",
@@ -100,7 +100,7 @@ const translations = {
         revealNote: "Once revealed, your character will be visible to all players for the rest of the game.",
         revealButton: "Yes, Reveal My Character",
         
-        restartModalTitle: "⏮️ Restart Game",
+        restartModalTitle: "⏮️ Start New Game",
         restartConfirmText: "Are you sure you want to restart the game?",
         restartWarning: "⚠️ This will:",
         restartAction1: "Reset all revealed characters",
@@ -187,8 +187,8 @@ const translations = {
         // Buttons
         gameControls: "Управление игрой",
         startGame: "Начать игру",
-        restartGame: "Перезапустить игру",
-        refresh: "Обновить",
+        restartGame: "Начать новую игру",
+        refresh: "Обновить страницу",
         
         // Character assignment
         assignmentInstructions: "Нажмите кнопку + рядом с другими игроками, чтобы назначить им персонажей",
@@ -207,7 +207,7 @@ const translations = {
         cancel: "Отмена",
         revealCharacter: "Раскрыть персонажа",
         
-        restartTitle: "Перезапустить игру?",
+        restartTitle: "Начать новую игру?",
         restartMessage: "Это очистит всех персонажей и завершит текущую игру. Вы уверены?",
         confirmRestart: "Да, перезапустить",
         
