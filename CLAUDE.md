@@ -313,3 +313,4 @@ npm test       # Run test suite (185 tests)
 - Always show me where to put new code in my existing files
 - Update tests each time the logic is changed
 - Never copy-paste the same code in different files. Always keep code in utils.js
+- Always increase cache version in CACHE_NAME before each commit.

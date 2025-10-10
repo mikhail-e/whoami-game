@@ -1,7 +1,7 @@
 // Who am I? Game - Service Worker
 // Hybrid PWA service worker with smart caching strategies
 
-const CACHE_NAME = 'whoami-game-v1.3.1';
+const CACHE_NAME = 'whoami-game-v1.3.2';
 const CACHE_VERSION = Date.now(); // For cache busting critical files
 
 // Static assets that benefit from cache-first strategy
