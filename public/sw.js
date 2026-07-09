@@ -1,48 +1,36 @@
 // Who am I? Game - Service Worker
-// Hybrid PWA service worker with smart caching strategies
+//
+// This game only works online (a room lives on the server), so offline
+// support is pointless. The service worker exists for two reasons:
+//   1. Installability - a PWA needs a registered service worker to be
+//      added to the home screen.
+//   2. Icons never change, so serving them from cache is a free win.
+//
+// Everything else - HTML, CSS, JS - goes to the network first. A cached
+// copy is only used when the network fails, so players never get stuck on
+// a stale version of the app.
 
-const CACHE_NAME = 'whoami-game-v1.4.1';
+const CACHE_NAME = 'whoami-game-v1.5.0';
 
-// Static assets that benefit from cache-first strategy
-const staticAssets = [
-    '/',
-    '/index.html',
-    '/game.html',
-    '/manifest.json',
+// The only assets worth caching: they are immutable and identified by name.
+// Do NOT add HTML, CSS or JS here - those must always come from the network.
+const iconAssets = [
     '/favicon.ico',
     '/icons/icon-48x48.svg',
     '/icons/icon-72x72.svg',
     '/icons/icon-96x96.svg',
     '/icons/icon-144x144.svg',
     '/icons/icon-192x192.svg',
-    '/icons/icon-512x512.svg',
-    // External resources - cache for performance
-    'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css',
-    'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js'
+    '/icons/icon-512x512.svg'
 ];
 
-// Dynamic assets that need network-first strategy for immediate updates
-const dynamicAssets = [
-    '/css/style.css',
-    '/js/game.js',
-    '/js/game-room.js',
-    '/js/translations.js',
-    '/js/utils.js',
-    '/js/pwa.js'
-];
-
-// Install event - cache static resources only
+// Install event - pre-cache the icons
 self.addEventListener('install', (event) => {
     console.log('Service Worker installing...');
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then((cache) => {
-                console.log('Caching static app shell resources');
-                return cache.addAll(staticAssets);
-            })
-            .catch((error) => {
-                console.error('Cache failed:', error);
-            })
+            .then((cache) => cache.addAll(iconAssets))
+            .catch((error) => console.error('Icon pre-cache failed:', error))
     );
     self.skipWaiting();
 });
@@ -65,23 +53,11 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Helper function to check if URL is a dynamic asset.
-// Matches by exact pathname (query strings like ?version=... are ignored).
-function isDynamicAsset(url) {
+// Is this one of the icons we pre-cache? Matched by exact pathname, so a
+// query string can never turn an unrelated URL into an "icon".
+function isIconAsset(url) {
     const parsed = new URL(url);
-    return parsed.origin === self.location.origin && dynamicAssets.includes(parsed.pathname);
-}
-
-// Helper function to check if URL is a static asset.
-// Exact matching only - the old substring check accidentally matched EVERY
-// url (because of the '/' entry) and sent everything through cache-first.
-function isStaticAsset(url) {
-    const parsed = new URL(url);
-    if (parsed.origin === self.location.origin) {
-        return staticAssets.includes(parsed.pathname);
-    }
-    // External resources (CDN) are listed with their full URL
-    return staticAssets.includes(url);
+    return parsed.origin === self.location.origin && iconAssets.includes(parsed.pathname);
 }
 
 // Helper function to check if request is cacheable (avoid browser extension errors)
@@ -93,62 +69,18 @@ function isCacheableRequest(request) {
         return false;
     }
 
-    // Skip if request is not from same origin and not a known external resource
-    const isFromSameOrigin = url.origin === self.location.origin;
-    const isKnownExternal = url.hostname.includes('cdn.jsdelivr.net');
-
-    if (!isFromSameOrigin && !isKnownExternal) {
-        return false;
-    }
-
-    // Skip requests with unusual schemes or protocols
-    const unsupportedSchemes = ['chrome-extension', 'moz-extension', 'safari-extension', 'webkit-extension', 'file'];
-    if (unsupportedSchemes.some(scheme => request.url.startsWith(scheme))) {
-        return false;
-    }
-
-    return true;
+    // Only same-origin responses are ever stored
+    return url.origin === self.location.origin;
 }
 
-// Network-first strategy for dynamic assets (immediate updates)
-async function networkFirstStrategy(request) {
-    try {
-        console.log('Network-first for dynamic asset:', request.url);
-        const response = await fetch(request);
-
-        // Cache successful responses only if request is cacheable
-        if (response && response.status === 200 && isCacheableRequest(request)) {
-            try {
-                const cache = await caches.open(CACHE_NAME);
-                cache.put(request, response.clone());
-            } catch (cacheError) {
-                console.warn('Failed to cache response:', request.url, cacheError);
-            }
-        }
-
-        return response;
-    } catch (error) {
-        console.log('Network failed, trying cache:', request.url);
-        const cachedResponse = await caches.match(request);
-        if (cachedResponse) {
-            return cachedResponse;
-        }
-        throw error;
-    }
-}
-
-// Cache-first strategy for static assets (performance)
+// Cache-first: used for icons only
 async function cacheFirstStrategy(request) {
     const cachedResponse = await caches.match(request);
     if (cachedResponse) {
-        console.log('Serving static asset from cache:', request.url);
         return cachedResponse;
     }
 
-    console.log('Fetching static asset from network:', request.url);
     const response = await fetch(request);
-
-    // Cache successful responses only if request is cacheable
     if (response && response.status === 200 && isCacheableRequest(request)) {
         try {
             const cache = await caches.open(CACHE_NAME);
@@ -157,71 +89,23 @@ async function cacheFirstStrategy(request) {
             console.warn('Failed to cache response:', request.url, cacheError);
         }
     }
-
     return response;
 }
 
-// Fetch event - hybrid caching strategy
+// Fetch event
 self.addEventListener('fetch', (event) => {
-    // Skip non-GET requests
-    if (event.request.method !== 'GET') {
+    const request = event.request;
+
+    // Icons: serve from cache, they never change
+    if (request.method === 'GET' && isCacheableRequest(request) && isIconAsset(request.url)) {
+        event.respondWith(cacheFirstStrategy(request));
         return;
     }
 
-    // Skip non-cacheable requests (browser extensions, file://, etc.)
-    if (!isCacheableRequest(event.request)) {
-        console.log('Skipping non-cacheable request:', event.request.url);
-        return;
-    }
-
-    // Skip socket.io requests - always go to network for real-time data
-    if (event.request.url.includes('socket.io')) {
-        return;
-    }
-
-    // Skip API requests - always go to network for real-time data
-    if (event.request.url.includes('/api/')) {
-        return;
-    }
-
-    const requestUrl = event.request.url;
-
-    event.respondWith(
-        (async () => {
-            try {
-                // Dynamic assets: Network-first for immediate updates
-                if (isDynamicAsset(requestUrl)) {
-                    return await networkFirstStrategy(event.request);
-                }
-
-                // Static assets: Cache-first for performance
-                if (isStaticAsset(requestUrl)) {
-                    return await cacheFirstStrategy(event.request);
-                }
-
-                // Default: Try cache first, then network
-                const cachedResponse = await caches.match(event.request);
-                if (cachedResponse) {
-                    console.log('Serving from cache:', requestUrl);
-                    return cachedResponse;
-                }
-
-                console.log('Fetching from network:', requestUrl);
-                return await fetch(event.request);
-
-            } catch (error) {
-                console.error('Fetch failed:', error);
-
-                // Return offline page for HTML requests
-                if (event.request.headers.get('accept')?.includes('text/html')) {
-                    const offlinePage = await caches.match('/index.html');
-                    return offlinePage || new Response('Offline', { status: 503 });
-                }
-
-                throw error;
-            }
-        })()
-    );
+    // Everything else (HTML, CSS, JS, the Bootstrap CDN, Socket.IO, /api/)
+    // is left to the browser: it goes to the network, and its normal HTTP
+    // cache still applies. Nothing is stored by the service worker, so a
+    // player can never be served a stale version of the app.
 });
 
 // Message handler for update checks from PWA manager
@@ -230,16 +114,4 @@ self.addEventListener('message', (event) => {
         console.log('Manual update check requested');
         self.skipWaiting();
     }
-});
-
-// Background sync (for future enhancement)
-self.addEventListener('sync', (event) => {
-    console.log('Background sync triggered:', event.tag);
-    // Future: sync offline actions when connection restored
-});
-
-// Push notification handler (for future enhancement)
-self.addEventListener('push', (event) => {
-    console.log('Push notification received:', event);
-    // Future: handle game invitations and notifications
 });

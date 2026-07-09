@@ -32,7 +32,7 @@ public/
 ├── index.html             # Landing page (create/join room, name + avatar selection)
 ├── game.html              # Game room page
 ├── manifest.json          # PWA manifest
-├── sw.js                  # Service worker: network-first for JS/CSS, cache-first for static assets
+├── sw.js                  # Service worker: caches icons only; everything else goes straight to the network
 ├── favicon.ico, icons/    # Branding (6 SVG icons, 48x48–512x512)
 ├── css/style.css          # Custom styles (gradients, sticker colors, responsive layout)
 └── js/
@@ -57,7 +57,7 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - **Connection tracking:** `createConnectionTracker()` in game-logic.js maps sockets to players. On page refresh the new socket often connects *before* the old one disconnects, so every disconnect is checked against the player's current socket and stale ones are ignored
 
 ## Rules (important!)
-1. **Bump the cache version in `CACHE_NAME`** (public/sw.js, line 4: `whoami-game-v1.4.1` → `v1.4.2`) **before every commit** — otherwise players keep the old cached files
+1. **Bump the cache version in `CACHE_NAME`** (public/sw.js: `whoami-game-v1.5.0` → `v1.5.1`) **when you change the icons**. Since v1.5.0 only icons are cached, so HTML/CSS/JS changes reach players immediately and no longer need a version bump
 2. **No code duplication across files** — shared frontend code goes to `public/js/utils.js`
 3. **Update tests whenever logic changes**; run `npm test` before committing
 4. **Localize all UI text** — every user-facing string needs both `en` and `ru` entries in `public/js/translations.js`. `tests/translations-real.test.js` fails if a key exists in only one language
@@ -73,14 +73,14 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - Mobile virtual keyboard: call `input.focus()` synchronously inside the click handler (no `setTimeout`) — otherwise iOS/Android won't open the keyboard
 - Character assignment: players cannot assign a character to themselves; submitting empty/whitespace text removes the assignment (sticker returns to the "+" state). Escape restores the original character
 - Sticker colors are assigned once when a player joins and never change; unique for up to 7 players, then cycled
-- Service worker asset matching is by **exact pathname** (`isStaticAsset` / `isDynamicAsset`). A substring check silently matched every URL because `'/'` is in the static list
+- **The service worker caches icons and nothing else.** The game requires a live server (a room lives in server memory), so offline support is pointless, and caching HTML/JS only ever produced "player stuck on an old version" bugs. The worker exists for installability plus free icon caching. `tests/service-worker.test.js` fails if HTML/CSS/JS is added back to the cache. Icon matching is by **exact pathname** — an earlier substring check matched every URL because `'/'` was in the list
 
 ## Deployment
 - Workflow: work on `develop` → merge to `master` → push; Render auto-deploys `master` (render.yaml)
 - Free Render plan hibernates on inactivity — the keep-alive loop and disk persistence exist to survive restarts
 
 ## Current Status
-All core features work: room creation/joining/sharing, 60-emoji avatar pool with refresh, character assignment with colored stickers, reveal notifications, full en/ru localization, PWA install + offline caching, reconnection and timeout protection, duplicate player names, room recreation after server restarts.
+All core features work: room creation/joining/sharing, 60-emoji avatar pool with refresh, character assignment with colored stickers, reveal notifications, full en/ru localization, PWA install (online-only, no offline mode by design), reconnection and timeout protection, duplicate player names, room recreation after server restarts.
 
 ### Future goals
 - Share button for direct room link sharing
