@@ -90,6 +90,9 @@
                     <button class="btn btn-outline-primary me-2 mb-2 mb-md-0" id="refreshPage">
                         🔄 <span data-i18n="refresh">Refresh</span>
                     </button>
+                    <button class="btn btn-outline-secondary me-2 mb-2 mb-md-0" id="leaveGame">
+                        🚪 <span data-i18n="leaveGame">Leave Game</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -159,6 +162,26 @@
                 <div class="modal-footer mobile-modal-footer">
                     <button type="button" class="btn btn-secondary mobile-modal-btn" data-bs-dismiss="modal" data-i18n="cancel">Cancel</button>
                     <button type="button" class="btn btn-outline-danger mobile-modal-btn" id="confirmRestart" data-i18n="confirmRestart">Yes, Restart Game</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leave Game Confirmation Modal -->
+    <div class="modal fade" id="leaveModal" tabindex="-1" aria-labelledby="leaveModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered mobile-friendly-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="leaveModalLabel" data-i18n="leaveModalTitle">🚪 Leave Game</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p data-i18n="leaveConfirmText">Are you sure you want to leave this game?</p>
+                    <p class="text-muted small" data-i18n="leaveNote">Your card and character will disappear for everyone. The other players can keep playing.</p>
+                </div>
+                <div class="modal-footer mobile-modal-footer">
+                    <button type="button" class="btn btn-secondary mobile-modal-btn" data-bs-dismiss="modal" data-i18n="cancel">Cancel</button>
+                    <button type="button" class="btn btn-danger mobile-modal-btn" id="confirmLeave" data-i18n="confirmLeave">Yes, Leave Game</button>
                 </div>
             </div>
         </div>

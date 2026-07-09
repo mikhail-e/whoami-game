@@ -7,6 +7,9 @@ let currentPlayer = null;
 let selectedPlayerForAssignment = null;
 let revealModal = null;
 let restartModal = null;
+let leaveModal = null;
+let leaveFallbackTimer = null;
+let leavingGame = false;
 
 // Color palette for character stickers
 const stickerColors = ['red', 'blue', 'purple', 'orange', 'green', 'pink', 'indigo'];
@@ -56,6 +59,26 @@ function clearGameStateFromStorage(roomCode) {
     const storageKey = `whoami-game-${roomCode}`;
     Storage.remove(storageKey);
     console.log('🗑️ Cleared game state from localStorage:', storageKey);
+}
+
+// Clean up local state and return to the landing page after leaving.
+// Idempotent: both the server confirmation and the fallback timer call it.
+// When the room still exists, the landing page opens with the room code
+// prefilled (?join=CODE) so the player can rejoin if they change their mind.
+function finishLeavingGame(roomStillExists = true) {
+    if (leavingGame) return;
+    leavingGame = true;
+
+    if (leaveFallbackTimer) {
+        clearTimeout(leaveFallbackTimer);
+        leaveFallbackTimer = null;
+    }
+
+    const roomCode = currentGame ? currentGame.id : null;
+    if (roomCode) clearGameStateFromStorage(roomCode);
+    Storage.session.remove('playerData');
+
+    window.location.href = (roomStillExists && roomCode) ? `/?join=${roomCode}` : '/';
 }
 
 async function recreateRoomFromStorage(roomCode, savedGameState) {
@@ -196,6 +219,35 @@ function initializeSocket(roomCode) {
                 player.isConnected = false;
             }
         }
+    });
+
+    socket.on('player-left', (data) => {
+        console.log('Player left:', data);
+        if (!currentGame || !data) return;
+
+        if (data.playerId === currentPlayer.id) {
+            // The server confirmed OUR leave - go home. If the room was
+            // deleted (we were the last player), there is nothing to rejoin,
+            // so skip the ?join=CODE prefill
+            finishLeavingGame(!data.gameDeleted);
+            return;
+        }
+
+        // Another player left: take the server's authoritative state
+        currentGame.players = data.players;
+        if (data.characters) currentGame.characters = data.characters;
+        if (data.revealedPlayers) currentGame.revealedPlayers = data.revealedPlayers;
+
+        // An open character input would block the rebuild below - and it might
+        // even belong to the player who just left
+        cancelActiveEdits();
+        saveGameStateToStorage();
+        updateGameDisplay();
+
+        showNotification(
+            getText('playerLeftNotification', `👋 ${data.playerName} left the game`, { playerName: data.playerName }),
+            'info'
+        );
     });
     
     // Real-time updates removed - keeping it simple
@@ -895,8 +947,39 @@ function setupEventListeners() {
                 gameId: currentGame.id,
                 playerId: currentPlayer.id
             });
-            
+
             restartModal.hide();
+        });
+    }
+
+    // Initialize leave modal
+    const leaveModalElement = document.getElementById('leaveModal');
+    if (leaveModalElement) {
+        leaveModal = new bootstrap.Modal(leaveModalElement);
+    }
+
+    // Leave game button
+    const leaveButton = document.getElementById('leaveGame');
+    if (leaveButton) {
+        leaveButton.addEventListener('click', () => {
+            if (leaveModal) leaveModal.show();
+        });
+    }
+
+    // Confirm leave button in modal
+    const confirmLeaveButton = document.getElementById('confirmLeave');
+    if (confirmLeaveButton) {
+        confirmLeaveButton.addEventListener('click', () => {
+            if (!currentGame || !currentPlayer) return;
+
+            socket.emit('leave-game', {
+                gameId: currentGame.id,
+                playerId: currentPlayer.id
+            });
+            leaveModal.hide();
+
+            // Fallback: if the server confirmation never arrives, leave anyway
+            leaveFallbackTimer = setTimeout(finishLeavingGame, 2000);
         });
     }
 }

@@ -276,11 +276,49 @@ io.on('connection', (socket) => {
         }
         
         console.log(`Game ${gameId} restarted by player ${playerId}`);
-        
+
         // Broadcast game restart to all players in the room
         io.to(gameId).emit('game-restarted', result);
     });
-    
+
+    safeHandler(socket, 'leave-game', (data) => {
+        const { gameId, playerId } = data;
+
+        // A player may only remove themselves: the request must come from
+        // the socket currently registered to that player (see join-room)
+        if (!playerId || connections.getSocketId(playerId) !== socket.id) {
+            socket.emit('error', 'You can only leave the game yourself');
+            return;
+        }
+
+        const result = gameLogic.removePlayerFromGame(games, gameId, playerId);
+
+        if (!result.success) {
+            socket.emit('error', result.error);
+            return;
+        }
+
+        console.log(`👋 Player ${playerId} left game ${gameId}`);
+
+        // Emit BEFORE socket.leave() so the leaver receives the confirmation
+        // and uses it as the trigger to redirect home
+        io.to(gameId).emit('player-left', {
+            playerId: playerId,
+            playerName: result.removedPlayer.name,
+            players: result.players,
+            characters: result.characters,
+            revealedPlayers: result.revealedPlayers,
+            gameDeleted: result.gameDeleted
+        });
+
+        socket.leave(gameId);
+        connections.unregister(socket.id); // the later disconnect becomes a no-op
+
+        if (result.gameDeleted) {
+            console.log(`🗑️ Game ${gameId} removed - last player left`);
+        }
+    });
+
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
 

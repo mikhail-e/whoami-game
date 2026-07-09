@@ -109,7 +109,15 @@ const translations = {
         restartAction3: "Enable new players to join again",
         restartAction4: "Return everyone to the setup phase",
         restartNote: "All players will be able to see this action.",
-        
+
+        // Leave game
+        leaveGame: "Leave Game",
+        leaveModalTitle: "🚪 Leave Game",
+        leaveConfirmText: "Are you sure you want to leave this game?",
+        leaveNote: "Your card and character will disappear for everyone. The other players can keep playing.",
+        confirmLeave: "Yes, Leave Game",
+        playerLeftNotification: "👋 {playerName} left the game",
+
         waiting: "Waiting for players to join...",
 
         // Reveal notifications
@@ -254,12 +262,20 @@ const translations = {
         restartModalTitle: "⏮️ Перезапустить игру",
         restartConfirmText: "Вы уверены, что хотите перезапустить игру?",
         restartWarning: "⚠️ После перезапуска:",
-        restartAction1: "Все персонажей будут удалены",
-        restartAction2: "Игроки снвоа смогут назначать персонажей",
+        restartAction1: "Все персонажи будут удалены",
+        restartAction2: "Игроки снова смогут назначать персонажей",
         restartAction3: "К игре смогут присоединиться новые игроки",
         restartAction4: " ",
         restartNote: "Это действие повлияет на всех игроков",
-        
+
+        // Leave game
+        leaveGame: "Покинуть игру",
+        leaveModalTitle: "🚪 Покинуть игру",
+        leaveConfirmText: "Вы уверены, что хотите покинуть игру?",
+        leaveNote: "Ваша карточка и персонаж исчезнут у всех игроков. Остальные смогут продолжить игру.",
+        confirmLeave: "Да, покинуть игру",
+        playerLeftNotification: "👋 {playerName} покинул(а) игру",
+
         waiting: "Ожидание присоединения игроков...",
 
         // Reveal notifications

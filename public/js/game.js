@@ -59,6 +59,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const playerNameInput = document.getElementById('playerName');
     if (playerNameInput) playerNameInput.maxLength = MAX_NAME_LENGTH;
 
+    // Prefill the last used name so returning players (e.g. after leaving
+    // a game) don't have to retype it
+    const savedName = Storage.get('whoami-player-name');
+    if (savedName && playerNameInput && !playerNameInput.value) {
+        playerNameInput.value = savedName;
+    }
+
     // Initialize with random avatars - each player gets their own unique set
     populateAvatars(selectRandomAvatars());
 
@@ -255,6 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function createGame(playerData) {
         try {
             console.log('Creating game with player data:', playerData);
+            Storage.set('whoami-player-name', playerData.name);
 
             const response = await fetch('/api/create-game', {
                 method: 'POST',
@@ -320,6 +328,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to join existing game
     async function joinGame(playerData) {
         try {
+            Storage.set('whoami-player-name', playerData.name);
             const response = await fetch('/api/join-game', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

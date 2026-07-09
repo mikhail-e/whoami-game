@@ -1,0 +1,182 @@
+// Tests for voluntarily leaving a game (removePlayerFromGame).
+// A leaver's card, character and reveal status disappear; characters they
+// assigned to OTHER players stay; the last player leaving deletes the game.
+
+const {
+    createGame,
+    addPlayerToGame,
+    assignCharacter,
+    startGame,
+    revealCharacter,
+    removePlayerFromGame
+} = require('../game-logic');
+
+describe('Player Leaving', () => {
+    let games, gameId, alice, bob;
+
+    beforeEach(() => {
+        games = new Map();
+        gameId = createGame(games).gameId;
+        alice = addPlayerToGame(games, gameId, 'Alice', '😀').player;
+        bob = addPlayerToGame(games, gameId, 'Bob', '😎').player;
+    });
+
+    test('removes the player from the game', () => {
+        const result = removePlayerFromGame(games, gameId, alice.id);
+
+        expect(result.success).toBe(true);
+        expect(result.removedPlayer).toEqual({ id: alice.id, name: 'Alice' });
+
+        const game = games.get(gameId);
+        expect(game.players).toHaveLength(1);
+        expect(game.players[0].id).toBe(bob.id);
+    });
+
+    test('deletes the leaver\'s own character and reveal status', () => {
+        assignCharacter(games, gameId, alice.id, 'Batman', bob.id);
+        assignCharacter(games, gameId, bob.id, 'Superman', alice.id);
+        startGame(games, gameId, alice.id);
+        revealCharacter(games, gameId, alice.id);
+
+        removePlayerFromGame(games, gameId, alice.id);
+
+        const game = games.get(gameId);
+        expect(game.characters.has(alice.id)).toBe(false);
+        expect(game.revealedPlayers.has(alice.id)).toBe(false);
+    });
+
+    test('keeps characters the leaver assigned to other players', () => {
+        // Alice assigned Bob's character; Alice leaves; Bob keeps playing
+        assignCharacter(games, gameId, bob.id, 'Superman', alice.id);
+
+        removePlayerFromGame(games, gameId, alice.id);
+
+        const game = games.get(gameId);
+        expect(game.characters.get(bob.id).character).toBe('Superman');
+    });
+
+    test('works in the waiting state', () => {
+        const result = removePlayerFromGame(games, gameId, alice.id);
+        expect(result.success).toBe(true);
+        expect(games.get(gameId).state).toBe('waiting');
+    });
+
+    test('works mid-game: remaining players keep playing', () => {
+        const charlie = addPlayerToGame(games, gameId, 'Charlie', '🐱').player;
+        assignCharacter(games, gameId, alice.id, 'Batman', bob.id);
+        assignCharacter(games, gameId, bob.id, 'Superman', alice.id);
+        assignCharacter(games, gameId, charlie.id, 'Joker', alice.id);
+        startGame(games, gameId, alice.id);
+
+        const result = removePlayerFromGame(games, gameId, alice.id);
+
+        expect(result.success).toBe(true);
+        const game = games.get(gameId);
+        expect(game.state).toBe('started');
+        expect(game.players).toHaveLength(2);
+        expect(game.characters.get(bob.id).character).toBe('Superman');
+        expect(game.characters.get(charlie.id).character).toBe('Joker');
+    });
+
+    test('rejects an unknown game', () => {
+        const result = removePlayerFromGame(games, 'NOSUCH', alice.id);
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Game not found');
+    });
+
+    test('rejects an unknown player', () => {
+        const result = removePlayerFromGame(games, gameId, 'not-a-player');
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Player not found in game');
+
+        // Nobody was removed by mistake
+        expect(games.get(gameId).players).toHaveLength(2);
+    });
+
+    test('frees the leaver\'s sticker color for the next player', () => {
+        const aliceColor = alice.stickerColor; // first color from the palette
+
+        removePlayerFromGame(games, gameId, alice.id);
+        const charlie = addPlayerToGame(games, gameId, 'Charlie', '🐱').player;
+
+        expect(charlie.stickerColor).toBe(aliceColor);
+    });
+
+    test('deletes the game when the last player leaves', () => {
+        const first = removePlayerFromGame(games, gameId, alice.id);
+        expect(first.gameDeleted).toBe(false);
+        expect(games.has(gameId)).toBe(true);
+
+        const last = removePlayerFromGame(games, gameId, bob.id);
+        expect(last.gameDeleted).toBe(true);
+        expect(games.has(gameId)).toBe(false);
+    });
+
+    test('a leaver can rejoin a waiting game as a brand-new player', () => {
+        removePlayerFromGame(games, gameId, alice.id);
+
+        const rejoin = addPlayerToGame(games, gameId, 'Alice', '😀', alice.id);
+
+        expect(rejoin.success).toBe(true);
+        expect(rejoin.isNewPlayer).toBe(true);
+    });
+
+    test('a leaver cannot rejoin a started game', () => {
+        assignCharacter(games, gameId, alice.id, 'Batman', bob.id);
+        assignCharacter(games, gameId, bob.id, 'Superman', alice.id);
+        startGame(games, gameId, alice.id);
+        removePlayerFromGame(games, gameId, alice.id);
+
+        const rejoin = addPlayerToGame(games, gameId, 'Alice', '😀', alice.id);
+
+        expect(rejoin.success).toBe(false);
+        expect(rejoin.error).toBe('Game has already started');
+    });
+
+    test('starting requires 2 players again after a leave', () => {
+        removePlayerFromGame(games, gameId, alice.id);
+
+        const result = startGame(games, gameId, bob.id);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Need at least 2 players to start');
+    });
+
+    test('returns the full serialized state for broadcasting', () => {
+        assignCharacter(games, gameId, bob.id, 'Superman', alice.id);
+
+        const result = removePlayerFromGame(games, gameId, alice.id);
+
+        expect(result.gameId).toBe(gameId);
+        expect(Array.isArray(result.players)).toBe(true);
+        expect(result.characters).toEqual({
+            [bob.id]: expect.objectContaining({ character: 'Superman' })
+        });
+        expect(Array.isArray(result.revealedPlayers)).toBe(true);
+    });
+});
+
+// The client must let a leaver rejoin easily: the landing page opens with the
+// room code prefilled and remembers the player's name. Source-level checks in
+// the style of tests/avatar-shuffle.test.js.
+describe('Leaving keeps the way back open (client wiring)', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const gameRoomJs = fs.readFileSync(path.join(__dirname, '..', 'public/js/game-room.js'), 'utf8');
+    const gameJs = fs.readFileSync(path.join(__dirname, '..', 'public/js/game.js'), 'utf8');
+    const serverJs = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+
+    test('the leaver is sent to the landing page with the room code prefilled', () => {
+        expect(gameRoomJs).toContain('`/?join=${roomCode}`');
+    });
+
+    test('no prefill when the room was deleted (last player left)', () => {
+        expect(gameRoomJs).toContain('finishLeavingGame(!data.gameDeleted)');
+        expect(serverJs).toMatch(/player-left[\s\S]{0,400}gameDeleted/);
+    });
+
+    test('the landing page remembers and prefills the player name', () => {
+        expect(gameJs).toMatch(/Storage\.set\('whoami-player-name'/);
+        expect(gameJs).toMatch(/Storage\.get\('whoami-player-name'\)/);
+    });
+});

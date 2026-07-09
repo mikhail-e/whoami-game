@@ -19,7 +19,7 @@ Web application to play the "Who am I?" guessing game remotely with friends and 
 ```bash
 npm install                        # Install dependencies
 npm start                          # Start server on http://localhost:3000
-npm test                           # Run all tests (Jest: 265 tests, 17 suites)
+npm test                           # Run all tests (Jest: 308 tests, 21 suites)
 npx jest tests/game-logic.test.js  # Run a single test file
 npm run test:watch                 # Watch mode
 ```
@@ -41,8 +41,9 @@ public/
     ├── game-room.js       # Game room logic (player list, character stickers, socket handlers)
     ├── translations.js    # i18n (en/ru): browser auto-detection, localStorage preference, {placeholder} support
     └── pwa.js             # PWA manager: service worker registration, update detection every 30s
-tests/                     # 17 Jest suites: game logic, API (supertest), race conditions, i18n, timeouts, room recreation,
-                           # input validation, connection tracker (refresh race), inactive-game cleanup
+tests/                     # 21 Jest suites: game logic, API (supertest), race conditions, i18n, timeouts, room recreation,
+                           # input validation, connection tracker (refresh race), inactive-game cleanup, leave-game,
+                           # service-worker policy, avatar shuffle, input limits
 render.yaml                # Render.com deploy config (auto-deploys master branch)
 games/                     # Runtime game state backups (*.json, gitignored)
 ```
@@ -50,7 +51,8 @@ games/                     # Runtime game state backups (*.json, gitignored)
 ### How it works
 - Games live in an in-memory `Map` in server.js, keyed by 6-character room code (e.g. `ABC123`)
 - **HTTP API:** `POST /api/create-game`, `POST /api/join-game`, `POST /api/recreate-game`; `GET /game/:roomCode` serves game.html (restoring from disk if needed) or redirects to `/?error=room-not-found`
-- **Socket.IO events:** `join-room`, `assign-character`, `start-game`, `reveal-character`, `restart-game`; server broadcasts with `io.to(room)` (includes the sender — intentional, don't switch to `socket.to()`). Every handler is wrapped in `safeHandler()` so a malformed payload can never crash the process
+- **Socket.IO events:** `join-room`, `assign-character`, `start-game`, `reveal-character`, `restart-game`, `leave-game`; server broadcasts with `io.to(room)` (includes the sender — intentional, don't switch to `socket.to()`). Every handler is wrapped in `safeHandler()` so a malformed payload can never crash the process
+- **Leaving:** `leave-game` is accepted only from the socket registered to that player (no kicking others). `removePlayerFromGame` drops the player, their character and reveal status; the last player leaving deletes the game. The `player-left` broadcast carries the full state; the leaver redirects to `/?join=CODE` (prefilled rejoin) and the landing page remembers the last used name (`whoami-player-name` in localStorage)
 - **Persistence:** every 5 minutes active games are saved to `games/*.json`; visiting a room URL after a server restart restores the game from disk. Files older than 4 hours are cleaned up, and games idle for 4+ hours with nobody connected are dropped from memory (`cleanupInactiveGames`). Clients also back up state to localStorage and can recreate a lost room via `POST /api/recreate-game`
 - **Player identity:** one UUID per browser stored in `localStorage.playerId` (created in utils.js as `PLAYER_ID`). Reconnection matches by ID only, never by name — duplicate player names in one room are supported
 - **Timeout protection:** extended Socket.IO timeouts (2-min ping timeout, 30s ping interval); disconnected players are marked `isConnected: false` rather than removed, so they can reconnect

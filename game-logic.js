@@ -343,13 +343,54 @@ function restartGame(games, gameId, playerId) {
     // Clear all character assignments - players start fresh
     // This makes restart more visually obvious
     
-    return { 
+    return {
         success: true,
         gameId,
         state: game.state,
         restartedBy: playerId,
         revealedPlayers: Array.from(game.revealedPlayers),
         characters: Object.fromEntries(game.characters) // Empty object now
+    };
+}
+
+// Remove a player from a game voluntarily ("leave game").
+// Deletes the player's card, their character and their reveal status.
+// Characters they assigned to OTHER players stay in place.
+// When the last player leaves, the game itself is deleted.
+function removePlayerFromGame(games, gameId, playerId) {
+    if (!games.has(gameId)) {
+        return { success: false, error: 'Game not found' };
+    }
+
+    const game = games.get(gameId);
+
+    const playerIndex = game.players.findIndex(p => p.id === playerId);
+    if (playerIndex === -1) {
+        return { success: false, error: 'Player not found in game' };
+    }
+
+    const removedPlayer = game.players[playerIndex];
+
+    game.players.splice(playerIndex, 1);
+    game.characters.delete(playerId);      // the leaver's own character disappears
+    game.revealedPlayers.delete(playerId);
+    touchGame(game);
+
+    // A game with zero players ceases to exist (its disk backup file, if any,
+    // is removed by the regular 4-hour cleanup)
+    const gameDeleted = game.players.length === 0;
+    if (gameDeleted) {
+        games.delete(gameId);
+    }
+
+    return {
+        success: true,
+        gameId,
+        removedPlayer: { id: removedPlayer.id, name: removedPlayer.name },
+        players: game.players,
+        characters: Object.fromEntries(game.characters),
+        revealedPlayers: Array.from(game.revealedPlayers),
+        gameDeleted
     };
 }
 
@@ -499,6 +540,7 @@ module.exports = {
     startGame,
     revealCharacter,
     restartGame,
+    removePlayerFromGame,
     isValidRoomCode,
     assignUniqueColor,
     recreateGameFromState,
