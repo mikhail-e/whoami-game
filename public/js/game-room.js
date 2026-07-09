@@ -869,22 +869,49 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
     });
 }
 
+// Copy the room link and flash "Copied!" on the button that was pressed
+function copyRoomLink(button) {
+    const shareLink = document.getElementById('shareLink');
+    shareLink.select();
+    document.execCommand('copy');
+
+    const originalText = button.textContent;
+    button.textContent = getText('copiedSuccess', '✅ Copied!');
+    setTimeout(() => {
+        button.textContent = originalText;
+    }, 2000);
+}
+
 // Update only a specific character sticker (no DOM rebuild)
 function setupEventListeners() {
     // Copy link button
     document.getElementById('copyLink').addEventListener('click', () => {
-        const shareLink = document.getElementById('shareLink');
-        shareLink.select();
-        document.execCommand('copy');
-        
-        const btn = document.getElementById('copyLink');
-        const originalText = btn.textContent;
-        btn.textContent = getText('copiedSuccess', '✅ Copied!');
-        setTimeout(() => {
-            btn.textContent = originalText;
-        }, 2000);
+        copyRoomLink(document.getElementById('copyLink'));
     });
-    
+
+    // Share button - open the native share sheet, or copy the link as a fallback
+    document.getElementById('shareButton').addEventListener('click', async () => {
+        const shareBtn = document.getElementById('shareButton');
+        const url = document.getElementById('shareLink').value;
+
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: getText('title', '🎭 Who am I?'),
+                    text: getText('shareText', 'Join my "Who am I?" game!'),
+                    url: url
+                });
+            } catch (error) {
+                // AbortError = the user closed the share sheet - not a failure
+                if (error.name !== 'AbortError') {
+                    copyRoomLink(shareBtn);
+                }
+            }
+        } else {
+            copyRoomLink(shareBtn);
+        }
+    });
+
     // Start game button (desktop)
     document.getElementById('startGame').addEventListener('click', () => {
         if (!currentGame || !currentPlayer) return;

@@ -31,6 +31,8 @@ const translations = {
         shareLink: "Share Link",
         copyLink: "Copy Link",
         copied: "✅ Copied!",
+        share: "Share",
+        shareText: "Join my \"Who am I?\" game!",
         
         // Game states
         needPlayers: "Need at least 2 players to start",
@@ -189,6 +191,8 @@ const translations = {
         shareLink: "Ссылка для друзей",
         copyLink: "Скопировать",
         copied: "✅ Скопировано!",
+        share: "Поделиться",
+        shareText: "Присоединяйся к моей игре «Кто я?»!",
         
         // Game states
         needPlayers: "Нужно минимум 2 игрока для начала",
