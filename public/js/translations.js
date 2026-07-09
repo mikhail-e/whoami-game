@@ -9,6 +9,7 @@ const translations = {
         yourName: "Your Name",
         enterName: "Enter your name",
         chooseAvatar: "Choose Your Avatar",
+        shuffleAvatars: "Show a different set of avatars",
         roomCode: "Room Code",
         roomCodePlaceholder: "ABC123",
         roomCodeHelp: "Enter 6-character room code to join existing game",
@@ -158,6 +159,7 @@ const translations = {
         yourName: "Ваше имя",
         enterName: "Введите ваше имя",
         chooseAvatar: "Выберите аватар",
+        shuffleAvatars: "Показать другие аватары",
         roomCode: "Код комнаты",
         roomCodePlaceholder: "ABC123",
         roomCodeHelp: "Введите 6-символьный код комнаты для присоединения к существующей игре",
@@ -371,7 +373,14 @@ class Localization {
             const key = element.getAttribute('data-i18n-title');
             element.title = this.getText(key);
         });
-        
+
+        // Update aria-labels (icon-only buttons have no visible text, so this
+        // is their only accessible name)
+        document.querySelectorAll('[data-i18n-aria-label]').forEach(element => {
+            const key = element.getAttribute('data-i18n-aria-label');
+            element.setAttribute('aria-label', this.getText(key));
+        });
+
         // Update page title
         const titleElement = document.querySelector('title');
         if (titleElement && titleElement.hasAttribute('data-i18n')) {

@@ -43,22 +43,6 @@ function populateAvatars(avatars) {
 
         avatarSelector.appendChild(avatarOption);
     });
-
-    // Add refresh button
-    const refreshButton = document.createElement('div');
-    refreshButton.className = 'btn btn-outline-primary d-flex align-items-center justify-content-center';
-    refreshButton.innerHTML = '🔄';
-    refreshButton.title = 'Refresh avatars';
-    refreshButton.style.fontSize = '2rem'; // Match avatar font size
-    refreshButton.style.borderRadius = '10px'; // Match avatar border radius
-    refreshButton.style.minHeight = '60px'; // Match avatar grid item minimum height
-    refreshButton.addEventListener('click', function() {
-        // Generate new random avatars
-        const newAvatars = selectRandomAvatars();
-        populateAvatars(newAvatars);
-    });
-
-    avatarSelector.appendChild(refreshButton);
 }
 
 // Avatar selection handling
@@ -77,6 +61,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize with random avatars - each player gets their own unique set
     populateAvatars(selectRandomAvatars());
+
+    // The shuffle button lives outside the grid, so it survives populateAvatars()
+    // rebuilds - one listener is enough and keyboard focus is never lost
+    const shuffleButton = document.getElementById('shuffleAvatars');
+    if (shuffleButton) {
+        shuffleButton.addEventListener('click', () => {
+            populateAvatars(selectRandomAvatars());
+        });
+    }
 
     // Check if there's a room code in URL parameters (for direct links)
     const urlParams = new URLSearchParams(window.location.search);

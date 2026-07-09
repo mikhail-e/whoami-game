@@ -48,7 +48,20 @@ body {
   background: #f0f4ff;
 }
 
+/* Shuffle button - sits next to the "Choose Your Avatar" label, outside the grid,
+   so it never reads as a 13th avatar tile */
+.avatar-shuffle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;  /* comfortable tap target on phones */
+  min-height: 36px;
+}
 
+/* A click on the icon must count as a click on the button */
+.avatar-shuffle-btn svg {
+  pointer-events: none;
+}
 
 .player-list {
   display: grid;

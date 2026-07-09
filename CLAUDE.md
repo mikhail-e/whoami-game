@@ -60,7 +60,7 @@ games/                     # Runtime game state backups (*.json, gitignored)
 1. **Bump the cache version in `CACHE_NAME`** (public/sw.js: `whoami-game-v1.5.0` → `v1.5.1`) **when you change the icons**. Since v1.5.0 only icons are cached, so HTML/CSS/JS changes reach players immediately and no longer need a version bump
 2. **No code duplication across files** — shared frontend code goes to `public/js/utils.js`
 3. **Update tests whenever logic changes**; run `npm test` before committing
-4. **Localize all UI text** — every user-facing string needs both `en` and `ru` entries in `public/js/translations.js`. `tests/translations-real.test.js` fails if a key exists in only one language
+4. **Localize all UI text** — every user-facing string needs both `en` and `ru` entries in `public/js/translations.js`. `tests/translations-real.test.js` fails if a key exists in only one language. Static markup supports `data-i18n` (text), `data-i18n-placeholder`, `data-i18n-title` and `data-i18n-aria-label` (for icon-only buttons)
 5. **Never build DOM from user data with `innerHTML`** — player names and characters go through `textContent` (see `createAlertElement()` in utils.js and `updatePlayersList()` in game-room.js)
 
 ## Gotchas
@@ -69,7 +69,8 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - Validate on the server, not just in the UI: `sanitizePlayerName` / `sanitizeAvatar` / `sanitizeCharacter` enforce the input limits, and `assignCharacter` refuses to change characters once `state !== 'waiting'` (a late `blur` event can arrive after Start Game)
 - **Input limits (128 chars for names and characters) exist twice** — `game-logic.js` for the server and `public/js/utils.js` for the browser (a browser script cannot `require()` a Node module). `tests/input-limits.test.js` fails if they drift apart. Lengths are counted by character, not UTF-16 code unit, so an emoji counts as one and is never cut in half
 - `game-room.js` rebuilds the whole players list (`updatePlayersList()`) on updates instead of patching individual stickers — per-sticker DOM patching caused sync bugs, don't reintroduce it. Rebuilds are **skipped while a character input is open**, so anything that ends editing (game start, socket error) must call `cancelActiveEdits()` first or the UI freezes
-- Dynamic text rendered from JS (game status, player cards) does not react to `data-i18n`. `setLanguage()` fires a `languagechanged` event; game-room.js listens and re-renders
+- Dynamic text rendered from JS (game status, player cards) does not react to `data-i18n`. `setLanguage()` fires a `languagechanged` event; game-room.js listens and re-renders. Prefer static markup for controls (like `#shuffleAvatars`) so `data-i18n*` and keyboard focus just work
+- The avatar selector sits inside `<form id="playerForm">`, which has a submit button. **Any `<button>` added there needs `type="button"`** or clicking it joins a game
 - Mobile virtual keyboard: call `input.focus()` synchronously inside the click handler (no `setTimeout`) — otherwise iOS/Android won't open the keyboard
 - Character assignment: players cannot assign a character to themselves; submitting empty/whitespace text removes the assignment (sticker returns to the "+" state). Escape restores the original character
 - Sticker colors are assigned once when a player joins and never change; unique for up to 7 players, then cycled
