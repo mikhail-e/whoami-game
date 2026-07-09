@@ -57,7 +57,7 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - **Connection tracking:** `createConnectionTracker()` in game-logic.js maps sockets to players. On page refresh the new socket often connects *before* the old one disconnects, so every disconnect is checked against the player's current socket and stale ones are ignored
 
 ## Rules (important!)
-1. **Bump the cache version in `CACHE_NAME`** (public/sw.js, line 4: `whoami-game-v1.4.0` → `v1.4.1`) **before every commit** — otherwise players keep the old cached files
+1. **Bump the cache version in `CACHE_NAME`** (public/sw.js, line 4: `whoami-game-v1.4.1` → `v1.4.2`) **before every commit** — otherwise players keep the old cached files
 2. **No code duplication across files** — shared frontend code goes to `public/js/utils.js`
 3. **Update tests whenever logic changes**; run `npm test` before committing
 4. **Localize all UI text** — every user-facing string needs both `en` and `ru` entries in `public/js/translations.js`. `tests/translations-real.test.js` fails if a key exists in only one language
@@ -66,7 +66,8 @@ games/                     # Runtime game state backups (*.json, gitignored)
 ## Gotchas
 - `stickerColors` is duplicated in `game-logic.js` and `public/js/game-room.js` — keep the two lists in sync. (The avatar pool lives **only** in `public/js/game.js`; the server does not need it.)
 - `game-logic.js` must stay free of Express/Socket.IO imports so it remains unit-testable
-- Validate on the server, not just in the UI: `sanitizePlayerName` / `sanitizeAvatar` / `sanitizeCharacter` enforce the same limits as the inputs' `maxlength`, and `assignCharacter` refuses to change characters once `state !== 'waiting'` (a late `blur` event can arrive after Start Game)
+- Validate on the server, not just in the UI: `sanitizePlayerName` / `sanitizeAvatar` / `sanitizeCharacter` enforce the input limits, and `assignCharacter` refuses to change characters once `state !== 'waiting'` (a late `blur` event can arrive after Start Game)
+- **Input limits (128 chars for names and characters) exist twice** — `game-logic.js` for the server and `public/js/utils.js` for the browser (a browser script cannot `require()` a Node module). `tests/input-limits.test.js` fails if they drift apart. Lengths are counted by character, not UTF-16 code unit, so an emoji counts as one and is never cut in half
 - `game-room.js` rebuilds the whole players list (`updatePlayersList()`) on updates instead of patching individual stickers — per-sticker DOM patching caused sync bugs, don't reintroduce it. Rebuilds are **skipped while a character input is open**, so anything that ends editing (game start, socket error) must call `cancelActiveEdits()` first or the UI freezes
 - Dynamic text rendered from JS (game status, player cards) does not react to `data-i18n`. `setLanguage()` fires a `languagechanged` event; game-room.js listens and re-renders
 - Mobile virtual keyboard: call `input.focus()` synchronously inside the click handler (no `setTimeout`) — otherwise iOS/Android won't open the keyboard

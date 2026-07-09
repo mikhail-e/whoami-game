@@ -6,16 +6,24 @@ const { v4: uuidv4 } = require('uuid');
 // Color palette for character stickers (must match frontend)
 const stickerColors = ['red', 'blue', 'purple', 'orange', 'green', 'pink', 'indigo'];
 
-// Input limits (must match maxlength attributes on the frontend)
-const MAX_NAME_LENGTH = 20;
+// Input limits. The frontend copy lives in public/js/utils.js (a browser
+// script cannot require() this file); tests/input-limits.test.js fails if
+// the two ever drift apart.
+const MAX_NAME_LENGTH = 128;
 const MAX_AVATAR_LENGTH = 10; // emoji can be several UTF-16 code units
-const MAX_CHARACTER_LENGTH = 30;
+const MAX_CHARACTER_LENGTH = 128;
+
+// Count characters the way a person would: an emoji is one character,
+// not the two UTF-16 code units JavaScript's .length reports.
+function countCharacters(text) {
+    return [...text].length;
+}
 
 // Validate and clean a player name. Returns the cleaned name or null if invalid.
 function sanitizePlayerName(name) {
     if (typeof name !== 'string') return null;
     const trimmed = name.trim();
-    if (trimmed.length === 0 || trimmed.length > MAX_NAME_LENGTH) return null;
+    if (trimmed.length === 0 || countCharacters(trimmed) > MAX_NAME_LENGTH) return null;
     return trimmed;
 }
 
@@ -32,7 +40,9 @@ function sanitizeAvatar(avatar) {
 function sanitizeCharacter(character) {
     if (character === null || character === undefined) return '';
     if (typeof character !== 'string') return null;
-    return character.trim().slice(0, MAX_CHARACTER_LENGTH);
+    // Truncate by character, not by code unit, so an emoji at the limit
+    // is never cut in half into an invalid string
+    return [...character.trim()].slice(0, MAX_CHARACTER_LENGTH).join('');
 }
 
 // Record that something happened in a game (used for inactive-game cleanup)
@@ -497,5 +507,7 @@ module.exports = {
     sanitizeCharacter,
     touchGame,
     cleanupInactiveGames,
-    createConnectionTracker
+    createConnectionTracker,
+    MAX_NAME_LENGTH,
+    MAX_CHARACTER_LENGTH
 };

@@ -71,6 +71,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Player ID is already initialized by player-id.js
 
+    // Enforce the shared name limit (kept in utils.js, not in the HTML)
+    const playerNameInput = document.getElementById('playerName');
+    if (playerNameInput) playerNameInput.maxLength = MAX_NAME_LENGTH;
+
     // Initialize with random avatars - each player gets their own unique set
     populateAvatars(selectRandomAvatars());
 

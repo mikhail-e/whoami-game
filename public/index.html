@@ -44,7 +44,8 @@
             <form id="playerForm">
                 <div class="mb-4">
                     <label for="playerName" class="form-label" data-i18n="yourName">Your Name</label>
-                    <input type="text" class="form-control" id="playerName" required maxlength="20" data-i18n-placeholder="enterName" placeholder="Enter your name" autofocus>
+                    <!-- maxlength is set from MAX_NAME_LENGTH in js/game.js -->
+                    <input type="text" class="form-control" id="playerName" required data-i18n-placeholder="enterName" placeholder="Enter your name" autofocus>
                 </div>
 
                 <!-- Avatar Selection -->

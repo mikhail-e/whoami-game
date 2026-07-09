@@ -28,9 +28,16 @@ describe('Input Validation', () => {
             expect(sanitizePlayerName('   ')).toBeNull();
         });
 
-        test('rejects names longer than 20 characters', () => {
-            expect(sanitizePlayerName('A'.repeat(21))).toBeNull();
-            expect(sanitizePlayerName('A'.repeat(20))).toBe('A'.repeat(20));
+        test('rejects names longer than 128 characters', () => {
+            expect(sanitizePlayerName('A'.repeat(129))).toBeNull();
+            expect(sanitizePlayerName('A'.repeat(128))).toBe('A'.repeat(128));
+        });
+
+        test('counts an emoji as one character, not two', () => {
+            // '🦄'.length is 2 in JavaScript, but a person sees one character
+            const name = '🦄'.repeat(128);
+            expect(sanitizePlayerName(name)).toBe(name);
+            expect(sanitizePlayerName('🦄'.repeat(129))).toBeNull();
         });
 
         test('rejects non-string values', () => {
@@ -67,8 +74,17 @@ describe('Input Validation', () => {
             expect(sanitizeCharacter(undefined)).toBe('');
         });
 
-        test('truncates characters longer than 30 characters', () => {
-            expect(sanitizeCharacter('A'.repeat(50))).toBe('A'.repeat(30));
+        test('truncates characters longer than 128 characters', () => {
+            expect(sanitizeCharacter('A'.repeat(200))).toBe('A'.repeat(128));
+        });
+
+        test('truncates by character so an emoji is never cut in half', () => {
+            const truncated = sanitizeCharacter('🦄'.repeat(200));
+
+            expect([...truncated]).toHaveLength(128);
+            expect(truncated).toBe('🦄'.repeat(128));
+            // A naive slice() would leave a broken surrogate at the end
+            expect(truncated).not.toContain('🦄'.charAt(0) + '�');
         });
 
         test('rejects non-string values', () => {
@@ -91,10 +107,15 @@ describe('Input Validation', () => {
             expect(result.error).toBe('Invalid player name');
         });
 
-        test('rejects names longer than 20 characters', () => {
-            const result = addPlayerToGame(games, gameId, 'X'.repeat(100), '😀');
+        test('rejects names longer than 128 characters', () => {
+            const result = addPlayerToGame(games, gameId, 'X'.repeat(200), '😀');
             expect(result.success).toBe(false);
             expect(result.error).toBe('Invalid player name');
+        });
+
+        test('accepts a name of exactly 128 characters', () => {
+            const result = addPlayerToGame(games, gameId, 'X'.repeat(128), '😀');
+            expect(result.success).toBe(true);
         });
 
         test('rejects invalid avatars', () => {
@@ -121,9 +142,9 @@ describe('Input Validation', () => {
         });
 
         test('trims and truncates the character text', () => {
-            const result = assignCharacter(games, gameId, playerId1, '  ' + 'B'.repeat(50), playerId2);
+            const result = assignCharacter(games, gameId, playerId1, '  ' + 'B'.repeat(200), playerId2);
             expect(result.success).toBe(true);
-            expect(result.character).toBe('B'.repeat(30));
+            expect(result.character).toBe('B'.repeat(128));
         });
 
         test('rejects non-string character values', () => {

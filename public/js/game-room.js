@@ -449,6 +449,15 @@ function updateGameDisplay() {
     updatePlayersList();
 }
 
+// Characters can be up to MAX_CHARACTER_LENGTH long. Show long ones in a
+// smaller font so the sticker does not tower over the player card.
+const LONG_CHARACTER_THRESHOLD = 40;
+
+function setStickerText(stickerElement, character) {
+    stickerElement.textContent = character;
+    stickerElement.classList.toggle('long-text', [...character].length > LONG_CHARACTER_THRESHOLD);
+}
+
 // Remove any character inputs that are still open. Needed when the game
 // starts or an error occurs while someone is editing - otherwise the open
 // input would block updatePlayersList() from ever rebuilding the UI.
@@ -549,7 +558,7 @@ function updatePlayersList() {
             const revealedSticker = document.createElement('div');
             const stickerColor = player.stickerColor || 'red';
             revealedSticker.className = `character-sticker color-${stickerColor} revealed`;
-            revealedSticker.textContent = characterData.character;
+            setStickerText(revealedSticker, characterData.character);
             revealedSticker.title = isCurrentPlayer ?
                 getText('yourRevealedCharacter', 'Your revealed character') :
                 getText('characterRevealedByPlayer', 'Character revealed by player');
@@ -561,7 +570,7 @@ function updatePlayersList() {
             const stickerColor = player.stickerColor || 'red';
             characterSticker.className = `character-sticker color-${stickerColor}`;
             characterSticker.dataset.playerId = player.id;
-            characterSticker.textContent = characterData.character;
+            setStickerText(characterSticker, characterData.character);
             characterSticker.title = gameState === 'started' ?
                 getText('characterReadOnly', `Character: ${characterData.character} (read-only during game)`, { character: characterData.character }) :
                 getText('characterClickToEdit', `Character: ${characterData.character} (click to edit)`, { character: characterData.character });
@@ -602,7 +611,7 @@ function addCharacter(playerId, buttonElement) {
     const inputElement = document.createElement('input');
     inputElement.type = 'text';
     inputElement.className = 'character-input';
-    inputElement.maxLength = 30;
+    inputElement.maxLength = MAX_CHARACTER_LENGTH;
 
     // Create a wrapper that looks like a sticker with player's color
     const stickerWrapper = document.createElement('div');
@@ -703,7 +712,7 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
     inputElement.type = 'text';
     inputElement.className = 'character-input';
     inputElement.value = editState ? editState.value : currentCharacter;
-    inputElement.maxLength = 30;
+    inputElement.maxLength = MAX_CHARACTER_LENGTH;
 
     // Replace the text content with input
     stickerElement.textContent = '';

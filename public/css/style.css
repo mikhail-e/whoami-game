@@ -103,6 +103,12 @@ body {
   transform: scale(1.05);
 }
 
+/* Long characters (up to 128 chars) would otherwise produce a huge sticker */
+.character-sticker.long-text {
+  font-size: 1rem;
+  padding: 10px 12px;
+}
+
 /* Color variants for character stickers */
 .character-sticker.color-red {
   background: linear-gradient(45deg, #ff6b6b, #ff8e8e);

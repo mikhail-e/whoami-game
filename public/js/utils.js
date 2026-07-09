@@ -1,5 +1,10 @@
 // Shared Utilities - Common patterns used across the game
 
+// Input limits. Must stay in sync with game-logic.js on the server
+// (a browser script cannot require() it) - tests/input-limits.test.js checks this.
+const MAX_NAME_LENGTH = 128;
+const MAX_CHARACTER_LENGTH = 128;
+
 // Helper function for safe i18n text retrieval with fallback
 function getText(key, fallback, placeholders = {}) {
     if (typeof i18n !== 'undefined' && i18n) {
