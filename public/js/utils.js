@@ -8,38 +8,55 @@ function getText(key, fallback, placeholders = {}) {
     return fallback;
 }
 
+// Build a dismissible Bootstrap alert. The message is inserted as plain text
+// (never as HTML) so user-controlled content like player names cannot inject markup.
+function createAlertElement(message, className) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = className;
+
+    const messageSpan = document.createElement('span');
+    messageSpan.textContent = message;
+
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = 'btn-close';
+    closeButton.setAttribute('data-bs-dismiss', 'alert');
+
+    alertDiv.appendChild(messageSpan);
+    alertDiv.appendChild(closeButton);
+    return alertDiv;
+}
+
+// Insert an alert at the top of the page content
+function insertAlert(alertDiv) {
+    const container = document.querySelector('.container');
+    if (!container) return;
+
+    const firstCard = document.querySelector('.game-card');
+    if (firstCard && firstCard.parentNode === container) {
+        container.insertBefore(alertDiv, firstCard);
+    } else {
+        container.insertBefore(alertDiv, container.firstChild);
+    }
+}
+
 // Show error message with Bootstrap alert
 function showError(message) {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.game-card'));
+    insertAlert(createAlertElement(message, 'alert alert-danger alert-dismissible fade show'));
 }
 
 // Show info message with Bootstrap alert
 function showInfo(message) {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = 'alert alert-info alert-dismissible fade show';
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.game-card'));
+    insertAlert(createAlertElement(message, 'alert alert-info alert-dismissible fade show'));
 }
 
 // Show notification (used in game room)
 function showNotification(message, type = 'info', duration = 4000) {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed`;
+    const notification = createAlertElement(
+        message,
+        `alert alert-${type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed`
+    );
     notification.style.cssText = 'top: 20px; right: 20px; z-index: 1055; min-width: 300px;';
-    notification.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
 
     document.body.appendChild(notification);
 

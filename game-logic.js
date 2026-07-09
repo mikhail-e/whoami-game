@@ -6,22 +6,38 @@ const { v4: uuidv4 } = require('uuid');
 // Color palette for character stickers (must match frontend)
 const stickerColors = ['red', 'blue', 'purple', 'orange', 'green', 'pink', 'indigo'];
 
-// Avatar pool - 60 emojis total (12 current + 48 new)
-const avatarPool = [
-    // Original 12 avatars
-    '😀', '😎', '🤖', '🐱', '🌟', '🚀', '🎮', '🎨', '🍕', '🦄', '🐢', '⚡',
+// Input limits (must match maxlength attributes on the frontend)
+const MAX_NAME_LENGTH = 20;
+const MAX_AVATAR_LENGTH = 10; // emoji can be several UTF-16 code units
+const MAX_CHARACTER_LENGTH = 30;
 
-    // 48 new avatars - diverse, fun, and appropriate selection
-    '😊', '🤩', '😇', '🤗', '🥳', '🧐', '🤓', '😋', '🥰', '😆', '🤪', '🥸',
-    '👻', '🎃', '🤡', '👾', '🤠', '🥷', '👸', '🧙', '🧚', '🦸', '🧛', '👑',
-    '🐶', '🐭', '🐹', '🐰', '🦊', '🐼', '🐨', '🐯', '🦁', '🐸', '🐵', '🦉',
-    '🌈', '🔥', '💎', '🎯', '🎪', '🎭', '🎺', '🎸', '🎲', '🎳', '⚽', '🏀'
-];
+// Validate and clean a player name. Returns the cleaned name or null if invalid.
+function sanitizePlayerName(name) {
+    if (typeof name !== 'string') return null;
+    const trimmed = name.trim();
+    if (trimmed.length === 0 || trimmed.length > MAX_NAME_LENGTH) return null;
+    return trimmed;
+}
 
-// Generate random selection of 12 avatars from the pool
-function selectRandomAvatars() {
-    const shuffled = [...avatarPool].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 12);
+// Validate and clean an avatar. Returns the cleaned avatar or null if invalid.
+function sanitizeAvatar(avatar) {
+    if (typeof avatar !== 'string') return null;
+    const trimmed = avatar.trim();
+    if (trimmed.length === 0 || trimmed.length > MAX_AVATAR_LENGTH) return null;
+    return trimmed;
+}
+
+// Validate and clean a character name. Empty means "remove assignment".
+// Returns the cleaned string, or null if the value is not a string at all.
+function sanitizeCharacter(character) {
+    if (character === null || character === undefined) return '';
+    if (typeof character !== 'string') return null;
+    return character.trim().slice(0, MAX_CHARACTER_LENGTH);
+}
+
+// Record that something happened in a game (used for inactive-game cleanup)
+function touchGame(game) {
+    game.lastActivityAt = Date.now();
 }
 
 // Assign unique color to new player
@@ -67,6 +83,7 @@ function createGame(games) {
         revealedPlayers: new Set(), // Track who has revealed their character
         created: new Date()
     };
+    touchGame(game);
 
     games.set(gameId, game);
     return { gameId, success: true };
@@ -76,6 +93,16 @@ function createGame(games) {
 function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
     if (!games.has(gameId)) {
         return { success: false, error: 'Game not found' };
+    }
+
+    // Validate inputs before touching game state
+    const cleanName = sanitizePlayerName(playerName);
+    if (!cleanName) {
+        return { success: false, error: 'Invalid player name' };
+    }
+    const cleanAvatar = sanitizeAvatar(avatar);
+    if (!cleanAvatar) {
+        return { success: false, error: 'Invalid avatar' };
     }
 
     const game = games.get(gameId);
@@ -104,7 +131,7 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
         existingPlayer.connected = true;
         existingPlayer.isConnected = true;
         existingPlayer.connectedAt = Date.now();
-        existingPlayer.avatar = avatar; // Allow avatar update
+        existingPlayer.avatar = cleanAvatar; // Allow avatar update
         delete existingPlayer.disconnectedAt; // Clear disconnect timestamp
         player = existingPlayer;
     } else {
@@ -115,8 +142,8 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
         const isValidUUID = playerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(playerId);
         player = {
             id: isValidUUID ? playerId : uuidv4(),
-            name: playerName,
-            avatar: avatar,
+            name: cleanName,
+            avatar: cleanAvatar,
             connected: true,
             isConnected: true,
             joinedAt: new Date(),
@@ -127,7 +154,8 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
         game.players.push(player);
         isNewPlayer = true;
     }
-    
+    touchGame(game);
+
     return {
         success: true,
         player,
@@ -166,11 +194,23 @@ function assignCharacter(games, gameId, playerId, character, assignedBy) {
     if (playerId === assignedBy) {
         return { success: false, error: 'Cannot assign character to yourself' };
     }
-    
+
+    // Characters are locked once the game has started (client hides editing,
+    // but the server must enforce it too - e.g. a blur event can arrive late)
+    if (game.state !== 'waiting') {
+        return { success: false, error: 'Cannot change characters after the game has started' };
+    }
+
+    // Validate and clean the character text (trim + length limit)
+    const cleanCharacter = sanitizeCharacter(character);
+    if (cleanCharacter === null) {
+        return { success: false, error: 'Invalid character' };
+    }
+
     // Assign the character or remove it if empty
-    if (character && character.trim() !== '') {
+    if (cleanCharacter !== '') {
         game.characters.set(playerId, {
-            character: character,
+            character: cleanCharacter,
             assignedBy: assignedBy,
             assignedAt: new Date()
         });
@@ -178,11 +218,12 @@ function assignCharacter(games, gameId, playerId, character, assignedBy) {
         // Remove character assignment if empty or whitespace-only
         game.characters.delete(playerId);
     }
-    
+    touchGame(game);
+
     return {
         success: true,
         playerId,
-        character: character && character.trim() !== '' ? character : '', // Return empty string for removed characters
+        character: cleanCharacter, // Empty string for removed characters
         assignedBy,
         characters: Object.fromEntries(game.characters)
     };
@@ -215,7 +256,8 @@ function startGame(games, gameId, playerId) {
     // Start the game
     game.state = 'started';
     game.startedAt = new Date();
-    
+    touchGame(game);
+
     return { 
         success: true,
         gameId,
@@ -250,7 +292,8 @@ function revealCharacter(games, gameId, playerId) {
     
     // Add player to revealed set
     game.revealedPlayers.add(playerId);
-    
+    touchGame(game);
+
     const characterData = game.characters.get(playerId);
     
     return {
@@ -285,7 +328,8 @@ function restartGame(games, gameId, playerId) {
     game.revealedPlayers.clear();
     game.characters.clear(); // Clear all character assignments
     game.restartedAt = new Date();
-    
+    touchGame(game);
+
     // Clear all character assignments - players start fresh
     // This makes restart more visually obvious
     
@@ -350,6 +394,8 @@ function recreateGameFromState(games, roomCode, savedGameState) {
 
         // Avatar rotation is now per-player, no need to store room-specific avatars
 
+        touchGame(game);
+
         // Store the recreated game
         games.set(roomCode, game);
 
@@ -369,6 +415,72 @@ function recreateGameFromState(games, roomCode, savedGameState) {
     }
 }
 
+// Tracks which socket belongs to which player.
+//
+// The tricky part is the page refresh: the browser opens a NEW socket before
+// the OLD one reports its disconnect. Without care, the late disconnect of the
+// old socket would mark the freshly reconnected player as offline. Every
+// disconnect is therefore checked against the player's current socket.
+function createConnectionTracker() {
+    const socketToPlayer = new Map(); // socketId -> { gameId, playerId }
+    const playerToSocket = new Map(); // playerId -> socketId
+
+    return {
+        // Register a socket as the player's current connection
+        register(socketId, gameId, playerId) {
+            socketToPlayer.set(socketId, { gameId, playerId });
+            playerToSocket.set(playerId, socketId);
+        },
+
+        // Handle a socket disconnect.
+        // Returns { gameId, playerId } if the player really went offline,
+        // or null if the socket was stale (player already reconnected) / unknown.
+        unregister(socketId) {
+            const playerInfo = socketToPlayer.get(socketId);
+            if (!playerInfo) return null;
+
+            socketToPlayer.delete(socketId);
+
+            // Stale disconnect: the player already has a newer socket
+            if (playerToSocket.get(playerInfo.playerId) !== socketId) {
+                return null;
+            }
+
+            playerToSocket.delete(playerInfo.playerId);
+            return playerInfo;
+        },
+
+        getSocketId(playerId) {
+            return playerToSocket.get(playerId);
+        },
+
+        get size() {
+            return socketToPlayer.size;
+        }
+    };
+}
+
+// Remove games nobody plays anymore from memory (prevents unbounded growth).
+// A game is inactive when it has no connected players and nothing happened
+// in it for maxIdleMs. Returns the list of removed game IDs.
+function cleanupInactiveGames(games, maxIdleMs = 4 * 60 * 60 * 1000) {
+    const now = Date.now();
+    const removed = [];
+
+    for (const [gameId, game] of games.entries()) {
+        const hasConnectedPlayers = game.players.some(p => p.isConnected);
+        const lastActivity = game.lastActivityAt ||
+            (game.created instanceof Date ? game.created.getTime() : now);
+
+        if (!hasConnectedPlayers && now - lastActivity > maxIdleMs) {
+            games.delete(gameId);
+            removed.push(gameId);
+        }
+    }
+
+    return removed;
+}
+
 module.exports = {
     generateRoomCode,
     createGame,
@@ -379,5 +491,11 @@ module.exports = {
     restartGame,
     isValidRoomCode,
     assignUniqueColor,
-    recreateGameFromState
+    recreateGameFromState,
+    sanitizePlayerName,
+    sanitizeAvatar,
+    sanitizeCharacter,
+    touchGame,
+    cleanupInactiveGames,
+    createConnectionTracker
 };

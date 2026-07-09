@@ -231,7 +231,8 @@ describe('Simplified Character Update System', () => {
         });
 
         test('handles special characters in character names', () => {
-            const specialName = 'Albert "The Genius" Einstein & Newton 🧠';
+            // Must fit within the 30-character limit (same as the input's maxlength)
+            const specialName = 'Albert "Genius" & Newton 🧠';
             const result = gameLogic.assignCharacter(games, gameId, playerId1, specialName, playerId2);
 
             expect(result.success).toBe(true);
@@ -239,6 +240,14 @@ describe('Simplified Character Update System', () => {
 
             const game = games.get(gameId);
             expect(game.characters.get(playerId1).character).toBe(specialName);
+        });
+
+        test('truncates character names longer than 30 characters', () => {
+            const longName = 'Albert "The Genius" Einstein & Newton 🧠';
+            const result = gameLogic.assignCharacter(games, gameId, playerId1, longName, playerId2);
+
+            expect(result.success).toBe(true);
+            expect(result.character).toBe(longName.trim().slice(0, 30));
         });
     });
 });

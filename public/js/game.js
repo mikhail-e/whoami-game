@@ -8,7 +8,7 @@ const avatarPool = [
     // 48 new avatars - diverse, fun, and appropriate selection
     '🐰', '🐮', '🐽', '🐷', '🐻', '🐦‍⬛', '🦖', '🦕', '🐳', '🦧', '🦣', '🐉',
     '👻', '🎃', '🤡', '👾', '🐲', '🥷', '👸', '🧙', '🧚', '🦸', '🧛', '👑',
-    '🐶', '🐭', '🐹', '🐰', '🦊', '🐼', '🐨', '🐯', '🦁', '🐸', '🐵', '🦉',
+    '🐶', '🐭', '🐹', '🐗', '🦊', '🐼', '🐨', '🐯', '🦁', '🐸', '🐵', '🦉',
     '🌈', '🔥', '🍈', '🎯', '🎪', '🧜‍♀️', '🎺', '🎸', '🎲', '🎳', '⚽', '🏀'
 ];
 
@@ -348,8 +348,3 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
-
-// Utility function to generate random game ID
-function generateGameId() {
-    return Math.random().toString(36).substr(2, 8).toUpperCase();
-}

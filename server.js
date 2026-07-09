@@ -25,8 +25,8 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const games = new Map();
 
 // Track socket connections for better disconnect handling
-const socketPlayerMap = new Map(); // socketId -> { gameId, playerId }
-const playerSocketMap = new Map(); // playerId -> socketId
+// (handles the refresh race: new socket connects before old one disconnects)
+const connections = gameLogic.createConnectionTracker();
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -59,6 +59,15 @@ app.get('/game/:roomCode', (req, res) => {
                 restoredAt: new Date()
             };
 
+            // Nobody is actually connected right after a restore - players will be
+            // marked connected again when they rejoin. Without this reset the game
+            // would look "active" forever and never get cleaned up.
+            restoredGame.players.forEach(player => {
+                player.connected = false;
+                player.isConnected = false;
+            });
+            gameLogic.touchGame(restoredGame);
+
             games.set(roomCode, restoredGame);
             res.sendFile(path.join(__dirname, 'public', 'game.html'));
             return;
@@ -79,8 +88,8 @@ app.post('/api/create-game', express.json(), (req, res) => {
 
 // API endpoint to join a game
 app.post('/api/join-game', express.json(), (req, res) => {
-    const { gameId, playerName, avatar, playerId } = req.body;
-    
+    const { gameId, playerName, avatar, playerId } = req.body || {};
+
     console.log('Join game request:', { gameId, playerName, avatar, playerId });
     
     if (!gameId || !playerName || !avatar) {
@@ -109,7 +118,7 @@ app.post('/api/join-game', express.json(), (req, res) => {
 
 // API endpoint to recreate a game with saved state
 app.post('/api/recreate-game', express.json(), (req, res) => {
-    const { roomCode, gameState } = req.body;
+    const { roomCode, gameState } = req.body || {};
 
     console.log('Recreate game request:', { roomCode, gameStateExists: !!gameState });
 
@@ -141,19 +150,34 @@ app.post('/api/recreate-game', express.json(), (req, res) => {
     res.json(result);
 });
 
+// Wrap a socket event handler so a bad payload can never crash the server:
+// guarantees `data` is an object and catches unexpected errors.
+function safeHandler(socket, eventName, handler) {
+    socket.on(eventName, (data) => {
+        try {
+            handler((data && typeof data === 'object') ? data : {});
+        } catch (error) {
+            console.error(`❌ Error handling "${eventName}":`, error);
+            socket.emit('error', 'Something went wrong, please try again');
+        }
+    });
+}
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
-    
-    socket.on('join-room', (data) => {
+
+    safeHandler(socket, 'join-room', (data) => {
         const { gameId, playerId } = data;
+        if (typeof gameId !== 'string' || !gameLogic.isValidRoomCode(gameId.toUpperCase())) {
+            return;
+        }
         socket.join(gameId);
         console.log(`User ${socket.id} joined room ${gameId}`);
 
         // Track socket-player relationship
         if (playerId) {
-            socketPlayerMap.set(socket.id, { gameId, playerId });
-            playerSocketMap.set(playerId, socket.id);
+            connections.register(socket.id, gameId, playerId);
             console.log(`📍 Tracking connection: ${socket.id} → Player ${playerId} in game ${gameId}`);
         }
         
@@ -169,11 +193,11 @@ io.on('connection', (socket) => {
             socket.emit('game-state', gameState);
         }
     });
-    
+
     // Real-time streaming removed - keeping it simple
 
     // Final character assignment (when editing completes)
-    socket.on('assign-character', (data) => {
+    safeHandler(socket, 'assign-character', (data) => {
         const { gameId, playerId, character, assignedBy } = data;
 
         const result = gameLogic.assignCharacter(games, gameId, playerId, character, assignedBy);
@@ -200,7 +224,7 @@ io.on('connection', (socket) => {
 
     // Note: Old edit state synchronization removed - using real-time streaming instead
 
-    socket.on('start-game', (data) => {
+    safeHandler(socket, 'start-game', (data) => {
         const { gameId, playerId } = data;
         
         const result = gameLogic.startGame(games, gameId, playerId);
@@ -216,7 +240,7 @@ io.on('connection', (socket) => {
         io.to(gameId).emit('game-started', result);
     });
     
-    socket.on('reveal-character', (data) => {
+    safeHandler(socket, 'reveal-character', (data) => {
         const { gameId, playerId } = data;
         
         const result = gameLogic.revealCharacter(games, gameId, playerId);
@@ -241,7 +265,7 @@ io.on('connection', (socket) => {
         }
     });
     
-    socket.on('restart-game', (data) => {
+    safeHandler(socket, 'restart-game', (data) => {
         const { gameId, playerId } = data;
         
         const result = gameLogic.restartGame(games, gameId, playerId);
@@ -260,32 +284,32 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
 
-        // Look up player information for this socket
-        const playerInfo = socketPlayerMap.get(socket.id);
-        if (playerInfo) {
-            const { gameId, playerId } = playerInfo;
-            console.log(`🔌 Player ${playerId} disconnected from game ${gameId}`);
+        // Returns null for stale sockets (player already reconnected via a new socket)
+        const playerInfo = connections.unregister(socket.id);
+        if (!playerInfo) {
+            return;
+        }
 
-            // Mark player as disconnected but keep them in the game
-            if (games.has(gameId)) {
-                const game = games.get(gameId);
-                const player = game.players.find(p => p.id === playerId);
-                if (player) {
-                    player.isConnected = false;
-                    player.disconnectedAt = Date.now();
-                    console.log(`⏰ Player ${playerId} marked as disconnected at ${new Date().toISOString()}`);
+        const { gameId, playerId } = playerInfo;
+        console.log(`🔌 Player ${playerId} disconnected from game ${gameId}`);
 
-                    // Notify other players about the disconnection
-                    socket.to(gameId).emit('player-disconnected', {
-                        playerId: playerId,
-                        playerName: player.name
-                    });
-                }
+        // Mark player as disconnected but keep them in the game
+        if (games.has(gameId)) {
+            const game = games.get(gameId);
+            const player = game.players.find(p => p.id === playerId);
+            if (player) {
+                player.connected = false;
+                player.isConnected = false;
+                player.disconnectedAt = Date.now();
+                gameLogic.touchGame(game);
+                console.log(`⏰ Player ${playerId} marked as disconnected at ${new Date().toISOString()}`);
+
+                // Notify other players about the disconnection
+                socket.to(gameId).emit('player-disconnected', {
+                    playerId: playerId,
+                    playerName: player.name
+                });
             }
-
-            // Clean up tracking maps
-            socketPlayerMap.delete(socket.id);
-            playerSocketMap.delete(playerId);
         }
     });
 });
@@ -373,6 +397,13 @@ function keepGamesAlive() {
         } else {
             console.log(`⏳ Game ${gameId} has no connected players, keeping in memory`);
         }
+    }
+
+    // Remove long-inactive games from memory (their files stay on disk for
+    // up to 4 more hours, so recently abandoned rooms can still be restored)
+    const removedGames = gameLogic.cleanupInactiveGames(games);
+    if (removedGames.length > 0) {
+        console.log(`🧹 Removed ${removedGames.length} inactive games from memory: ${removedGames.join(', ')}`);
     }
 
     // Clean up old files after keep-alive

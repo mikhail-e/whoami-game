@@ -62,16 +62,14 @@ class PWAManager {
 
     // Auto-update checking
     startUpdateChecking(registration) {
-        // Check for updates every 30 seconds
+        // Check for updates every 30 seconds (silently - no console spam)
         setInterval(() => {
-            console.log('🔍 Checking for app updates...');
             registration.update();
         }, 30000);
 
         // Also check when page becomes visible
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
-                console.log('🔍 Page visible, checking for updates...');
                 registration.update();
             }
         });

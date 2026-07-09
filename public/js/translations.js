@@ -120,6 +120,8 @@ const translations = {
         yourCharacterHidden: "Your character is hidden from you!",
         yourRevealedCharacter: "Your revealed character",
         characterRevealedByPlayer: "Character revealed by player",
+        characterReadOnly: "Character: {character} (read-only during game)",
+        characterClickToEdit: "Character: {character} (click to edit)",
         assignCharacter: "Assign character",
         someoneNeedsToAssign: "Someone needs to assign you a character!",
         copiedSuccess: "✅ Copied!",
@@ -267,6 +269,8 @@ const translations = {
         yourCharacterHidden: "Ваш персонаж скрыт от вас!",
         yourRevealedCharacter: "Ваш раскрытый персонаж",
         characterRevealedByPlayer: "Персонаж раскрыт игроком",
+        characterReadOnly: "Персонаж: {character} (нельзя изменить во время игры)",
+        characterClickToEdit: "Персонаж: {character} (нажмите, чтобы изменить)",
         assignCharacter: "Назначить персонажа",
         someoneNeedsToAssign: "Кто-то должен назначить вам персонажа!",
         copiedSuccess: "✅ Скопировано!",
@@ -325,19 +329,25 @@ class Localization {
     
     setLanguage(lang) {
         if (!translations[lang]) return;
-        
+
         this.currentLanguage = lang;
         localStorage.setItem('whoami-language', lang);
         this.updateTexts();
         this.updateLanguageSwitcher();
+
+        // Notify pages that render text from JavaScript (game status, player
+        // cards, ...) - updateTexts() only handles static data-i18n elements
+        document.dispatchEvent(new CustomEvent('languagechanged', { detail: { language: lang } }));
     }
     
     getText(key, placeholders = {}) {
         let text = translations[this.currentLanguage][key] || translations['en'][key] || key;
 
-        // Replace placeholders in the format {placeholder}
+        // Replace placeholders in the format {placeholder}.
+        // split/join instead of a regex so user-provided values containing
+        // special characters (like "$&") are inserted literally
         for (const [placeholder, value] of Object.entries(placeholders)) {
-            text = text.replace(new RegExp(`\\{${placeholder}\\}`, 'g'), value);
+            text = text.split(`{${placeholder}}`).join(String(value));
         }
 
         return text;

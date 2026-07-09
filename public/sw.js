@@ -1,8 +1,7 @@
 // Who am I? Game - Service Worker
 // Hybrid PWA service worker with smart caching strategies
 
-const CACHE_NAME = 'whoami-game-v1.3.2';
-const CACHE_VERSION = Date.now(); // For cache busting critical files
+const CACHE_NAME = 'whoami-game-v1.4.0';
 
 // Static assets that benefit from cache-first strategy
 const staticAssets = [
@@ -28,6 +27,7 @@ const dynamicAssets = [
     '/js/game.js',
     '/js/game-room.js',
     '/js/translations.js',
+    '/js/utils.js',
     '/js/pwa.js'
 ];
 
@@ -65,14 +65,23 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Helper function to check if URL is a dynamic asset
+// Helper function to check if URL is a dynamic asset.
+// Matches by exact pathname (query strings like ?version=... are ignored).
 function isDynamicAsset(url) {
-    return dynamicAssets.some(asset => url.includes(asset));
+    const parsed = new URL(url);
+    return parsed.origin === self.location.origin && dynamicAssets.includes(parsed.pathname);
 }
 
-// Helper function to check if URL is a static asset
+// Helper function to check if URL is a static asset.
+// Exact matching only - the old substring check accidentally matched EVERY
+// url (because of the '/' entry) and sent everything through cache-first.
 function isStaticAsset(url) {
-    return staticAssets.some(asset => url.includes(asset.replace('/', '')));
+    const parsed = new URL(url);
+    if (parsed.origin === self.location.origin) {
+        return staticAssets.includes(parsed.pathname);
+    }
+    // External resources (CDN) are listed with their full URL
+    return staticAssets.includes(url);
 }
 
 // Helper function to check if request is cacheable (avoid browser extension errors)

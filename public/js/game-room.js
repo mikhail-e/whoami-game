@@ -131,6 +131,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Set up event listeners
     setupEventListeners();
+
+    // Re-render dynamic text (game status, player cards) when the language changes
+    document.addEventListener('languagechanged', () => {
+        if (currentGame) updateGameDisplay();
+    });
 });
 
 function initializeGameRoom(roomCode) {
@@ -183,11 +188,13 @@ function initializeSocket(roomCode) {
         }
     });
     
-    socket.on('player-left', (data) => {
-        console.log('Player left:', data);
-        if (currentGame) {
-            currentGame.players = data.players;
-            updateGameDisplay();
+    socket.on('player-disconnected', (data) => {
+        console.log('Player disconnected:', data);
+        if (currentGame && data && data.playerId) {
+            const player = currentGame.players.find(p => p.id === data.playerId);
+            if (player) {
+                player.isConnected = false;
+            }
         }
     });
     
@@ -197,7 +204,7 @@ function initializeSocket(roomCode) {
     console.log('🔧 Setting up character-finalized event handler...');
     socket.on('character-finalized', (data) => {
         console.log('📨 RECEIVED character-finalized event:', data);
-        const { playerId, character, allCharacters } = data;
+        const { playerId, allCharacters } = data;
 
         // Update local game state with complete character data
         if (currentGame && allCharacters) {
@@ -222,20 +229,9 @@ function initializeSocket(roomCode) {
                 }
             }
 
-            // Update player list (safely)
-            updatePlayersList();
-
-            // Update Start Game button state after character assignment
-            if (currentGame.state === 'waiting') {
-                const allPlayersHaveCharacters = currentGame.players.length >= 2 &&
-                    currentGame.players.every(player => {
-                        const characterData = currentGame.characters && currentGame.characters[player.id];
-                        return characterData && characterData.character && characterData.character.trim() !== '';
-                    });
-
-                const startButton = document.getElementById('startGame');
-                if (startButton) startButton.disabled = !allPlayersHaveCharacters;
-            }
+            // Full display update: rebuilds the players list (safely) and
+            // refreshes the status text and Start Game button state
+            updateGameDisplay();
         }
     });
     
@@ -243,6 +239,9 @@ function initializeSocket(roomCode) {
         console.log('Game started:', data);
         if (currentGame) {
             currentGame.state = 'started';
+            // Close any character input that is still open - editing is no
+            // longer allowed and an open input would block UI updates
+            cancelActiveEdits();
             saveGameStateToStorage();
             updateGameDisplay();
         }
@@ -286,6 +285,10 @@ function initializeSocket(roomCode) {
 
     socket.on('error', (error) => {
         console.error('Socket error:', error);
+        // Clean up any stuck editing inputs so the UI can keep updating,
+        // then rebuild the players list from the last known state
+        cancelActiveEdits();
+        updatePlayersList();
         alert(error);
     });
     
@@ -446,6 +449,23 @@ function updateGameDisplay() {
     updatePlayersList();
 }
 
+// Remove any character inputs that are still open. Needed when the game
+// starts or an error occurs while someone is editing - otherwise the open
+// input would block updatePlayersList() from ever rebuilding the UI.
+function cancelActiveEdits() {
+    const playerListEl = document.getElementById('playerList');
+    if (!playerListEl) return;
+
+    playerListEl.querySelectorAll('.character-input').forEach(input => {
+        const sticker = input.closest('.character-sticker');
+        if (sticker) {
+            sticker.remove();
+        } else {
+            input.remove();
+        }
+    });
+}
+
 function updatePlayersList() {
     console.log('🎨 Simple updatePlayersList called');
     const playerListEl = document.getElementById('playerList');
@@ -485,12 +505,25 @@ function updatePlayersList() {
         if (isCurrentPlayer) playerCard.classList.add('cannot-assign');
         if (isRevealed) playerCard.classList.add('bg-warning', 'bg-opacity-25');
 
-        // Basic player info
-        const youText = getText('you', 'You');
-        playerCard.innerHTML = `
-            <div class="player-avatar">${player.avatar}</div>
-            <div class="player-name">${player.name}${isCurrentPlayer ? ` (<strong>${youText}</strong>)` : ''}</div>
-        `;
+        // Basic player info - built with textContent so player-controlled
+        // values (name, avatar) can never inject HTML (XSS protection)
+        const avatarEl = document.createElement('div');
+        avatarEl.className = 'player-avatar';
+        avatarEl.textContent = player.avatar;
+        playerCard.appendChild(avatarEl);
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'player-name';
+        nameEl.textContent = player.name;
+        if (isCurrentPlayer) {
+            const youText = getText('you', 'You');
+            nameEl.appendChild(document.createTextNode(' ('));
+            const youEl = document.createElement('strong');
+            youEl.textContent = youText;
+            nameEl.appendChild(youEl);
+            nameEl.appendChild(document.createTextNode(')'));
+        }
+        playerCard.appendChild(nameEl);
 
         // Add character sticker, mystery sticker, or add button
         if (characterData && isCurrentPlayer && !isRevealed) {
@@ -530,8 +563,8 @@ function updatePlayersList() {
             characterSticker.dataset.playerId = player.id;
             characterSticker.textContent = characterData.character;
             characterSticker.title = gameState === 'started' ?
-                `Character: ${characterData.character} (read-only during game)` :
-                `Character: ${characterData.character} (click to edit)`;
+                getText('characterReadOnly', `Character: ${characterData.character} (read-only during game)`, { character: characterData.character }) :
+                getText('characterClickToEdit', `Character: ${characterData.character} (click to edit)`, { character: characterData.character });
 
             if (gameState === 'waiting') {
                 characterSticker.style.cursor = 'pointer';
@@ -584,16 +617,6 @@ function addCharacter(playerId, buttonElement) {
     // Focus and select the input
     inputElement.focus();
 
-    // Initial character stream when edit starts
-    console.log(`🔔 SENDING initial character-stream for new character (player ${playerId})`);
-    socket.emit('character-stream', {
-        gameId: currentGame.id,
-        playerId: playerId,
-        character: inputElement.value.trim()
-    });
-
-    // No real-time streaming - Keep it simple
-
     // Prevent double execution
     let saveInProgress = false;
     let savedViaEnter = false;
@@ -608,6 +631,13 @@ function addCharacter(playerId, buttonElement) {
         // If saved via Enter, ignore subsequent blur events
         if (triggeredBy === 'blur' && savedViaEnter) {
             console.log(`🚫 saveCharacter blocked - already saved via Enter`);
+            return;
+        }
+
+        // Characters are locked once the game has started (e.g. a blur event
+        // can fire after another player pressed Start Game)
+        if (currentGame && currentGame.state !== 'waiting') {
+            console.log(`🚫 saveCharacter blocked - game already started`);
             return;
         }
 
@@ -676,8 +706,6 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
     inputElement.maxLength = 30;
 
     // Replace the text content with input
-    const originalText = stickerElement.textContent;
-    const originalClasses = stickerElement.className;
     stickerElement.textContent = '';
     stickerElement.appendChild(inputElement);
     stickerElement.classList.add('editing');
@@ -704,16 +732,6 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
     // Focus immediately on all platforms - delays break mobile gesture chain
     focusInput();
 
-    // Initial character stream when edit starts
-    console.log(`🔔 SENDING initial character-stream for player ${playerId}`);
-    socket.emit('character-stream', {
-        gameId: currentGame.id,
-        playerId: playerId,
-        character: inputElement.value.trim()
-    });
-
-    // No real-time streaming - Keep it simple
-
     // Prevent double execution
     let saveInProgress = false;
     let savedViaEnter = false;
@@ -728,6 +746,13 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
         // If saved via Enter, ignore subsequent blur events
         if (triggeredBy === 'blur' && savedViaEnter) {
             console.log(`🚫 saveCharacter blocked - already saved via Enter`);
+            return;
+        }
+
+        // Characters are locked once the game has started (e.g. a blur event
+        // can fire after another player pressed Start Game)
+        if (currentGame && currentGame.state !== 'waiting') {
+            console.log(`🚫 saveCharacter blocked - game already started`);
             return;
         }
 
@@ -764,8 +789,8 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
             saveCharacter('enter');
         } else if (e.key === 'Escape') {
             e.preventDefault();
-            // Cancel editing - restore original character or hide input
-            inputElement.value = '';
+            // Cancel editing - restore the original character (do NOT clear it)
+            inputElement.value = currentCharacter;
             saveCharacter('escape');
         }
     });
