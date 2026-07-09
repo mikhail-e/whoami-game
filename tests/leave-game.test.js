@@ -8,6 +8,7 @@ const {
     assignCharacter,
     startGame,
     revealCharacter,
+    restartGame,
     removePlayerFromGame
 } = require('../game-logic');
 
@@ -121,16 +122,107 @@ describe('Player Leaving', () => {
         expect(rejoin.isNewPlayer).toBe(true);
     });
 
-    test('a leaver cannot rejoin a started game', () => {
+    test('a stranger still cannot join a started game', () => {
         assignCharacter(games, gameId, alice.id, 'Batman', bob.id);
         assignCharacter(games, gameId, bob.id, 'Superman', alice.id);
         startGame(games, gameId, alice.id);
-        removePlayerFromGame(games, gameId, alice.id);
 
-        const rejoin = addPlayerToGame(games, gameId, 'Alice', '😀', alice.id);
+        const stranger = addPlayerToGame(games, gameId, 'Mallory', '🐍', 'cccccccc-3333-4333-9333-333333333333');
 
-        expect(rejoin.success).toBe(false);
-        expect(rejoin.error).toBe('Game has already started');
+        expect(stranger.success).toBe(false);
+        expect(stranger.error).toBe('Game has already started');
+    });
+
+    describe('returning to a started game', () => {
+        beforeEach(() => {
+            assignCharacter(games, gameId, alice.id, 'Batman', bob.id);
+            assignCharacter(games, gameId, bob.id, 'Superman', alice.id);
+            startGame(games, gameId, alice.id);
+        });
+
+        test('a leaver can return to the same round', () => {
+            removePlayerFromGame(games, gameId, alice.id);
+
+            const rejoin = addPlayerToGame(games, gameId, 'Alice', '😀', alice.id);
+
+            expect(rejoin.success).toBe(true);
+            expect(rejoin.isNewPlayer).toBe(true);
+            expect(games.get(gameId).players).toHaveLength(2);
+        });
+
+        test('the returning player gets their character back', () => {
+            removePlayerFromGame(games, gameId, alice.id);
+            expect(games.get(gameId).characters.has(alice.id)).toBe(false);
+
+            addPlayerToGame(games, gameId, 'Alice', '😀', alice.id);
+
+            const restored = games.get(gameId).characters.get(alice.id);
+            expect(restored.character).toBe('Batman');
+            expect(restored.assignedBy).toBe(bob.id);
+        });
+
+        test('the returning player gets their reveal status back', () => {
+            revealCharacter(games, gameId, alice.id);
+            removePlayerFromGame(games, gameId, alice.id);
+
+            addPlayerToGame(games, gameId, 'Alice', '😀', alice.id);
+
+            expect(games.get(gameId).revealedPlayers.has(alice.id)).toBe(true);
+        });
+
+        test('the returning player keeps their sticker color', () => {
+            const color = alice.stickerColor;
+            removePlayerFromGame(games, gameId, alice.id);
+
+            const rejoin = addPlayerToGame(games, gameId, 'Alice', '😀', alice.id);
+
+            expect(rejoin.player.stickerColor).toBe(color);
+        });
+
+        test('returning is one-shot: the snapshot is consumed', () => {
+            removePlayerFromGame(games, gameId, alice.id);
+            addPlayerToGame(games, gameId, 'Alice', '😀', alice.id);
+
+            expect(games.get(gameId).recentlyLeft.has(alice.id)).toBe(false);
+        });
+
+        test('leaving again after returning is snapshotted again', () => {
+            removePlayerFromGame(games, gameId, alice.id);
+            addPlayerToGame(games, gameId, 'Alice', '😀', alice.id);
+            removePlayerFromGame(games, gameId, alice.id);
+
+            const again = addPlayerToGame(games, gameId, 'Alice', '😀', alice.id);
+
+            expect(again.success).toBe(true);
+            expect(games.get(gameId).characters.get(alice.id).character).toBe('Batman');
+        });
+
+        test('restart clears the return rights of the old round', () => {
+            removePlayerFromGame(games, gameId, alice.id);
+            restartGame(games, gameId, bob.id);
+
+            expect(games.get(gameId).recentlyLeft.size).toBe(0);
+            // The game is back in waiting, so joining works the normal way
+            const rejoin = addPlayerToGame(games, gameId, 'Alice', '😀', alice.id);
+            expect(rejoin.success).toBe(true);
+            expect(games.get(gameId).characters.has(alice.id)).toBe(false);
+        });
+
+        test('a lobby leaver gets no started-game return rights', () => {
+            // Charlie leaves BEFORE the next round starts
+            restartGame(games, gameId, bob.id);
+            const charlie = addPlayerToGame(games, gameId, 'Charlie', '🐱').player;
+            removePlayerFromGame(games, gameId, charlie.id);
+
+            assignCharacter(games, gameId, alice.id, 'Batman', bob.id);
+            assignCharacter(games, gameId, bob.id, 'Superman', alice.id);
+            startGame(games, gameId, alice.id);
+
+            const rejoin = addPlayerToGame(games, gameId, 'Charlie', '🐱', charlie.id);
+
+            expect(rejoin.success).toBe(false);
+            expect(rejoin.error).toBe('Game has already started');
+        });
     });
 
     test('starting requires 2 players again after a leave', () => {

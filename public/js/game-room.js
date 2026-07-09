@@ -199,14 +199,21 @@ function initializeSocket(roomCode) {
         console.log('Player joined:', data);
         if (currentGame) {
             currentGame.players = data.players;
+            // A returning leaver comes back with their character restored -
+            // take the characters/reveals the server sent along
+            if (data.characters) currentGame.characters = data.characters;
+            if (data.revealedPlayers) currentGame.revealedPlayers = data.revealedPlayers;
+            saveGameStateToStorage();
             updateGameDisplay();
         }
     });
-    
+
     socket.on('player-reconnected', (data) => {
         console.log('Player reconnected:', data);
         if (currentGame) {
             currentGame.players = data.players;
+            if (data.characters) currentGame.characters = data.characters;
+            if (data.revealedPlayers) currentGame.revealedPlayers = data.revealedPlayers;
             updateGameDisplay();
         }
     });

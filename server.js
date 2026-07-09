@@ -106,11 +106,15 @@ app.post('/api/join-game', express.json(), (req, res) => {
     
     console.log(`Player ${playerName} ${result.isNewPlayer ? 'joined' : 'reconnected to'} game ${gameId}`);
     
-    // Broadcast to all players in the room
+    // Broadcast to all players in the room. Characters and reveals are
+    // included because a returning leaver gets their character restored -
+    // the other clients must see it reappear on the card
     const eventName = result.isNewPlayer ? 'player-joined' : 'player-reconnected';
     io.to(gameId).emit(eventName, {
         player: result.player,
-        players: result.game.players
+        players: result.game.players,
+        characters: result.game.characters,
+        revealedPlayers: result.game.revealedPlayers
     });
     
     res.json(result);

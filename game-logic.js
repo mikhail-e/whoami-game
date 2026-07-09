@@ -91,6 +91,7 @@ function createGame(games) {
         characters: new Map(),
         state: 'waiting', // waiting, started, ended
         revealedPlayers: new Set(), // Track who has revealed their character
+        recentlyLeft: new Map(), // playerId -> snapshot, lets leavers return to a started game
         created: new Date()
     };
     touchGame(game);
@@ -123,8 +124,15 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
         ? game.players.find(p => p.id === playerId)
         : null;
 
-    // Check if game has already started (only allow existing players to reconnect)
-    if (game.state === 'started' && !existingPlayer) {
+    // A player who left THIS started round may come back (their character,
+    // reveal status and color were snapshotted on the way out)
+    const returningSnapshot = (playerId && game.recentlyLeft)
+        ? game.recentlyLeft.get(playerId)
+        : undefined;
+
+    // Check if game has already started (only allow existing players to
+    // reconnect and recent leavers to return)
+    if (game.state === 'started' && !existingPlayer && !returningSnapshot) {
         return { success: false, error: 'Game has already started' };
     }
 
@@ -145,8 +153,11 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
         delete existingPlayer.disconnectedAt; // Clear disconnect timestamp
         player = existingPlayer;
     } else {
-        // Assign unique sticker color for new player
-        const stickerColor = assignUniqueColor(game.players);
+        // Prefer the returning player's old color if nobody took it meanwhile
+        const usedColors = new Set(game.players.map(p => p.stickerColor));
+        const stickerColor = (returningSnapshot && !usedColors.has(returningSnapshot.stickerColor))
+            ? returningSnapshot.stickerColor
+            : assignUniqueColor(game.players);
 
         // New player joining - use provided playerId if valid, otherwise generate one
         const isValidUUID = playerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(playerId);
@@ -163,6 +174,18 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
 
         game.players.push(player);
         isNewPlayer = true;
+
+        // A returning leaver gets their character and reveal status back,
+        // so they can continue the round as if they never left
+        if (returningSnapshot) {
+            if (returningSnapshot.character) {
+                game.characters.set(player.id, returningSnapshot.character);
+            }
+            if (returningSnapshot.revealed) {
+                game.revealedPlayers.add(player.id);
+            }
+            game.recentlyLeft.delete(player.id);
+        }
     }
     touchGame(game);
 
@@ -337,6 +360,7 @@ function restartGame(games, gameId, playerId) {
     game.state = 'waiting';
     game.revealedPlayers.clear();
     game.characters.clear(); // Clear all character assignments
+    if (game.recentlyLeft) game.recentlyLeft.clear(); // the old round's leavers get no special treatment
     game.restartedAt = new Date();
     touchGame(game);
 
@@ -370,6 +394,19 @@ function removePlayerFromGame(games, gameId, playerId) {
     }
 
     const removedPlayer = game.players[playerIndex];
+
+    // Leaving a started round is undoable: snapshot what the player had so
+    // they can return to the SAME round with their character and status.
+    // (Waiting-lobby leaves need no snapshot - anyone can join a lobby.)
+    if (game.state === 'started') {
+        if (!game.recentlyLeft) game.recentlyLeft = new Map(); // restored games may lack it
+        game.recentlyLeft.set(playerId, {
+            stickerColor: removedPlayer.stickerColor,
+            character: game.characters.get(playerId) || null,
+            revealed: game.revealedPlayers.has(playerId),
+            leftAt: Date.now()
+        });
+    }
 
     game.players.splice(playerIndex, 1);
     game.characters.delete(playerId);      // the leaver's own character disappears
