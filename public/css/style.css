@@ -100,6 +100,13 @@ body {
   margin-bottom: 10px;
 }
 
+.player-name {
+  font-size: 1.25rem;
+  font-weight: 500;
+  /* names can be up to 128 characters - never let one widen the card */
+  overflow-wrap: break-word;
+}
+
 .character-sticker {
   position: relative;
   left: 8px;
