@@ -23,7 +23,10 @@ body {
 
 .avatar-selector {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  /* Exactly 12 avatars, so six columns give two even rows.
+     Columns are capped so tiles stay square instead of stretching wide. */
+  grid-template-columns: repeat(6, minmax(0, 80px));
+  justify-content: center;
   gap: 10px;
   margin: 20px 0;
 }
@@ -36,6 +39,13 @@ body {
   cursor: pointer;
   text-align: center;
   transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* line-height 1 keeps the emoji from inflating the tile past its width,
+     which would make aspect-ratio fall back to a taller-than-wide box */
+  line-height: 1;
+  aspect-ratio: 1;
 }
 
 .avatar-option:hover {
@@ -298,7 +308,8 @@ body {
   }
 
   .avatar-selector {
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    /* Six columns do not fit on a phone; four give three even rows of 12 */
+    grid-template-columns: repeat(4, minmax(0, 80px));
     gap: 8px;
   }
 

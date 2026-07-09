@@ -73,6 +73,40 @@ describe('Avatar shuffle button', () => {
     });
 });
 
+// 12 avatars only lay out in even rows if the column count divides 12.
+// `auto-fit` picked whatever fitted (10 + 2 on a wide screen), so the counts
+// are now fixed: six columns on desktop, four on phones.
+describe('Avatar grid lays out in even rows', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'public/css/style.css'), 'utf8');
+
+    function columnsRule(block) {
+        const match = block.match(/grid-template-columns:\s*([^;]+);/);
+        return match ? match[1].trim() : null;
+    }
+
+    test('desktop uses six columns, not auto-fit', () => {
+        const base = css.match(/\.avatar-selector\s*\{[\s\S]*?\}/)[0];
+
+        expect(columnsRule(base)).toMatch(/repeat\(6,/);
+        expect(base).not.toContain('auto-fit');
+    });
+
+    test('phones use four columns, not auto-fit', () => {
+        const mobile = css.match(/@media \(max-width: 768px\)[\s\S]*?\.avatar-selector\s*\{[\s\S]*?\}/)[0];
+
+        expect(columnsRule(mobile)).toMatch(/repeat\(4,/);
+        expect(mobile).not.toContain('auto-fit');
+    });
+
+    test('tiles stay square', () => {
+        const option = css.match(/\.avatar-option\s*\{[\s\S]*?\}/)[0];
+
+        expect(option).toContain('aspect-ratio: 1');
+        // Without this the emoji's line box makes the tile taller than it is wide
+        expect(option).toContain('line-height: 1');
+    });
+});
+
 describe('Localization supports aria-label', () => {
     test('updateTexts applies data-i18n-aria-label', () => {
         const translations = fs.readFileSync(path.join(__dirname, '..', 'public/js/translations.js'), 'utf8');
