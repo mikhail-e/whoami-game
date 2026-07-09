@@ -597,9 +597,8 @@ function updatePlayersList() {
         if (characterData && isCurrentPlayer && !isRevealed) {
             // Current player with character - show mystery sticker
             const mysterySticker = document.createElement('div');
-            const stickerColor = player.stickerColor || 'red';
-            mysterySticker.className = `character-sticker color-${stickerColor}`;
-            mysterySticker.textContent = '❓';
+            mysterySticker.className = 'character-sticker mystery';
+            mysterySticker.textContent = '🎭';
             if (gameState === 'started') {
                 mysterySticker.title = getText('yourCharacterClickReveal', 'Your character - click to reveal!');
                 mysterySticker.style.cursor = 'pointer';

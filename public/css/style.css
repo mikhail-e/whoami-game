@@ -182,6 +182,15 @@ body {
 }
 /* Removed hover color change - colors are now fixed */
 
+/* Mystery sticker - your own hidden character (no player color on purpose:
+   a light dashed style reads as "unknown" and the dark glyph stays visible) */
+.character-sticker.mystery {
+  background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+  border: 2px dashed #adb5bd;
+  color: #495057;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
 .character-sticker.editing {
   transform: scale(1.1);
   /* Removed background - preserves player's assigned color during editing */

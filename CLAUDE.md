@@ -19,7 +19,7 @@ Web application to play the "Who am I?" guessing game remotely with friends and 
 ```bash
 npm install                        # Install dependencies
 npm start                          # Start server on http://localhost:3000
-npm test                           # Run all tests (Jest: 316 tests, 21 suites)
+npm test                           # Run all tests (Jest: 335 tests, 23 suites)
 npx jest tests/game-logic.test.js  # Run a single test file
 npm run test:watch                 # Watch mode
 ```
@@ -41,9 +41,9 @@ public/
     ├── game-room.js       # Game room logic (player list, character stickers, socket handlers)
     ├── translations.js    # i18n (en/ru): browser auto-detection, localStorage preference, {placeholder} support
     └── pwa.js             # PWA manager: service worker registration, update detection every 30s
-tests/                     # 21 Jest suites: game logic, API (supertest), race conditions, i18n, timeouts, room recreation,
+tests/                     # 23 Jest suites: game logic, API (supertest), race conditions, i18n, timeouts, room recreation,
                            # input validation, connection tracker (refresh race), inactive-game cleanup, leave-game,
-                           # service-worker policy, avatar shuffle, input limits
+                           # service-worker policy, avatar shuffle, input limits, share button, mystery sticker
 render.yaml                # Render.com deploy config (auto-deploys master branch)
 games/                     # Runtime game state backups (*.json, gitignored)
 ```
@@ -76,7 +76,9 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - The avatar selector sits inside `<form id="playerForm">`, which has a submit button. **Any `<button>` added there needs `type="button"`** or clicking it joins a game
 - Mobile virtual keyboard: call `input.focus()` synchronously inside the click handler (no `setTimeout`) — otherwise iOS/Android won't open the keyboard
 - Character assignment: players cannot assign a character to themselves; submitting empty/whitespace text removes the assignment (sticker returns to the "+" state). Escape restores the original character
-- Sticker colors are assigned once when a player joins and never change; unique for up to 7 players, then cycled
+- Sticker colors are assigned once when a player joins and never change; unique for up to 7 players, then cycled. Exception: your own hidden character renders as `.character-sticker.mystery` (light dashed style, 🎭 glyph, deliberately NO player color) until revealed
+- **Share button** (`#shareButton` in game.html): `navigator.share` must be called with no `await` before it in the click handler (iOS rejects otherwise); `AbortError` (user closed the share sheet) is intentionally silent; unsupported browsers fall back to `copyRoomLink()`. Test with a stubbed `navigator.share` — a real click opens the OS share sheet, which blocks automation
+- Button feedback flashes ("✅ Copied!") set `textContent`, which flattens the inner `data-i18n` span — after the first flash that button's label stops reacting to language switches until reload (long-standing quirk of Copy Link, shared by Share via `copyRoomLink()`)
 - **The service worker caches icons and nothing else.** The game requires a live server (a room lives in server memory), so offline support is pointless, and caching HTML/JS only ever produced "player stuck on an old version" bugs. The worker exists for installability plus free icon caching. `tests/service-worker.test.js` fails if HTML/CSS/JS is added back to the cache. Icon matching is by **exact pathname** — an earlier substring check matched every URL because `'/'` was in the list
 
 ## Deployment
@@ -84,11 +86,9 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - Free Render plan hibernates on inactivity — the keep-alive loop and disk persistence exist to survive restarts
 
 ## Current Status
-All core features work: room creation/joining/sharing, 60-emoji avatar pool with refresh, character assignment with colored stickers, reveal notifications, full en/ru localization, PWA install (online-only, no offline mode by design), reconnection and timeout protection, duplicate player names, room recreation after server restarts.
+All core features work: room creation/joining/sharing, Share button (Web Share API with copy fallback), 60-emoji avatar pool with refresh, character assignment with colored stickers, reveal notifications, full en/ru localization, PWA install (online-only, no offline mode by design), reconnection and timeout protection, duplicate player names, room recreation after server restarts.
 
 ### Future goals
-- Share button for direct room link sharing
-- Lighter mystery sticker color for better visibility
 - Concurrent editing protection (two players editing the same character simultaneously)
 - Rooms persistence, custom game rules, spectator mode
-- `copyLink` still uses the deprecated `document.execCommand('copy')` — migrate to the async Clipboard API
+- `copyRoomLink()` (used by Copy Link and the Share fallback) still uses the deprecated `document.execCommand('copy')` — migrate to the async Clipboard API

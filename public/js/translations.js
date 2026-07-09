@@ -93,7 +93,7 @@ const translations = {
         step1: "Wait for at least 2 players to join",
         step2: "Each player assigns characters to other players",
         step3: "Click \"Start Game\" when ready",
-        step4: "Click your mystery sticker (❓) to reveal your character",
+        step4: "Click your mystery sticker (🎭) to reveal your character",
         step5: "Try to guess who you are!",
         
         // Modal content
@@ -253,7 +253,7 @@ const translations = {
         step1: "Дождитесь присоединения минимум 2 игроков",
         step2: "Каждый игрок назначает персонажа другому игроку",
         step3: "Нажмите \"Начать игру\" когда готовы",
-        step4: "Нажмите на свой загадочный стикер (❓) чтобы раскрыть персонажа",
+        step4: "Нажмите на свой загадочный стикер (🎭) чтобы раскрыть персонажа",
         step5: "Попробуйте угадать, кто вы!",
         
         // Modal content
