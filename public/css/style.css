@@ -111,11 +111,11 @@ body {
   margin-bottom: 10px;
 }
 
-/* Uploaded custom avatar on a player card: a rounded square,
-   sized to match the 4.5rem emoji avatar (~72px) */
+/* Uploaded custom avatar on a player card: a rounded square, deliberately
+   larger than the 4.5rem emoji avatar (~72px) so photos stay recognizable */
 .player-avatar img {
-  width: 72px;
-  height: 72px;
+  width: 96px;
+  height: 96px;
   object-fit: cover;
   border-radius: 12px;
   vertical-align: bottom; /* removes the inline-image baseline gap */

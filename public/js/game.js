@@ -19,8 +19,9 @@ function selectRandomAvatars() {
 }
 
 // Custom avatar upload: the photo is shrunk in the browser to a small square
-// JPEG data URL so it fits in player.avatar the same way an emoji does
-const CUSTOM_AVATAR_SIZE = 128;                  // output is 128x128 pixels
+// JPEG data URL so it fits in player.avatar the same way an emoji does.
+// 192px = 2x the 96px card display size, so photos stay sharp on retina screens
+const CUSTOM_AVATAR_SIZE = 192;                  // output is 192x192 pixels
 const CUSTOM_AVATAR_QUALITIES = [0.8, 0.6, 0.4]; // JPEG quality fallbacks
 
 // Wrap the classic Image-element decode in a promise. Decoding through an
