@@ -58,8 +58,19 @@ body {
   background: #f0f4ff;
 }
 
-/* Shuffle button - sits next to the "Choose Your Avatar" label, outside the grid,
-   so it never reads as a 13th avatar tile */
+/* Uploaded custom avatar inside a selector tile. pointer-events: none makes a
+   click on the image count as a click on the tile - same trick as the
+   toolbar buttons' svg icons */
+.avatar-option img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px; /* tighter than the tile's 10px so the selection border stays visible */
+  pointer-events: none;
+}
+
+/* Avatar toolbar buttons (upload + shuffle) - they sit next to the "Choose Your
+   Avatar" label, outside the grid, so they never read as extra avatar tiles */
 .avatar-shuffle-btn {
   display: inline-flex;
   align-items: center;
@@ -98,6 +109,16 @@ body {
 .player-avatar {
   font-size: 4.5rem;
   margin-bottom: 10px;
+}
+
+/* Uploaded custom avatar on a player card: a rounded square,
+   sized to match the 4.5rem emoji avatar (~72px) */
+.player-avatar img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 12px;
+  vertical-align: bottom; /* removes the inline-image baseline gap */
 }
 
 .player-name {

@@ -19,7 +19,7 @@ Web application to play the "Who am I?" guessing game remotely with friends and 
 ```bash
 npm install                        # Install dependencies
 npm start                          # Start server on http://localhost:3000
-npm test                           # Run all tests (Jest: 340 tests, 24 suites)
+npm test                           # Run all tests (Jest: 361 tests, 25 suites)
 npx jest tests/game-logic.test.js  # Run a single test file
 npm run test:watch                 # Watch mode
 ```
@@ -41,9 +41,10 @@ public/
     ├── game-room.js       # Game room logic (player list, character stickers, socket handlers)
     ├── translations.js    # i18n (en/ru): browser auto-detection, localStorage preference, {placeholder} support
     └── pwa.js             # PWA manager: service worker registration, update detection every 30s
-tests/                     # 24 Jest suites: game logic, API (supertest), race conditions, i18n, timeouts, room recreation,
+tests/                     # 25 Jest suites: game logic, API (supertest), race conditions, i18n, timeouts, room recreation,
                            # input validation, connection tracker (refresh race), inactive-game cleanup, leave-game,
-                           # service-worker policy, avatar shuffle, avatar persistence, input limits, share button, mystery sticker
+                           # service-worker policy, avatar shuffle, avatar persistence, custom avatar (photo upload),
+                           # input limits, share button, mystery sticker
 render.yaml                # Render.com deploy config (auto-deploys master branch)
 games/                     # Runtime game state backups (*.json, gitignored)
 ```
@@ -52,7 +53,7 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - Games live in an in-memory `Map` in server.js, keyed by 6-character room code (e.g. `ABC123`)
 - **HTTP API:** `POST /api/create-game`, `POST /api/join-game`, `POST /api/recreate-game`; `GET /game/:roomCode` serves game.html (restoring from disk if needed) or redirects to `/?error=room-not-found`
 - **Socket.IO events:** `join-room`, `assign-character`, `start-game`, `reveal-character`, `restart-game`, `leave-game`; server broadcasts with `io.to(room)` (includes the sender — intentional, don't switch to `socket.to()`). Every handler is wrapped in `safeHandler()` so a malformed payload can never crash the process
-- **Leaving:** `leave-game` is accepted only from the socket registered to that player (no kicking others). `removePlayerFromGame` drops the player, their character and reveal status; the last player leaving deletes the game. The `player-left` broadcast carries the full state; the leaver redirects to `/?join=CODE` (prefilled rejoin) and the landing page remembers the last used name and avatar (`whoami-player-name` / `whoami-player-avatar` in localStorage, saved on create/join; the saved avatar is placed first in the grid so it gets auto-selected, and is ignored if it's not in `avatarPool`)
+- **Leaving:** `leave-game` is accepted only from the socket registered to that player (no kicking others). `removePlayerFromGame` drops the player, their character and reveal status; the last player leaving deletes the game. The `player-left` broadcast carries the full state; the leaver redirects to `/?join=CODE` (prefilled rejoin) and the landing page remembers the last used name and avatar (`whoami-player-name` / `whoami-player-avatar` in localStorage, saved on create/join; the saved avatar is placed first in the grid so it gets auto-selected, and is ignored if it's neither in `avatarPool` nor a valid custom data URL)
 - **Returning to a started game:** leaving a started round snapshots the player into `game.recentlyLeft` (character, reveal status, sticker color). Joining with the same `playerId` restores everything and consumes the snapshot; strangers are still rejected with "Game has already started". Restart clears the snapshots. The `player-joined`/`player-reconnected` broadcasts carry `characters`/`revealedPlayers` so other clients see the restored character reappear
 - **Persistence:** every 5 minutes active games are saved to `games/*.json`; visiting a room URL after a server restart restores the game from disk. Files older than 4 hours are cleaned up, and games idle for 4+ hours with nobody connected are dropped from memory (`cleanupInactiveGames`). Clients also back up state to localStorage and can recreate a lost room via `POST /api/recreate-game`
 - **Player identity:** one UUID per browser stored in `localStorage.playerId` (created in utils.js as `PLAYER_ID`). Reconnection matches by ID only, never by name — duplicate player names in one room are supported
@@ -71,6 +72,7 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - `game-logic.js` must stay free of Express/Socket.IO imports so it remains unit-testable
 - Validate on the server, not just in the UI: `sanitizePlayerName` / `sanitizeAvatar` / `sanitizeCharacter` enforce the input limits, and `assignCharacter` refuses to change characters once `state !== 'waiting'` (a late `blur` event can arrive after Start Game)
 - **Input limits (128 chars for names and characters) exist twice** — `game-logic.js` for the server and `public/js/utils.js` for the browser (a browser script cannot `require()` a Node module). `tests/input-limits.test.js` fails if they drift apart. Lengths are counted by character, not UTF-16 code unit, so an emoji counts as one and is never cut in half
+- **Custom avatar (uploaded photo) validation also exists twice** — `isCustomAvatar()` + `MAX_CUSTOM_AVATAR_LENGTH` + `CUSTOM_AVATAR_PATTERN` are mirrored in `game-logic.js` and `public/js/utils.js`; `tests/input-limits.test.js` keeps them in sync. The photo is shrunk in the browser (game.js `processAvatarFile`) to a 128×128 JPEG data URL and stored in the same `player.avatar` field the emoji uses, so all persistence flows carry it for free. The anchored pattern only allows `data:image/(png|jpeg|webp);base64,...` — never loosen it (XSS), and only render it via `img.src` behind the `isCustomAvatar()` guard. JSON API routes use `express.json({ limit: '1mb' })` because recreate-game carries every player's avatar at once
 - `game-room.js` rebuilds the whole players list (`updatePlayersList()`) on updates instead of patching individual stickers — per-sticker DOM patching caused sync bugs, don't reintroduce it. Rebuilds are **skipped while a character input is open**, so anything that ends editing (game start, socket error) must call `cancelActiveEdits()` first or the UI freezes
 - Dynamic text rendered from JS (game status, player cards) does not react to `data-i18n`. `setLanguage()` fires a `languagechanged` event; game-room.js listens and re-renders. Prefer static markup for controls (like `#shuffleAvatars`) so `data-i18n*` and keyboard focus just work
 - The avatar selector sits inside `<form id="playerForm">`, which has a submit button. **Any `<button>` added there needs `type="button"`** or clicking it joins a game
@@ -86,7 +88,7 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - Free Render plan hibernates on inactivity — the keep-alive loop and disk persistence exist to survive restarts
 
 ## Current Status
-All core features work: room creation/joining/sharing, Share button (Web Share API with copy fallback), 60-emoji avatar pool with refresh, character assignment with colored stickers, reveal notifications, full en/ru localization, PWA install (online-only, no offline mode by design), reconnection and timeout protection, duplicate player names, room recreation after server restarts.
+All core features work: room creation/joining/sharing, Share button (Web Share API with copy fallback), 60-emoji avatar pool with refresh, custom photo avatars (uploaded, shrunk in-browser to a data URL), character assignment with colored stickers, reveal notifications, full en/ru localization, PWA install (online-only, no offline mode by design), reconnection and timeout protection, duplicate player names, room recreation after server restarts.
 
 ### Future goals
 - Concurrent editing protection (two players editing the same character simultaneously)

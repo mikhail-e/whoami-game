@@ -26,6 +26,22 @@ describe('Input limits stay in sync between server and frontend', () => {
             .toBe(gameLogic.MAX_CHARACTER_LENGTH);
     });
 
+    test('MAX_CUSTOM_AVATAR_LENGTH matches', () => {
+        expect(readConstant('public/js/utils.js', 'MAX_CUSTOM_AVATAR_LENGTH'))
+            .toBe(gameLogic.MAX_CUSTOM_AVATAR_LENGTH);
+    });
+
+    test('CUSTOM_AVATAR_PATTERN is character-for-character identical', () => {
+        const readPattern = (filePath) => {
+            const source = fs.readFileSync(path.join(__dirname, '..', filePath), 'utf8');
+            const match = source.match(/const\s+CUSTOM_AVATAR_PATTERN\s*=\s*(\/[^\n]+\/)/);
+            if (!match) throw new Error(`CUSTOM_AVATAR_PATTERN not found in ${filePath}`);
+            return match[1];
+        };
+
+        expect(readPattern('public/js/utils.js')).toBe(readPattern('game-logic.js'));
+    });
+
     test('game-room.js uses the constant instead of a hardcoded number', () => {
         const source = fs.readFileSync(path.join(__dirname, '..', 'public/js/game-room.js'), 'utf8');
 
@@ -43,5 +59,6 @@ describe('Input limits stay in sync between server and frontend', () => {
     test('the limits are the agreed values', () => {
         expect(gameLogic.MAX_NAME_LENGTH).toBe(128);
         expect(gameLogic.MAX_CHARACTER_LENGTH).toBe(128);
+        expect(gameLogic.MAX_CUSTOM_AVATAR_LENGTH).toBe(32768);
     });
 });

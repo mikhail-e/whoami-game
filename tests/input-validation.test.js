@@ -60,6 +60,32 @@ describe('Input Validation', () => {
             expect(sanitizeAvatar(null)).toBeNull();
             expect(sanitizeAvatar(42)).toBeNull();
         });
+
+        test('accepts custom-avatar data URLs (jpeg, png, webp)', () => {
+            const jpeg = 'data:image/jpeg;base64,/9j/4AAQSkZJRg==';
+            const png = 'data:image/png;base64,iVBORw0KGgo=';
+            const webp = 'data:image/webp;base64,UklGRg==';
+            expect(sanitizeAvatar(jpeg)).toBe(jpeg);
+            expect(sanitizeAvatar(png)).toBe(png);
+            expect(sanitizeAvatar(webp)).toBe(webp);
+        });
+
+        test('rejects data URLs that are not safe raster images', () => {
+            expect(sanitizeAvatar('data:text/html;base64,PHNjcmlwdD4=')).toBeNull();
+            expect(sanitizeAvatar('data:image/svg+xml;base64,AAAA')).toBeNull();
+            expect(sanitizeAvatar('javascript:alert(1)')).toBeNull();
+        });
+
+        test('rejects malformed or oversized data URLs', () => {
+            // Whitespace inside the base64 payload
+            expect(sanitizeAvatar('data:image/jpeg;base64,AB CD')).toBeNull();
+            // Characters outside the base64 alphabet
+            expect(sanitizeAvatar('data:image/jpeg;base64,!!!')).toBeNull();
+            // The pattern is case-strict - the client always emits lowercase
+            expect(sanitizeAvatar('DATA:image/jpeg;base64,AAAA')).toBeNull();
+            // Over the size limit
+            expect(sanitizeAvatar('data:image/jpeg;base64,' + 'A'.repeat(40000))).toBeNull();
+        });
     });
 
     describe('sanitizeCharacter', () => {

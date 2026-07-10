@@ -13,6 +13,13 @@ const MAX_NAME_LENGTH = 128;
 const MAX_AVATAR_LENGTH = 10; // emoji can be several UTF-16 code units
 const MAX_CHARACTER_LENGTH = 128;
 
+// A custom avatar is a small photo the player uploaded, carried as a base64
+// data URL in the same player.avatar field the emoji uses. The frontend copy
+// of these two values lives in public/js/utils.js; tests/input-limits.test.js
+// fails if they drift apart. Keep each on a single line for the sync tests.
+const MAX_CUSTOM_AVATAR_LENGTH = 32768; // ~24 KB of image data as base64
+const CUSTOM_AVATAR_PATTERN = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
+
 // Count characters the way a person would: an emoji is one character,
 // not the two UTF-16 code units JavaScript's .length reports.
 function countCharacters(text) {
@@ -27,11 +34,23 @@ function sanitizePlayerName(name) {
     return trimmed;
 }
 
+// True if the value is a strictly valid custom-avatar data URL: only the three
+// safe raster image MIME types, only base64 characters, and small enough.
+// Anything else (javascript:, data:text/html, embedded whitespace) fails.
+function isCustomAvatar(value) {
+    return typeof value === 'string'
+        && value.length <= MAX_CUSTOM_AVATAR_LENGTH
+        && CUSTOM_AVATAR_PATTERN.test(value);
+}
+
 // Validate and clean an avatar. Returns the cleaned avatar or null if invalid.
+// Accepts either an emoji (short string) or an uploaded image (data URL).
 function sanitizeAvatar(avatar) {
     if (typeof avatar !== 'string') return null;
     const trimmed = avatar.trim();
-    if (trimmed.length === 0 || trimmed.length > MAX_AVATAR_LENGTH) return null;
+    if (trimmed.length === 0) return null;
+    if (isCustomAvatar(trimmed)) return trimmed;
+    if (trimmed.length > MAX_AVATAR_LENGTH) return null;
     return trimmed;
 }
 
@@ -584,9 +603,11 @@ module.exports = {
     sanitizePlayerName,
     sanitizeAvatar,
     sanitizeCharacter,
+    isCustomAvatar,
     touchGame,
     cleanupInactiveGames,
     createConnectionTracker,
     MAX_NAME_LENGTH,
-    MAX_CHARACTER_LENGTH
+    MAX_CHARACTER_LENGTH,
+    MAX_CUSTOM_AVATAR_LENGTH
 };

@@ -5,6 +5,19 @@
 const MAX_NAME_LENGTH = 128;
 const MAX_CHARACTER_LENGTH = 128;
 
+// Custom avatar validation. Mirrors game-logic.js exactly (same constant, same
+// pattern, same function) - tests/input-limits.test.js checks the sync.
+const MAX_CUSTOM_AVATAR_LENGTH = 32768;
+const CUSTOM_AVATAR_PATTERN = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
+
+// True if the value is a strictly valid custom-avatar data URL: only the three
+// safe raster image MIME types, only base64 characters, and small enough.
+function isCustomAvatar(value) {
+    return typeof value === 'string'
+        && value.length <= MAX_CUSTOM_AVATAR_LENGTH
+        && CUSTOM_AVATAR_PATTERN.test(value);
+}
+
 // Helper function for safe i18n text retrieval with fallback
 function getText(key, fallback, placeholders = {}) {
     if (typeof i18n !== 'undefined' && i18n) {

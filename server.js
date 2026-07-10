@@ -80,14 +80,18 @@ app.get('/game/:roomCode', (req, res) => {
     res.redirect('/?error=room-not-found');
 });
 
+// Custom image avatars ride inside JSON bodies; recreate-game carries every
+// player's avatar at once, which can exceed express.json()'s 100kb default
+const jsonBody = express.json({ limit: '1mb' });
+
 // API endpoint to create a new game
-app.post('/api/create-game', express.json(), (req, res) => {
+app.post('/api/create-game', jsonBody, (req, res) => {
     const result = gameLogic.createGame(games);
     res.json(result);
 });
 
 // API endpoint to join a game
-app.post('/api/join-game', express.json(), (req, res) => {
+app.post('/api/join-game', jsonBody, (req, res) => {
     const { gameId, playerName, avatar, playerId } = req.body || {};
 
     console.log('Join game request:', { gameId, playerName, avatar, playerId });
@@ -121,7 +125,7 @@ app.post('/api/join-game', express.json(), (req, res) => {
 });
 
 // API endpoint to recreate a game with saved state
-app.post('/api/recreate-game', express.json(), (req, res) => {
+app.post('/api/recreate-game', jsonBody, (req, res) => {
     const { roomCode, gameState } = req.body || {};
 
     console.log('Recreate game request:', { roomCode, gameStateExists: !!gameState });

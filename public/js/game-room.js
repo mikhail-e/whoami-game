@@ -577,7 +577,15 @@ function updatePlayersList() {
         // values (name, avatar) can never inject HTML (XSS protection)
         const avatarEl = document.createElement('div');
         avatarEl.className = 'player-avatar';
-        avatarEl.textContent = player.avatar;
+        if (isCustomAvatar(player.avatar)) {
+            // Validated data:image/... URL assigned as a property - never innerHTML
+            const img = document.createElement('img');
+            img.alt = '';
+            img.src = player.avatar;
+            avatarEl.appendChild(img);
+        } else {
+            avatarEl.textContent = player.avatar;
+        }
         playerCard.appendChild(avatarEl);
 
         const nameEl = document.createElement('div');

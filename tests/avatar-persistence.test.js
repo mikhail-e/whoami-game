@@ -25,13 +25,17 @@ describe('Avatar is remembered between games (client wiring)', () => {
         expect(gameJs).toMatch(/savedAvatar && avatarPool\.includes\(savedAvatar\)/);
     });
 
+    test('a saved custom avatar is restored only through the validation guard', () => {
+        expect(gameJs).toMatch(/savedAvatar && isCustomAvatar\(savedAvatar\)/);
+    });
+
     test('the saved avatar goes first so populateAvatars() auto-selects it, grid stays at 12', () => {
         expect(gameJs).toMatch(/\[savedAvatar, \.\.\.initialAvatars\.filter\(a => a !== savedAvatar\)\]\.slice\(0, 12\)/);
     });
 
-    test('shuffle still deals a fresh random set (no pinned saved avatar)', () => {
-        // The shuffle listener must keep calling populateAvatars(selectRandomAvatars())
-        // directly, without the saved-avatar injection
-        expect(gameJs).toMatch(/shuffleButton\.addEventListener\('click', \(\) => \{\s*populateAvatars\(selectRandomAvatars\(\)\);\s*\}\)/);
+    test('shuffle deals a fresh emoji set but keeps the custom avatar pinned first', () => {
+        // The shuffle listener must not re-pin the saved emoji avatar; the only
+        // pinned tile is the uploaded custom avatar (withCustomAvatarFirst)
+        expect(gameJs).toMatch(/shuffleButton\.addEventListener\('click', \(\) => \{\s*populateAvatars\(withCustomAvatarFirst\(selectRandomAvatars\(\)\)\);\s*\}\)/);
     });
 });
