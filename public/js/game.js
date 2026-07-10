@@ -66,8 +66,16 @@ document.addEventListener('DOMContentLoaded', function() {
         playerNameInput.value = savedName;
     }
 
-    // Initialize with random avatars - each player gets their own unique set
-    populateAvatars(selectRandomAvatars());
+    // Initialize with random avatars - each player gets their own unique set.
+    // Prefill the last used avatar the same way we prefill the name: putting it
+    // first makes populateAvatars() auto-select it. Ignore values that are not
+    // in the pool (stale or tampered localStorage) and keep the grid at 12 tiles
+    const savedAvatar = Storage.get('whoami-player-avatar');
+    let initialAvatars = selectRandomAvatars();
+    if (savedAvatar && avatarPool.includes(savedAvatar)) {
+        initialAvatars = [savedAvatar, ...initialAvatars.filter(a => a !== savedAvatar)].slice(0, 12);
+    }
+    populateAvatars(initialAvatars);
 
     // The shuffle button lives outside the grid, so it survives populateAvatars()
     // rebuilds - one listener is enough and keyboard focus is never lost
@@ -263,6 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             console.log('Creating game with player data:', playerData);
             Storage.set('whoami-player-name', playerData.name);
+            Storage.set('whoami-player-avatar', playerData.avatar);
 
             const response = await fetch('/api/create-game', {
                 method: 'POST',
@@ -329,6 +338,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function joinGame(playerData) {
         try {
             Storage.set('whoami-player-name', playerData.name);
+            Storage.set('whoami-player-avatar', playerData.avatar);
             const response = await fetch('/api/join-game', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
