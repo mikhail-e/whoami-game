@@ -248,6 +248,76 @@ describe('Player Leaving', () => {
     });
 });
 
+// The players list is kept in first-join order (joinedAt), so every client
+// shows the same stable order and "whose turn is it" survives leave/return:
+// a returning player goes back to their old position, not to the end.
+describe('Returning player keeps their place in the list', () => {
+    let games, gameId, alice, bob, charlie;
+
+    beforeEach(() => {
+        games = new Map();
+        gameId = createGame(games).gameId;
+        alice = addPlayerToGame(games, gameId, 'Alice', '😀').player;
+        bob = addPlayerToGame(games, gameId, 'Bob', '😎').player;
+        charlie = addPlayerToGame(games, gameId, 'Charlie', '🐱').player;
+
+        // In tests all three join within the same millisecond - spread the
+        // join times into the recent past, the way they would be in a real
+        // game (a later NEW join must still land at the end of the list)
+        const base = Date.now();
+        const players = games.get(gameId).players;
+        players.forEach((player, index) => {
+            player.joinedAt = new Date(base - (players.length - index) * 1000);
+        });
+
+        startGame(games, gameId, alice.id);
+    });
+
+    function names() {
+        return games.get(gameId).players.map(p => p.name);
+    }
+
+    test('a returning player is restored to their old position', () => {
+        removePlayerFromGame(games, gameId, bob.id);
+        expect(names()).toEqual(['Alice', 'Charlie']);
+
+        addPlayerToGame(games, gameId, 'Bob', '😎', bob.id);
+
+        expect(names()).toEqual(['Alice', 'Bob', 'Charlie']); // not [..., 'Bob']
+    });
+
+    test('two leavers returning in reverse order still restore the original order', () => {
+        removePlayerFromGame(games, gameId, bob.id);
+        removePlayerFromGame(games, gameId, charlie.id);
+
+        addPlayerToGame(games, gameId, 'Charlie', '🐱', charlie.id);
+        addPlayerToGame(games, gameId, 'Bob', '😎', bob.id);
+
+        expect(names()).toEqual(['Alice', 'Bob', 'Charlie']);
+    });
+
+    test('a brand-new player still joins at the end of the list', () => {
+        // New joins are only possible in the lobby
+        restartGame(games, gameId, alice.id);
+
+        addPlayerToGame(games, gameId, 'David', '🐸');
+
+        expect(names()).toEqual(['Alice', 'Bob', 'Charlie', 'David']);
+    });
+
+    test('position survives a joinedAt that became an ISO string (JSON round trip)', () => {
+        removePlayerFromGame(games, gameId, bob.id);
+
+        // Disk/localStorage backups turn Dates into strings
+        const snapshot = games.get(gameId).recentlyLeft.get(bob.id);
+        snapshot.joinedAt = new Date(snapshot.joinedAt).toISOString();
+
+        addPlayerToGame(games, gameId, 'Bob', '😎', bob.id);
+
+        expect(names()).toEqual(['Alice', 'Bob', 'Charlie']);
+    });
+});
+
 // The client must let a leaver rejoin easily: the landing page opens with the
 // room code prefilled and remembers the player's name. Source-level checks in
 // the style of tests/avatar-shuffle.test.js.

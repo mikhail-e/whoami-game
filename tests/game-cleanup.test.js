@@ -205,15 +205,25 @@ describe('Stale Disconnected Player Cleanup (ghosts)', () => {
         assignCharacter(games, gameId, p2.id, 'Superman', p1.id);
         startGame(games, gameId, p1.id);
 
+        // Spread the same-millisecond test joins into the recent past so
+        // the position restore below has a real order to work with
+        const base = Date.now();
+        const players = games.get(gameId).players;
+        players.forEach((player, index) => {
+            player.joinedAt = new Date(base - (players.length - index) * 1000);
+        });
+
         disconnect(games.get(gameId).players.find(p => p.id === p1.id), TEN_MINUTES + 1000);
         removeStaleDisconnectedPlayers(games, TEN_MINUTES);
         expect(games.get(gameId).players).toHaveLength(1);
 
         // Same person, same ID - restored into the started round with
-        // their character (via the recentlyLeft snapshot)
+        // their character (via the recentlyLeft snapshot)...
         const rejoin = addPlayerToGame(games, gameId, 'Alice', '😀', p1.id);
         expect(rejoin.success).toBe(true);
         expect(rejoin.game.characters[p1.id].character).toBe('Batman');
+        // ...and at their old position in the list, not at the end
+        expect(games.get(gameId).players.map(p => p.name)).toEqual(['Alice', 'Bob']);
     });
 
     test('characters the ghost assigned to other players stay in place', () => {

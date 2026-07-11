@@ -86,6 +86,14 @@ function assignUniqueColor(existingPlayers) {
     return stickerColors[existingPlayers.length % stickerColors.length];
 }
 
+// Keep the players list in first-join order, so every client shows the same
+// stable order (easy to follow whose turn it is). joinedAt can be a Date or
+// an ISO string (after a JSON round trip through disk/localStorage backups).
+// The sort is stable (ES2019), so same-millisecond joins keep their order.
+function sortPlayersByJoinTime(players) {
+    players.sort((a, b) => new Date(a.joinedAt || 0) - new Date(b.joinedAt || 0));
+}
+
 // Generate short room code (6 characters)
 function generateRoomCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -186,12 +194,15 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
             avatar: cleanAvatar,
             connected: true,
             isConnected: true,
-            joinedAt: new Date(),
+            // A returning leaver keeps their original join time, which puts
+            // them back at their old position in the list (see sort below)
+            joinedAt: (returningSnapshot && returningSnapshot.joinedAt) || new Date(),
             connectedAt: Date.now(),
             stickerColor: stickerColor
         };
 
         game.players.push(player);
+        sortPlayersByJoinTime(game.players);
         isNewPlayer = true;
 
         // A returning leaver gets their character and reveal status back,
@@ -423,6 +434,7 @@ function removePlayerFromGame(games, gameId, playerId) {
             stickerColor: removedPlayer.stickerColor,
             character: game.characters.get(playerId) || null,
             revealed: game.revealedPlayers.has(playerId),
+            joinedAt: removedPlayer.joinedAt, // restores their list position
             leftAt: Date.now()
         });
     }
