@@ -19,7 +19,7 @@ Web application to play the "Who am I?" guessing game remotely with friends and 
 ```bash
 npm install                        # Install dependencies
 npm start                          # Start server on http://localhost:3000
-npm test                           # Run all tests (Jest: 375 tests, 25 suites)
+npm test                           # Run all tests (Jest: 380 tests, 26 suites)
 npx jest tests/game-logic.test.js  # Run a single test file
 npm run test:watch                 # Watch mode
 ```
@@ -44,7 +44,7 @@ public/
 tests/                     # 25 Jest suites: game logic, API (supertest), race conditions, i18n, timeouts, room recreation,
                            # input validation, connection tracker (refresh race), inactive-game cleanup, leave-game,
                            # service-worker policy, avatar shuffle, avatar persistence, custom avatar (photo upload),
-                           # input limits, share button, mystery sticker
+                           # input limits, share button, mystery sticker, PWA manifest
 render.yaml                # Render.com deploy config (auto-deploys master branch)
 games/                     # Runtime game state backups (*.json, gitignored)
 ```
@@ -82,6 +82,7 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - Sticker colors are assigned once when a player joins and never change; unique for up to 7 players, then cycled. Exception: your own hidden character renders as `.character-sticker.mystery` (light dashed style, 🎭 glyph, deliberately NO player color) until revealed
 - **Share button** (`#shareButton` in game.html): `navigator.share` must be called with no `await` before it in the click handler (iOS rejects otherwise); `AbortError` (user closed the share sheet) is intentionally silent; unsupported browsers fall back to `copyRoomLink()`. Test with a stubbed `navigator.share` — a real click opens the OS share sheet, which blocks automation
 - Button feedback flashes ("✅ Copied!") set `textContent`, which flattens the inner `data-i18n` span — after the first flash that button's label stops reacting to language switches until reload (long-standing quirk of Copy Link, shared by Share via `copyRoomLink()`)
+- **PWA link capturing is a platform matter, not a bug.** iOS cannot open links in an installed web app at all (Apple limitation — links always open the browser/webview; no web-side fix exists). Android (installed via Chrome) captures in-scope links because `scope: "/"` covers `/game/*`; messenger in-app browsers bypass this. `launch_handler: navigate-existing` in manifest.json makes a captured link reuse the open app window (Android/desktop). `tests/manifest.test.js` guards these fields
 - **The service worker caches icons and nothing else.** The game requires a live server (a room lives in server memory), so offline support is pointless, and caching HTML/JS only ever produced "player stuck on an old version" bugs. The worker exists for installability plus free icon caching. `tests/service-worker.test.js` fails if HTML/CSS/JS is added back to the cache. Icon matching is by **exact pathname** — an earlier substring check matched every URL because `'/'` was in the list
 
 ## Deployment
