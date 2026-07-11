@@ -9,9 +9,14 @@ function generatePlayerId() {
     });
 }
 
+// The server accepts a player ID only in UUID format and silently generates
+// a fresh one otherwise - a stored ID in any other format would create a NEW
+// player on every page load (duplicate players)
+const PLAYER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function getUniquePlayerId(mockLocalStorage) {
     let playerId = mockLocalStorage.getItem('playerId');
-    if (!playerId) {
+    if (!playerId || !PLAYER_ID_PATTERN.test(playerId)) {
         playerId = generatePlayerId();
         mockLocalStorage.setItem('playerId', playerId);
         console.log(`🆔 Generated new unique player ID:`, playerId);
@@ -112,8 +117,8 @@ describe('Frontend Player ID Generation', () => {
             expect(console.log).toHaveBeenCalledWith('🆔 Generated new unique player ID:', playerId);
         });
 
-        test('returns existing player ID when one exists', () => {
-            const existingId = 'existing-player-id-12345';
+        test('returns existing player ID when a valid one exists', () => {
+            const existingId = '11111111-1111-4111-8111-111111111111';
             mockLocalStorage.store.playerId = existingId;
 
             const playerId = getUniquePlayerId(mockLocalStorage);
@@ -121,6 +126,35 @@ describe('Frontend Player ID Generation', () => {
             expect(playerId).toBe(existingId);
             expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
             expect(console.log).toHaveBeenCalledWith('🆔 Using existing player ID:', existingId);
+        });
+
+        test('replaces a stored ID that is not in UUID format', () => {
+            // The pre-2025 client stored IDs in a different format. The server
+            // rejects them and would create a duplicate player on every join.
+            const legacyIds = ['player_1758300000000_abc123', 'existing-player-id-12345', 'not a uuid'];
+
+            for (const legacyId of legacyIds) {
+                jest.clearAllMocks();
+                mockLocalStorage.store.playerId = legacyId;
+
+                const playerId = getUniquePlayerId(mockLocalStorage);
+
+                expect(playerId).not.toBe(legacyId);
+                expect(playerId).toMatch(PLAYER_ID_PATTERN);
+                // The regenerated ID is persisted, so the NEXT visit reuses it
+                // instead of duplicating the player again
+                expect(mockLocalStorage.setItem).toHaveBeenCalledWith('playerId', playerId);
+                expect(mockLocalStorage.store.playerId).toBe(playerId);
+            }
+        });
+
+        test('keeps the regenerated ID stable on later visits', () => {
+            mockLocalStorage.store.playerId = 'player_1758300000000_abc123';
+
+            const regeneratedId = getUniquePlayerId(mockLocalStorage);
+            const nextVisitId = getUniquePlayerId(mockLocalStorage);
+
+            expect(nextVisitId).toBe(regeneratedId);
         });
 
         test('returns same ID on multiple calls', () => {

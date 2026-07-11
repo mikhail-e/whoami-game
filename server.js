@@ -61,10 +61,13 @@ app.get('/game/:roomCode', (req, res) => {
 
             // Nobody is actually connected right after a restore - players will be
             // marked connected again when they rejoin. Without this reset the game
-            // would look "active" forever and never get cleaned up.
+            // would look "active" forever and never get cleaned up. The fresh
+            // disconnectedAt replaces any stale timestamp from the saved file,
+            // giving every player the full ghost timeout to come back.
             restoredGame.players.forEach(player => {
                 player.connected = false;
                 player.isConnected = false;
+                player.disconnectedAt = Date.now();
             });
             gameLogic.touchGame(restoredGame);
 
@@ -415,6 +418,25 @@ function cleanupOldGameFiles() {
 
 // Keep-alive functionality for active games
 function keepGamesAlive() {
+    // First remove "ghosts" - players disconnected for over 10 minutes
+    // (usually the same person who came back under a new player ID, e.g.
+    // after clearing localStorage or joining from a messenger's in-app
+    // browser). Done before saving so the disk backup is already clean.
+    // The payload matches the leave-game handler, so clients reuse their
+    // existing 'player-left' handling (list update + notification).
+    const removals = gameLogic.removeStaleDisconnectedPlayers(games);
+    for (const removal of removals) {
+        console.log(`👻 Removed ghost player ${removal.removedPlayer.id} from game ${removal.gameId} (disconnected too long)`);
+        io.to(removal.gameId).emit('player-left', {
+            playerId: removal.removedPlayer.id,
+            playerName: removal.playerName,
+            players: removal.players,
+            characters: removal.characters,
+            revealedPlayers: removal.revealedPlayers,
+            gameDeleted: removal.gameDeleted
+        });
+    }
+
     for (const [gameId, game] of games.entries()) {
         // Only keep alive games that have connected players
         const connectedPlayers = game.players.filter(p => p.isConnected).length;

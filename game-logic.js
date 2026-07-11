@@ -501,6 +501,16 @@ function recreateGameFromState(games, roomCode, savedGameState) {
 
         // Avatar rotation is now per-player, no need to store room-specific avatars
 
+        // Nobody is actually connected right after a recreation - players are
+        // marked connected again when they rejoin. A stale isConnected: true
+        // from the client's localStorage backup would otherwise make the
+        // player look online forever, dodging every cleanup.
+        game.players.forEach(player => {
+            player.connected = false;
+            player.isConnected = false;
+            player.disconnectedAt = Date.now();
+        });
+
         touchGame(game);
 
         // Store the recreated game
@@ -567,6 +577,53 @@ function createConnectionTracker() {
     };
 }
 
+// How long a disconnected player stays in the room before being removed.
+// Long enough to survive a locked phone or a network drop (Socket.IO takes
+// ~2 minutes to even notice a disconnect), short enough that a "ghost" -
+// the same person who came back under a NEW player ID (cleared localStorage,
+// messenger in-app browser, installed PWA) - stops blocking Start Game soon.
+const MAX_DISCONNECTED_MS = 10 * 60 * 1000;
+
+// Remove players who have been disconnected for longer than maxDisconnectedMs.
+// Runs from the keep-alive cycle. A removed player is not locked out: if they
+// come back with the same ID they simply rejoin (in a started round they are
+// restored from the recentlyLeft snapshot that removePlayerFromGame creates).
+// Returns one removePlayerFromGame result per removed player (plus gameId and
+// playerName) so the server can broadcast each removal as 'player-left'.
+function removeStaleDisconnectedPlayers(games, maxDisconnectedMs = MAX_DISCONNECTED_MS) {
+    const now = Date.now();
+    const removals = [];
+
+    for (const [gameId, game] of games.entries()) {
+        // Collect first, remove after - removing while looping over the
+        // players array would skip entries
+        const stalePlayerIds = [];
+        for (const player of game.players) {
+            if (player.isConnected) continue;
+
+            if (!player.disconnectedAt) {
+                // Games restored from disk or recreated from a client backup
+                // have no disconnect timestamp - start the clock now, so the
+                // player is removed on a LATER pass if nobody comes back
+                player.disconnectedAt = now;
+            } else if (now - player.disconnectedAt > maxDisconnectedMs) {
+                stalePlayerIds.push(player.id);
+            }
+        }
+
+        for (const playerId of stalePlayerIds) {
+            // result already carries gameId, players, characters,
+            // revealedPlayers and gameDeleted - everything a broadcast needs
+            const result = removePlayerFromGame(games, gameId, playerId);
+            if (result.success) {
+                removals.push({ ...result, playerName: result.removedPlayer.name });
+            }
+        }
+    }
+
+    return removals;
+}
+
 // Remove games nobody plays anymore from memory (prevents unbounded growth).
 // A game is inactive when it has no connected players and nothing happened
 // in it for maxIdleMs. Returns the list of removed game IDs.
@@ -606,6 +663,7 @@ module.exports = {
     isCustomAvatar,
     touchGame,
     cleanupInactiveGames,
+    removeStaleDisconnectedPlayers,
     createConnectionTracker,
     MAX_NAME_LENGTH,
     MAX_CHARACTER_LENGTH,

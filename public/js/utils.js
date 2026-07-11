@@ -184,10 +184,17 @@ function generatePlayerId() {
     });
 }
 
-// Get or create unique player ID for this browser (ONE per browser)
+// The server accepts a player ID only in UUID format (same pattern as
+// game-logic.js) and silently generates a fresh one otherwise - so a stored
+// ID in any other format (e.g. the pre-2025 "player_..." format) would make
+// the server create a NEW player on every page load: instant duplicates.
+const PLAYER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Get or create unique player ID for this browser (ONE per browser).
+// A stored ID that the server would reject is replaced with a valid one.
 function getUniquePlayerId() {
     let playerId = localStorage.getItem('playerId');
-    if (!playerId) {
+    if (!playerId || !PLAYER_ID_PATTERN.test(playerId)) {
         playerId = generatePlayerId();
         localStorage.setItem('playerId', playerId);
         console.log(`🆔 Generated new unique player ID:`, playerId);

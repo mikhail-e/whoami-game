@@ -19,7 +19,7 @@ Web application to play the "Who am I?" guessing game remotely with friends and 
 ```bash
 npm install                        # Install dependencies
 npm start                          # Start server on http://localhost:3000
-npm test                           # Run all tests (Jest: 361 tests, 25 suites)
+npm test                           # Run all tests (Jest: 371 tests, 25 suites)
 npx jest tests/game-logic.test.js  # Run a single test file
 npm run test:watch                 # Watch mode
 ```
@@ -56,8 +56,8 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - **Leaving:** `leave-game` is accepted only from the socket registered to that player (no kicking others). `removePlayerFromGame` drops the player, their character and reveal status; the last player leaving deletes the game. The `player-left` broadcast carries the full state; the leaver redirects to `/?join=CODE` (prefilled rejoin) and the landing page remembers the last used name and avatar (`whoami-player-name` / `whoami-player-avatar` in localStorage, saved on create/join; the saved avatar is placed first in the grid so it gets auto-selected, and is ignored if it's neither in `avatarPool` nor a valid custom data URL)
 - **Returning to a started game:** leaving a started round snapshots the player into `game.recentlyLeft` (character, reveal status, sticker color). Joining with the same `playerId` restores everything and consumes the snapshot; strangers are still rejected with "Game has already started". Restart clears the snapshots. The `player-joined`/`player-reconnected` broadcasts carry `characters`/`revealedPlayers` so other clients see the restored character reappear
 - **Persistence:** every 5 minutes active games are saved to `games/*.json`; visiting a room URL after a server restart restores the game from disk. Files older than 4 hours are cleaned up, and games idle for 4+ hours with nobody connected are dropped from memory (`cleanupInactiveGames`). Clients also back up state to localStorage and can recreate a lost room via `POST /api/recreate-game`
-- **Player identity:** one UUID per browser stored in `localStorage.playerId` (created in utils.js as `PLAYER_ID`). Reconnection matches by ID only, never by name — duplicate player names in one room are supported
-- **Timeout protection:** extended Socket.IO timeouts (2-min ping timeout, 30s ping interval); disconnected players are marked `isConnected: false` rather than removed, so they can reconnect
+- **Player identity:** one UUID per browser stored in `localStorage.playerId` (created in utils.js as `PLAYER_ID`). Reconnection matches by ID only, never by name — duplicate player names in one room are supported. A stored ID that is not a valid UUID is regenerated on load (`PLAYER_ID_PATTERN` in utils.js): the server silently replaces non-UUID IDs, which would otherwise duplicate the player on every page load
+- **Timeout protection:** extended Socket.IO timeouts (2-min ping timeout, 30s ping interval); disconnected players are marked `isConnected: false` rather than removed, so they can reconnect. Players disconnected for 10+ minutes ("ghosts" — usually the same person returning under a new playerId) are removed by the keep-alive cycle (`removeStaleDisconnectedPlayers` in game-logic.js) and broadcast as a regular `player-left`; in a started game the `recentlyLeft` snapshot still lets the same ID return
 - **Connection tracking:** `createConnectionTracker()` in game-logic.js maps sockets to players. On page refresh the new socket often connects *before* the old one disconnects, so every disconnect is checked against the player's current socket and stale ones are ignored
 
 ## Rules (important!)
