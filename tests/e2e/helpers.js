@@ -148,6 +148,32 @@ async function joinRoom(player, code) {
     await expect(playerCard(page, player.name).first()).toBeVisible();
 }
 
+// Give the player named toName a character: "+" on their card, type, Enter
+async function assignCharacter(player, toName, character) {
+    const card = playerCard(player.page, toName);
+    await card.locator('.add-character-btn').click();
+    await card.locator('.character-input').fill(character);
+    await card.locator('.character-input').press('Enter');
+    await expect(card.locator('.character-sticker')).toHaveText(character);
+}
+
+// Count the Socket.IO events of this name the page sends to the server, over
+// the WebSocket and over HTTP polling (used before the upgrade). Call it before
+// the player opens the room: the socket connects as the room page loads.
+// Returns a function that answers the count so far
+function countSentEvents(page, eventName) {
+    const marker = `"${eventName}"`;
+    let count = 0;
+    const countIn = payload => {
+        if (typeof payload === 'string') count += payload.split(marker).length - 1;
+    };
+    page.on('websocket', socket => socket.on('framesent', frame => countIn(frame.payload)));
+    page.on('request', request => {
+        if (request.method() === 'POST' && request.url().includes('/socket.io/')) countIn(request.postData());
+    });
+    return () => count;
+}
+
 // CRC-32 of a PNG chunk (type + data), as the PNG format requires
 function crc32(bytes) {
     let crc = 0xffffffff;
@@ -196,4 +222,6 @@ module.exports = {
     waitForPlayers,
     createRoom,
     joinRoom,
+    assignCharacter,
+    countSentEvents,
 };

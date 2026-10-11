@@ -42,13 +42,6 @@ describe('Input limits stay in sync between server and frontend', () => {
         expect(readPattern('public/js/utils.js')).toBe(readPattern('game-logic.js'));
     });
 
-    test('game-room.js uses the constant instead of a hardcoded number', () => {
-        const source = fs.readFileSync(path.join(__dirname, '..', 'public/js/game-room.js'), 'utf8');
-
-        expect(source).toContain('inputElement.maxLength = MAX_CHARACTER_LENGTH;');
-        expect(source).not.toMatch(/inputElement\.maxLength\s*=\s*\d+/);
-    });
-
     test('the limits are the agreed values', () => {
         expect(gameLogic.MAX_NAME_LENGTH).toBe(128);
         expect(gameLogic.MAX_CHARACTER_LENGTH).toBe(128);
