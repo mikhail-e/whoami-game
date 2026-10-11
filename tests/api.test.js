@@ -1,67 +1,29 @@
 // Who am I? Game - API Integration Tests
+// The real routes of server.js (create and join a game). Characters, reveals
+// and the rest of a game travel over Socket.IO: their rules are tested in
+// game-logic.test.js and in the browser (tests/e2e).
 const request = require('supertest');
-const express = require('express');
-const gameLogic = require('../game-logic');
-
-// Create test app (simplified version of server.js for testing)
-function createTestApp() {
-    const app = express();
-    const games = new Map();
-    
-    app.use(express.json());
-    
-    // API endpoint to create a new game
-    app.post('/api/create-game', (req, res) => {
-        const result = gameLogic.createGame(games);
-        res.json(result);
-    });
-    
-    // API endpoint to join a game
-    app.post('/api/join-game', (req, res) => {
-        const { gameId, playerName, avatar, playerId } = req.body;
-        
-        if (!gameId || !playerName || !avatar) {
-            return res.status(400).json({ error: 'Missing required fields' });
-        }
-        
-        const result = gameLogic.addPlayerToGame(games, gameId, playerName, avatar, playerId);
-        res.status(result.success ? 200 : 400).json(result);
-    });
-    
-    // API endpoint to assign character (simplified)
-    app.post('/api/assign-character', (req, res) => {
-        const { gameId, playerId, character, assignedBy } = req.body;
-        const result = gameLogic.assignCharacter(games, gameId, playerId, character, assignedBy);
-        res.status(result.success ? 200 : 400).json(result);
-    });
-
-    // API endpoint to reveal character (simplified)
-    app.post('/api/reveal-character', (req, res) => {
-        const { gameId, playerId } = req.body;
-        const result = gameLogic.revealCharacter(games, gameId, playerId);
-        res.status(result.success ? 200 : 400).json(result);
-    });
-
-    // API endpoint to start game (simplified)
-    app.post('/api/start-game', (req, res) => {
-        const { gameId, playerId } = req.body;
-        const result = gameLogic.startGame(games, gameId, playerId);
-        res.status(result.success ? 200 : 400).json(result);
-    });
-
-    return app;
-}
+const { app } = require('../server');
 
 describe('API Integration Tests', () => {
-    let app;
-    
-    beforeEach(() => {
-        app = createTestApp();
+    // One listening server for the whole file: supertest would otherwise open
+    // and close one per request
+    let server;
+
+    beforeAll(done => {
+        // The routes log every request; keep the test output readable
+        jest.spyOn(console, 'log').mockImplementation(() => {});
+        server = app.listen(0, done);
+    });
+
+    afterAll(done => {
+        console.log.mockRestore();
+        server.close(done);
     });
 
     describe('POST /api/create-game', () => {
         test('creates a new game successfully', async () => {
-            const response = await request(app)
+            const response = await request(server)
                 .post('/api/create-game')
                 .expect(200);
             
@@ -74,9 +36,9 @@ describe('API Integration Tests', () => {
         });
 
         test('creates unique game IDs for multiple requests', async () => {
-            const response1 = await request(app).post('/api/create-game').expect(200);
-            const response2 = await request(app).post('/api/create-game').expect(200);
-            const response3 = await request(app).post('/api/create-game').expect(200);
+            const response1 = await request(server).post('/api/create-game').expect(200);
+            const response2 = await request(server).post('/api/create-game').expect(200);
+            const response3 = await request(server).post('/api/create-game').expect(200);
             
             const gameId1 = response1.body.gameId;
             const gameId2 = response2.body.gameId;
@@ -92,12 +54,12 @@ describe('API Integration Tests', () => {
         let gameId;
         
         beforeEach(async () => {
-            const createResponse = await request(app).post('/api/create-game');
+            const createResponse = await request(server).post('/api/create-game');
             gameId = createResponse.body.gameId;
         });
 
         test('joins a game successfully', async () => {
-            const response = await request(app)
+            const response = await request(server)
                 .post('/api/join-game')
                 .send({
                     gameId: gameId,
@@ -128,7 +90,7 @@ describe('API Integration Tests', () => {
 
         test('handles player reconnection', async () => {
             // First join
-            const firstResponse = await request(app)
+            const firstResponse = await request(server)
                 .post('/api/join-game')
                 .send({
                     gameId: gameId,
@@ -140,7 +102,7 @@ describe('API Integration Tests', () => {
             const playerId = firstResponse.body.player.id;
             
             // Reconnect with same name but different avatar (provide player ID)
-            const secondResponse = await request(app)
+            const secondResponse = await request(server)
                 .post('/api/join-game')
                 .send({
                     gameId: gameId,
@@ -156,17 +118,17 @@ describe('API Integration Tests', () => {
         });
 
         test('allows multiple different players to join', async () => {
-            await request(app)
+            await request(server)
                 .post('/api/join-game')
                 .send({ gameId, playerName: 'Alice', avatar: '😀' })
                 .expect(200);
             
-            await request(app)
+            await request(server)
                 .post('/api/join-game')
                 .send({ gameId, playerName: 'Bob', avatar: '😎' })
                 .expect(200);
             
-            const response = await request(app)
+            const response = await request(server)
                 .post('/api/join-game')
                 .send({ gameId, playerName: 'Charlie', avatar: '🤖' })
                 .expect(200);
@@ -177,7 +139,7 @@ describe('API Integration Tests', () => {
         });
 
         test('returns error for invalid game ID', async () => {
-            const response = await request(app)
+            const response = await request(server)
                 .post('/api/join-game')
                 .send({
                     gameId: 'INVALID',
@@ -195,7 +157,7 @@ describe('API Integration Tests', () => {
         test('returns error when game is full (12 players)', async () => {
             // Add 12 players
             for (let i = 1; i <= 12; i++) {
-                await request(app)
+                await request(server)
                     .post('/api/join-game')
                     .send({
                         gameId,
@@ -206,7 +168,7 @@ describe('API Integration Tests', () => {
             }
             
             // Try to add 13th player
-            const response = await request(app)
+            const response = await request(server)
                 .post('/api/join-game')
                 .send({
                     gameId,
@@ -223,7 +185,7 @@ describe('API Integration Tests', () => {
 
         test('validates required fields', async () => {
             // Missing playerName
-            await request(app)
+            await request(server)
                 .post('/api/join-game')
                 .send({
                     gameId: gameId,
@@ -232,7 +194,7 @@ describe('API Integration Tests', () => {
                 .expect(400);
             
             // Missing avatar
-            await request(app)
+            await request(server)
                 .post('/api/join-game')
                 .send({
                     gameId: gameId,
@@ -241,7 +203,7 @@ describe('API Integration Tests', () => {
                 .expect(400);
             
             // Missing gameId
-            await request(app)
+            await request(server)
                 .post('/api/join-game')
                 .send({
                     playerName: 'Alice',
@@ -251,168 +213,30 @@ describe('API Integration Tests', () => {
         });
     });
 
-    describe('POST /api/assign-character', () => {
-        let gameId;
-        let playerId1;
-        let playerId2;
-        
-        beforeEach(async () => {
-            // Create game
-            const createResponse = await request(app).post('/api/create-game');
-            gameId = createResponse.body.gameId;
-            
-            // Add two players
-            const player1Response = await request(app)
-                .post('/api/join-game')
-                .send({ gameId, playerName: 'Alice', avatar: '😀' });
-            playerId1 = player1Response.body.player.id;
-            
-            const player2Response = await request(app)
-                .post('/api/join-game')
-                .send({ gameId, playerName: 'Bob', avatar: '😎' });
-            playerId2 = player2Response.body.player.id;
-        });
-
-        test('assigns character successfully', async () => {
-            const response = await request(app)
-                .post('/api/assign-character')
-                .send({
-                    gameId,
-                    playerId: playerId1,
-                    character: 'Albert Einstein',
-                    assignedBy: playerId2
-                })
-                .expect(200);
-            
-            expect(response.body).toMatchObject({
-                success: true,
-                playerId: playerId1,
-                character: 'Albert Einstein',
-                assignedBy: playerId2,
-                characters: expect.objectContaining({
-                    [playerId1]: expect.objectContaining({
-                        character: 'Albert Einstein',
-                        assignedBy: playerId2
-                    })
-                })
-            });
-        });
-
-        test('allows character reassignment', async () => {
-            // Initial assignment
-            await request(app)
-                .post('/api/assign-character')
-                .send({
-                    gameId, playerId: playerId1,
-                    character: 'Batman', assignedBy: playerId2
-                })
-                .expect(200);
-            
-            // Reassignment
-            const response = await request(app)
-                .post('/api/assign-character')
-                .send({
-                    gameId, playerId: playerId1,
-                    character: 'Superman', assignedBy: playerId2
-                })
-                .expect(200);
-            
-            expect(response.body.character).toBe('Superman');
-        });
-
-        test('returns error for invalid game', async () => {
-            const response = await request(app)
-                .post('/api/assign-character')
-                .send({
-                    gameId: 'INVALID',
-                    playerId: playerId1,
-                    character: 'Batman',
-                    assignedBy: playerId2
-                })
-                .expect(400);
-            
-            expect(response.body).toMatchObject({
-                success: false,
-                error: 'Game not found'
-            });
-        });
-
-        test('returns error for invalid player', async () => {
-            const response = await request(app)
-                .post('/api/assign-character')
-                .send({
-                    gameId,
-                    playerId: 'invalid-player-id',
-                    character: 'Batman',
-                    assignedBy: playerId2
-                })
-                .expect(400);
-            
-            expect(response.body).toMatchObject({
-                success: false,
-                error: 'Player not found in game'
-            });
-        });
-
-        test('prevents players from assigning characters to themselves', async () => {
-            const response = await request(app)
-                .post('/api/assign-character')
-                .send({
-                    gameId,
-                    playerId: playerId1,
-                    character: 'Batman',
-                    assignedBy: playerId1
-                })
-                .expect(400);
-            
-            expect(response.body).toMatchObject({
-                success: false,
-                error: 'Cannot assign character to yourself'
-            });
-        });
-
-        test('validates that assigner exists in game', async () => {
-            const response = await request(app)
-                .post('/api/assign-character')
-                .send({
-                    gameId,
-                    playerId: playerId1,
-                    character: 'Batman',
-                    assignedBy: 'invalid-assigner-id'
-                })
-                .expect(400);
-            
-            expect(response.body).toMatchObject({
-                success: false,
-                error: 'Assigner not found in game'
-            });
-        });
-    });
-
     describe('Player Reconnection with ID', () => {
         let gameId, playerId1;
         
         beforeEach(async () => {
             // Create a game
-            const gameResponse = await request(app)
+            const gameResponse = await request(server)
                 .post('/api/create-game')
                 .expect(200);
             gameId = gameResponse.body.gameId;
             
             // Add two players
-            const player1Response = await request(app)
+            const player1Response = await request(server)
                 .post('/api/join-game')
                 .send({ gameId, playerName: 'Alice', avatar: '😀' });
             playerId1 = player1Response.body.player.id;
             
-            await request(app)
+            await request(server)
                 .post('/api/join-game')
                 .send({ gameId, playerName: 'Bob', avatar: '😎' });
         });
         
         test('allows player to reconnect using their ID', async () => {
             // Player reconnects with their ID
-            const response = await request(app)
+            const response = await request(server)
                 .post('/api/join-game')
                 .send({ 
                     gameId, 
@@ -434,7 +258,7 @@ describe('API Integration Tests', () => {
         });
         
         test('creates new player if invalid ID provided', async () => {
-            const response = await request(app)
+            const response = await request(server)
                 .post('/api/join-game')
                 .send({ 
                     gameId, 
@@ -458,159 +282,15 @@ describe('API Integration Tests', () => {
         });
     });
 
-    describe('POST /api/reveal-character', () => {
-        let gameId, playerId1, playerId2;
-
-        beforeEach(async () => {
-            // Create game
-            const createResponse = await request(app).post('/api/create-game');
-            gameId = createResponse.body.gameId;
-
-            // Add two players
-            const player1Response = await request(app)
-                .post('/api/join-game')
-                .send({ gameId, playerName: 'Alice', avatar: '😀' });
-            playerId1 = player1Response.body.player.id;
-
-            const player2Response = await request(app)
-                .post('/api/join-game')
-                .send({ gameId, playerName: 'Bob', avatar: '😎' });
-            playerId2 = player2Response.body.player.id;
-
-            // Assign characters
-            await request(app)
-                .post('/api/assign-character')
-                .send({
-                    gameId, playerId: playerId1,
-                    character: 'Batman', assignedBy: playerId2
-                });
-
-            await request(app)
-                .post('/api/assign-character')
-                .send({
-                    gameId, playerId: playerId2,
-                    character: 'Superman', assignedBy: playerId1
-                });
-
-            // Start the game
-            await request(app)
-                .post('/api/start-game')
-                .send({ gameId, playerId: playerId1 });
-        });
-
-        test('reveals character successfully with notification data', async () => {
-            const response = await request(app)
-                .post('/api/reveal-character')
-                .send({ gameId, playerId: playerId1 })
-                .expect(200);
-
-            expect(response.body).toMatchObject({
-                success: true,
-                playerId: playerId1,
-                character: 'Batman',
-                revealedPlayers: [playerId1],
-                revealedPlayer: {
-                    id: playerId1,
-                    name: 'Alice',
-                    character: 'Batman'
-                }
-            });
-        });
-
-        test('returns error for invalid game', async () => {
-            const response = await request(app)
-                .post('/api/reveal-character')
-                .send({ gameId: 'INVALID', playerId: playerId1 })
-                .expect(400);
-
-            expect(response.body).toMatchObject({
-                success: false,
-                error: 'Game not found'
-            });
-        });
-
-        test('returns error for invalid player', async () => {
-            const response = await request(app)
-                .post('/api/reveal-character')
-                .send({ gameId, playerId: 'invalid-player-id' })
-                .expect(400);
-
-            expect(response.body).toMatchObject({
-                success: false,
-                error: 'Player not found in game'
-            });
-        });
-
-        test('returns error if game not started', async () => {
-            // Create a new game that hasn't started
-            const newGameResponse = await request(app).post('/api/create-game');
-            const newGameId = newGameResponse.body.gameId;
-
-            const playerResponse = await request(app)
-                .post('/api/join-game')
-                .send({ gameId: newGameId, playerName: 'Charlie', avatar: '🤖' });
-
-            const response = await request(app)
-                .post('/api/reveal-character')
-                .send({ gameId: newGameId, playerId: playerResponse.body.player.id })
-                .expect(400);
-
-            expect(response.body).toMatchObject({
-                success: false,
-                error: 'Game has not started yet'
-            });
-        });
-
-        test('returns error if no character assigned', async () => {
-            // Create new game and player without character
-            const newGameResponse = await request(app).post('/api/create-game');
-            const newGameId = newGameResponse.body.gameId;
-
-            const playerResponse = await request(app)
-                .post('/api/join-game')
-                .send({ gameId: newGameId, playerName: 'Charlie', avatar: '🤖' });
-
-            // Add second player (needed to start game)
-            const player2Response = await request(app)
-                .post('/api/join-game')
-                .send({ gameId: newGameId, playerName: 'Dave', avatar: '🎮' });
-
-            // Assign character to second player only
-            await request(app)
-                .post('/api/assign-character')
-                .send({
-                    gameId: newGameId,
-                    playerId: player2Response.body.player.id,
-                    character: 'Wonder Woman',
-                    assignedBy: playerResponse.body.player.id
-                });
-
-            // Start game with only one player having character
-            await request(app)
-                .post('/api/start-game')
-                .send({ gameId: newGameId, playerId: playerResponse.body.player.id });
-
-            const response = await request(app)
-                .post('/api/reveal-character')
-                .send({ gameId: newGameId, playerId: playerResponse.body.player.id })
-                .expect(400);
-
-            expect(response.body).toMatchObject({
-                success: false,
-                error: 'No character assigned to this player'
-            });
-        });
-    });
-
     describe('Error Handling', () => {
         test('handles missing request body for join-game', async () => {
-            await request(app)
+            await request(server)
                 .post('/api/join-game')
                 .expect(400);
         });
 
         test('handles empty request body for join-game', async () => {
-            await request(app)
+            await request(server)
                 .post('/api/join-game')
                 .send({})
                 .expect(400);

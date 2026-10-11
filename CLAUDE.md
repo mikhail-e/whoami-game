@@ -19,10 +19,12 @@ Web application to play the "Who am I?" guessing game remotely with friends and 
 ```bash
 npm install                        # Install dependencies
 npm start                          # Start server on http://localhost:3000
-npm test                           # All checks: ESLint, then Jest — run before every merge
+npm test                           # All checks: ESLint, Jest, then Playwright — run before every merge
 npm run lint                       # ESLint only (any warning fails); npm run lint:fix fixes what it can
-npx jest tests/game-logic.test.js  # Run a single test file
-npm run test:watch                 # Watch mode
+npx jest tests/game-logic.test.js  # Run a single Jest file
+npm run test:e2e                   # Browser tests only (Playwright); :headed and :ui variants
+npm run test:e2e:prod              # Browser tests against production (after a release)
+npx playwright install chromium    # Once per machine: the browser for the tests
 ```
 
 ## Architecture
@@ -43,7 +45,10 @@ public/
     ├── game-room.js       # Game room logic (player list, character stickers, socket handlers)
     ├── translations.js    # i18n (en/ru): browser auto-detection, localStorage preference, {placeholder} support
     └── pwa.js             # PWA manager: service worker registration, update detection every 30s
-tests/                     # Jest: game logic (unit), HTTP API (supertest), frontend markup and source checks
+tests/                     # Jest: game logic, HTTP routes (supertest on the real app), checks of deliberate copies
+└── e2e/                   # Playwright: the game in Chromium (phone + desktop), several players per room; helpers.js
+playwright.config.js       # Browser tests: own server on port 3100, projects mobile + desktop, BASE_URL for production
+docs/testing.md            # How the tests are organized and written (helpers, rules of the suite, debugging)
 docs/release.md            # Git flow, versions, release and hotfix steps, the check of production
 README.md                  # What the game is, how to run it
 eslint.config.mjs          # ESLint: one block per environment (server, pages, service worker, tests)
@@ -56,10 +61,10 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - Games live in an in-memory `Map` in server.js, keyed by 6-character room code (e.g. `ABC123`)
 - **HTTP API:** `POST /api/create-game`, `POST /api/join-game`, `POST /api/recreate-game`; `GET /api/version` (the version from package.json, shown in the footer of both pages by `showAppVersion()` in utils.js); `GET /game/:roomCode` serves game.html (restoring from disk if needed) or redirects to `/?error=room-not-found`
 - **Socket.IO events:** `join-room`, `assign-character`, `start-game`, `reveal-character`, `restart-game`, `leave-game`; server broadcasts with `io.to(room)` (includes the sender — intentional, don't switch to `socket.to()`). Every handler is wrapped in `safeHandler()` so a malformed payload can never crash the process
-- **Leaving:** `leave-game` is accepted only from the socket registered to that player (no kicking others). `removePlayerFromGame` drops the player, their character and reveal status; the last player leaving deletes the game. The `player-left` broadcast carries the full state; the leaver redirects to `/?join=CODE` (prefilled rejoin) and the landing page remembers the last used name and avatar (`whoami-player-name` / `whoami-player-avatar` in localStorage, saved on create/join; the saved avatar is placed first in the grid so it gets auto-selected, and is ignored if it's neither in `avatarPool` nor a valid custom data URL)
+- **Leaving:** `leave-game` is accepted only from the socket registered to that player (no kicking others). `removePlayerFromGame` drops the player, their character and reveal status; the last player leaving deletes the game and its disk backup (`deleteGameBackup`, so the old link cannot bring it back). The `player-left` broadcast carries the full state; the leaver redirects to `/?join=CODE` (prefilled rejoin) and the landing page remembers the last used name and avatar (`whoami-player-name` / `whoami-player-avatar` in localStorage, saved on create/join; the saved avatar is placed first in the grid so it gets auto-selected, and is ignored if it's neither in `avatarPool` nor a valid custom data URL)
 - **Returning to a started game:** leaving a started round snapshots the player into `game.recentlyLeft` (character, reveal status, sticker color, join time). Joining with the same `playerId` restores everything and consumes the snapshot; strangers are still rejected with "Game has already started". Restart clears the snapshots. The `player-joined`/`player-reconnected` broadcasts carry `characters`/`revealedPlayers` so other clients see the restored character reappear
 - **Player list order:** `game.players` is kept in first-join order (`sortPlayersByJoinTime` sorts by `joinedAt` after every add), identical on every client — no client-side sorting. A player returning to a started round gets their old position back (the snapshot carries `joinedAt`); lobby rejoins go to the end
-- **Persistence:** every 5 minutes active games are saved to `games/*.json`; visiting a room URL after a server restart restores the game from disk. Files older than 4 hours are cleaned up, and games idle for 4+ hours with nobody connected are dropped from memory (`cleanupInactiveGames`). Clients also back up state to localStorage and can recreate a lost room via `POST /api/recreate-game`
+- **Persistence:** every 5 minutes active games are saved to `games/*.json` (`GAMES_DIR` moves the folder; the browser tests use a temporary one); visiting a room URL after a server restart restores the game from disk. Files older than 4 hours are cleaned up, and games idle for 4+ hours with nobody connected are dropped from memory (`cleanupInactiveGames`). Clients also back up state to localStorage and can recreate a lost room via `POST /api/recreate-game`
 - **Player identity:** one UUID per browser stored in `localStorage.playerId` (created in utils.js as `PLAYER_ID`). Reconnection matches by ID only, never by name — duplicate player names in one room are supported. A stored ID that is not a valid UUID is regenerated on load (`PLAYER_ID_PATTERN` in utils.js): the server silently replaces non-UUID IDs, which would otherwise duplicate the player on every page load
 - **Timeout protection:** extended Socket.IO timeouts (2-min ping timeout, 30s ping interval); disconnected players are marked `isConnected: false` rather than removed, so they can reconnect. Players disconnected for 10+ minutes ("ghosts" — usually the same person returning under a new playerId) are removed by the keep-alive cycle (`removeStaleDisconnectedPlayers` in game-logic.js) and broadcast as a regular `player-left`; in a started game the `recentlyLeft` snapshot still lets the same ID return
 - **Connection tracking:** `createConnectionTracker()` in game-logic.js maps sockets to players. On page refresh the new socket often connects *before* the old one disconnects, so every disconnect is checked against the player's current socket and stale ones are ignored
@@ -67,7 +72,7 @@ games/                     # Runtime game state backups (*.json, gitignored)
 ## Rules (important!)
 1. **Bump the icon cache version in `CACHE_NAME`** (public/sw.js, e.g. `whoami-game-v1.5.0` → `v1.5.1`) **when you change the icons**. Only icons are cached, so HTML/CSS/JS changes reach players without it. This is not the app version — that one is in package.json (`docs/release.md`)
 2. **No code duplication across files** — shared frontend code goes to `public/js/utils.js`
-3. **Update tests whenever logic changes**; run `npm test` before committing
+3. **Update tests whenever logic changes**: a game rule → Jest with `game-logic.js`; what the player sees or does → a browser test in `tests/e2e/` (`docs/testing.md`). Run `npm test` before committing
 4. **Localize all UI text** — every user-facing string needs both `en` and `ru` entries in `public/js/translations.js`. `tests/translations-real.test.js` fails if a key exists in only one language. Static markup supports `data-i18n` (text), `data-i18n-placeholder`, `data-i18n-title` and `data-i18n-aria-label` (for icon-only buttons)
 5. **Never build DOM from user data with `innerHTML`** — player names and characters go through `textContent` (see `createAlertElement()` in utils.js and `updatePlayersList()` in game-room.js)
 6. **Debug output goes through `debugLog()`** (utils.js), never `console.log` in `public/js` (ESLint fails on it). It prints only after `localStorage.setItem('whoami-debug', 'on')` and a reload. `console.warn`/`console.error` are for real problems. The server keeps `console.log`: that is what Render's log shows
@@ -85,7 +90,7 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - Mobile virtual keyboard: call `input.focus()` synchronously inside the click handler (no `setTimeout`) — otherwise iOS/Android won't open the keyboard
 - Character assignment: players cannot assign a character to themselves; submitting empty/whitespace text removes the assignment (sticker returns to the "+" state). Escape restores the original character
 - Sticker colors are assigned once when a player joins and never change; unique for up to 7 players, then cycled. Exception: your own hidden character renders as `.character-sticker.mystery` (light dashed style, 🎭 glyph, deliberately NO player color) until revealed
-- **Share button** (`#shareButton` in game.html): `navigator.share` must be called with no `await` before it in the click handler (iOS rejects otherwise); `AbortError` (user closed the share sheet) is intentionally silent; unsupported browsers fall back to `copyRoomLink()`. Test with a stubbed `navigator.share` — a real click opens the OS share sheet, which blocks automation
+- **Share button** (`#shareButton` in game.html): `navigator.share` must be called with no `await` before it in the click handler (iOS rejects otherwise); `AbortError` (user closed the share sheet) is intentionally silent; unsupported browsers fall back to `copyRoomLink()`. Tests use `stubShare()` (`tests/e2e/helpers.js`) — a real click opens the OS share sheet, which blocks automation
 - Button feedback flashes ("✅ Copied!") set `textContent`, which flattens the inner `data-i18n` span — after the first flash that button's label stops reacting to language switches until reload (long-standing quirk of Copy Link, shared by Share via `copyRoomLink()`)
 - **PWA link capturing is a platform matter, not a bug.** iOS cannot open links in an installed web app at all (Apple limitation — links always open the browser/webview; no web-side fix exists). Android (installed via Chrome) captures in-scope links because `scope: "/"` covers `/game/*`; messenger in-app browsers bypass this. `launch_handler: navigate-existing` in manifest.json makes a captured link reuse the open app window (Android/desktop). `tests/manifest.test.js` guards these fields
 - **The service worker caches icons and nothing else.** The game requires a live server (a room lives in server memory), so offline support is pointless, and caching HTML/JS only ever produced "player stuck on an old version" bugs. The worker exists for installability plus free icon caching. `tests/service-worker.test.js` fails if HTML/CSS/JS is added back to the cache. Icon matching is by **exact pathname** — an earlier substring check matched every URL because `'/'` was in the list. **Any change to sw.js, even a comment, is a new worker**: browsers install it and pwa.js shows every open page the "Update available — Reload" banner, so edit sw.js only for a real reason
@@ -105,6 +110,8 @@ The owner's decisions, with the reason.
 - **No CI**: `npm test` on the developer's machine is the only check before code reaches `develop` and production
 - **The version is written only in package.json**: the server reads it (`/api/version`), the pages ask the server — no copy to keep in sync
 - **Online only, no offline mode**: a room lives in server memory (see the service worker gotcha above)
+- **Browser tests in Chromium only** — a phone (Pixel 7) and a desktop, like the owner's other apps; WebKit (Safari) is not covered
+- **Tests use the real code**: no test reads the source as text or keeps its own copy of the game's code (the exceptions are the deliberate copies listed in the gotchas). Tests act like players: through pages and buttons, never through server memory, so the same suite runs against production
 - **Docs hold principles, not history**: CLAUDE.md, `docs/` and the skills say how things work and why; no development history, dates or measured numbers (sizes, counts, timings) — those live in the code and in git. A design spec or plan of a feature leaves the repository once the feature is merged; what stays true goes here
 
 ## Ideas for later
