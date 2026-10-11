@@ -149,6 +149,7 @@ window.forceAppUpdate = () => {
     if (window.pwaManager) {
         window.pwaManager.forceUpdate();
     } else {
-        debugLog('PWA Manager not initialized yet');
+        // Typed by hand in the console: always answer
+        console.warn('PWA Manager not initialized yet');
     }
 };

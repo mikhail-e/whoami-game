@@ -15,7 +15,7 @@ The classic guessing party game, played remotely. Every player gets a secret cha
 
 ## How to Run
 
-Running the game needs Node.js 18 or newer; the development tools (ESLint) need 20.19 or newer.
+Running the game needs Node.js 18 or newer; the development tools (ESLint) need Node.js 20.19+, 22.13+ or 24+.
 
 ```bash
 npm install

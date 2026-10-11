@@ -11,6 +11,9 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# Test coverage reports (npx jest --coverage)
+coverage/
+
 # Logs
 logs
 *.log

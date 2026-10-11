@@ -12,7 +12,12 @@
 // quiet. Turn it on in the browser console, then reload the page:
 //   localStorage.setItem('whoami-debug', 'on')
 // console.warn and console.error are for real problems and always print.
-const DEBUG_LOG_ENABLED = localStorage.getItem('whoami-debug') === 'on';
+let DEBUG_LOG_ENABLED = false;
+try {
+    DEBUG_LOG_ENABLED = localStorage.getItem('whoami-debug') === 'on';
+} catch {
+    // The browser blocks site data: no debugging, and the page script goes on
+}
 
 function debugLog(...args) {
     if (DEBUG_LOG_ENABLED) {

@@ -227,13 +227,7 @@ document.addEventListener('DOMContentLoaded', function() {
             formLabel.textContent = getText('roomCodeJoining', 'Room Code (joining game)');
         }
 
-        // Enable Join button since room code is pre-filled
-        const joinBtn = document.getElementById('joinBtn');
-        if (joinBtn) {
-            joinBtn.disabled = false;
-            joinBtn.classList.remove('btn-secondary');
-            joinBtn.classList.add('btn-primary');
-        }
+        // The Join button follows the pre-filled code: updateJoinButtonState() below
 
         // Show helpful message - will be localized after i18n is loaded
         setTimeout(() => {

@@ -85,6 +85,7 @@ export default [
         ignores: [
             "node_modules/",
             "games/",
+            "coverage/",
         ],
     },
 ];

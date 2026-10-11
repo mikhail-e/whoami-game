@@ -45,4 +45,24 @@ describe('debugLog()', () => {
 
         expect(printed).toContainEqual(['state', { players: 2 }]);
     });
+
+    // A browser that blocks site data throws on any localStorage access. The
+    // debug switch must never be what stops the page script.
+    test('stays off, and callable, when the browser blocks storage', () => {
+        const printed = [];
+        const page = {
+            localStorage: { getItem() { throw new Error('SecurityError'); }, setItem() { throw new Error('SecurityError'); } },
+            console: { log: (...args) => printed.push(args), warn() {}, error() {} },
+            document: { addEventListener() {} }
+        };
+        vm.createContext(page);
+        try {
+            vm.runInContext(utilsSource, page);
+        } catch {
+            // the player ID still needs storage: that part fails, as it always did
+        }
+
+        expect(() => page.debugLog('state')).not.toThrow();
+        expect(printed).toEqual([]);
+    });
 });
