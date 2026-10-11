@@ -25,18 +25,21 @@ npm start          # http://localhost:3000
 ## Development
 
 ```bash
-npm test           # all checks: ESLint, then Jest
+npx playwright install chromium   # once: the browser for the browser tests
+npm test           # all checks: ESLint, Jest, then the game in a real browser (Playwright)
 npm run lint       # ESLint only
+npm run test:e2e   # browser tests only: a phone and a desktop, several players per room
 ```
 
 - `CLAUDE.md` — architecture, rules, git flow
+- `docs/testing.md` — how the tests are organized and written
 - `docs/release.md` — releases, hotfixes and the check of production
 
 ## Technologies
 
 - Server: Node.js, Express, Socket.IO
 - Browser: plain JavaScript and Bootstrap 5 — no framework, no build step
-- Checks: ESLint, Jest, supertest
+- Checks: ESLint, Jest and supertest, Playwright and axe-core
 - Hosting: Render
 
 ## Credits

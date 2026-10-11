@@ -5,6 +5,8 @@ description: How to run and drive the "Who am I?" game app for end-to-end verifi
 
 # Verifying changes in the "Who am I?" game
 
+A check worth repeating belongs in a browser test (`tests/e2e/`, `docs/testing.md`): its helpers already create rooms, join players and start games (`createRoom`, `joinRoom`, `startedGame`). Drive the app by hand for what a test cannot judge — how a change looks.
+
 ## Launch
 
 ```bash

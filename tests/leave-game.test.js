@@ -317,29 +317,3 @@ describe('Returning player keeps their place in the list', () => {
         expect(names()).toEqual(['Alice', 'Bob', 'Charlie']);
     });
 });
-
-// The client must let a leaver rejoin easily: the landing page opens with the
-// room code prefilled and remembers the player's name. Source-level checks in
-// the style of tests/avatar-shuffle.test.js.
-describe('Leaving keeps the way back open (client wiring)', () => {
-    const fs = require('fs');
-    const path = require('path');
-    const gameRoomJs = fs.readFileSync(path.join(__dirname, '..', 'public/js/game-room.js'), 'utf8');
-    const gameJs = fs.readFileSync(path.join(__dirname, '..', 'public/js/game.js'), 'utf8');
-    const serverJs = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
-
-    test('the leaver is sent to the landing page with the room code prefilled', () => {
-        // eslint-disable-next-line no-template-curly-in-string -- looks for this template literal in the source
-        expect(gameRoomJs).toContain('`/?join=${roomCode}`');
-    });
-
-    test('no prefill when the room was deleted (last player left)', () => {
-        expect(gameRoomJs).toContain('finishLeavingGame(!data.gameDeleted)');
-        expect(serverJs).toMatch(/player-left[\s\S]{0,400}gameDeleted/);
-    });
-
-    test('the landing page remembers and prefills the player name', () => {
-        expect(gameJs).toMatch(/Storage\.set\('whoami-player-name'/);
-        expect(gameJs).toMatch(/Storage\.get\('whoami-player-name'\)/);
-    });
-});

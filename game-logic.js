@@ -444,8 +444,8 @@ function removePlayerFromGame(games, gameId, playerId) {
     game.revealedPlayers.delete(playerId);
     touchGame(game);
 
-    // A game with zero players ceases to exist (its disk backup file, if any,
-    // is removed by the regular 4-hour cleanup)
+    // A game with zero players ceases to exist (server.js deletes its disk
+    // backup too, so the old link cannot bring it back)
     const gameDeleted = game.players.length === 0;
     if (gameDeleted) {
         games.delete(gameId);

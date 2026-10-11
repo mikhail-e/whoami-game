@@ -14,6 +14,12 @@ yarn-error.log*
 # Test coverage reports (npx jest --coverage)
 coverage/
 
+# Playwright reports and traces of failed browser tests
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
 # Logs
 logs
 *.log
