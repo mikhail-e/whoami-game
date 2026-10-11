@@ -15,6 +15,7 @@ test('an uploaded photo becomes the selected first tile', async ({ newPlayer }) 
     const upload = page.getByRole('button', { name: text('uploadAvatar') });
 
     await expect(upload).toHaveAttribute('type', 'button');
+    await expect(upload.locator('svg')).toHaveAttribute('aria-hidden', 'true');
     await expect(page.locator('#avatarFileInput')).toHaveAttribute('accept', 'image/*');
     await uploadPhoto(page);
 
@@ -58,6 +59,19 @@ test('the photo is not saved until the player creates or joins a room', async ({
 
     await createRoom(alice);
     expect(JSON.parse(await savedAvatar(alice.page))).toMatch(/^data:image\/jpeg;base64,/);
+});
+
+test('a saved photo comes back first on the next visit', async ({ newPlayer }) => {
+    const alice = await newPlayer('Alice');
+    await alice.page.goto('/');
+    await uploadPhoto(alice.page);
+    const photo = await avatarTiles(alice.page).first().locator('img').getAttribute('src');
+    await createRoom(alice);
+
+    await alice.page.goto('/');
+
+    await expect(avatarTiles(alice.page).first().locator('img')).toHaveAttribute('src', photo);
+    await expect(avatarTiles(alice.page).first()).toHaveClass(/selected/);
 });
 
 test('both players see the photo on the card', async ({ newPlayer }) => {

@@ -12,6 +12,16 @@ test('your own sticker is the light dashed 🎭 that reveals your character', as
     await expect(own).not.toHaveClass(/\bcolor-/);
     await expect(own).toHaveAttribute('title', text('yourCharacterClickReveal'));
     expect(await own.evaluate(sticker => getComputedStyle(sticker).borderTopStyle)).toBe('dashed');
+    // A light background: every color it is painted with is pale
+    const colors = await own.evaluate(sticker => {
+        const style = getComputedStyle(sticker);
+        return `${style.backgroundImage} ${style.backgroundColor}`.match(/rgba?\([^)]*\)/g)
+            .filter(color => !/,\s*0\)$/.test(color)); // not the transparent background-color
+    });
+    expect(colors.length).toBeGreaterThan(0);
+    for (const color of colors) {
+        for (const channel of color.match(/\d+/g).slice(0, 3).map(Number)) expect(channel).toBeGreaterThanOrEqual(200);
+    }
     await expect(alice.page.locator('#gameSteps li').nth(3)).toContainText('🎭');
 });
 
