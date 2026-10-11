@@ -1,4 +1,6 @@
 // Who am I? Game - Frontend JavaScript
+// Names from utils.js (loaded before this file; see the note at the top of utils.js)
+/* global MAX_NAME_LENGTH, isCustomAvatar, getText, showError, showInfo, AppStorage, handleApiError, PLAYER_ID */
 
 // Avatar pool - 60 emojis total (12 original + 48 new)
 const avatarPool = [
@@ -141,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Prefill the last used name so returning players (e.g. after leaving
     // a game) don't have to retype it
-    const savedName = Storage.get('whoami-player-name');
+    const savedName = AppStorage.get('whoami-player-name');
     if (savedName && playerNameInput && !playerNameInput.value) {
         playerNameInput.value = savedName;
     }
@@ -162,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // first makes populateAvatars() auto-select it. An uploaded image is restored
     // through the same validation the server applies; emoji values that are not
     // in the pool (stale or tampered localStorage) are ignored
-    const savedAvatar = Storage.get('whoami-player-avatar');
+    const savedAvatar = AppStorage.get('whoami-player-avatar');
     let initialAvatars = selectRandomAvatars();
     if (savedAvatar && isCustomAvatar(savedAvatar)) {
         customAvatar = savedAvatar;
@@ -259,59 +261,61 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Join and Create New Game button states follow the room code. Declared here,
+    // not inside the `if` below: the Create New Game handler calls them too
+    const joinBtn = document.getElementById('joinBtn');
+
+    // Function to update Join button state based on room code
+    function updateJoinButtonState() {
+        if (joinBtn) {
+            const roomCode = roomCodeInput.value.trim();
+            const isValidLength = roomCode.length === 6;
+            joinBtn.disabled = !isValidLength;
+
+            if (isValidLength) {
+                joinBtn.classList.remove('btn-secondary');
+                joinBtn.classList.add('btn-primary');
+            } else {
+                joinBtn.classList.remove('btn-primary');
+                joinBtn.classList.add('btn-secondary');
+            }
+        }
+
+        // Update Create New Game button state
+        updateCreateButtonState();
+    }
+
+    // Function to update Create New Game button state based on room code
+    function updateCreateButtonState() {
+        if (createNewGameBtn) {
+            const roomCode = roomCodeInput.value.trim();
+            const hasValidRoomCode = roomCode.length === 6;
+
+            if (hasValidRoomCode) {
+                createNewGameBtn.disabled = true;
+                createNewGameBtn.classList.add('btn-secondary');
+                createNewGameBtn.classList.remove('btn-primary');
+                createNewGameBtn.title = getText('clearRoomCodeToCreate', 'Clear room code to create a new game');
+            } else {
+                createNewGameBtn.disabled = false;
+                createNewGameBtn.classList.remove('btn-secondary');
+                createNewGameBtn.classList.add('btn-primary');
+                createNewGameBtn.title = '';
+            }
+        }
+    }
+
     // Auto-uppercase room code input and manage Join button state
     if (roomCodeInput) {
-        const joinBtn = document.getElementById('joinBtn');
-        
         // Initially update both button states
         if (joinBtn) {
             updateJoinButtonState();
         }
-        
+
         roomCodeInput.addEventListener('input', function(e) {
             e.target.value = e.target.value.toUpperCase();
             updateJoinButtonState();
         });
-        
-        // Function to update Join button state based on room code
-        function updateJoinButtonState() {
-            if (joinBtn) {
-                const roomCode = roomCodeInput.value.trim();
-                const isValidLength = roomCode.length === 6;
-                joinBtn.disabled = !isValidLength;
-
-                if (isValidLength) {
-                    joinBtn.classList.remove('btn-secondary');
-                    joinBtn.classList.add('btn-primary');
-                } else {
-                    joinBtn.classList.remove('btn-primary');
-                    joinBtn.classList.add('btn-secondary');
-                }
-            }
-
-            // Update Create New Game button state
-            updateCreateButtonState();
-        }
-        
-        // Function to update Create New Game button state based on room code
-        function updateCreateButtonState() {
-            if (createNewGameBtn) {
-                const roomCode = roomCodeInput.value.trim();
-                const hasValidRoomCode = roomCode.length === 6;
-                
-                if (hasValidRoomCode) {
-                    createNewGameBtn.disabled = true;
-                    createNewGameBtn.classList.add('btn-secondary');
-                    createNewGameBtn.classList.remove('btn-primary');
-                    createNewGameBtn.title = getText('clearRoomCodeToCreate', 'Clear room code to create a new game');
-                } else {
-                    createNewGameBtn.disabled = false;
-                    createNewGameBtn.classList.remove('btn-secondary');
-                    createNewGameBtn.classList.add('btn-primary');
-                    createNewGameBtn.title = '';
-                }
-            }
-        }
     }
 
     // Create new game button
@@ -386,8 +390,8 @@ document.addEventListener('DOMContentLoaded', function() {
     async function createGame(playerData) {
         try {
             console.log('Creating game with player data:', playerData);
-            Storage.set('whoami-player-name', playerData.name);
-            Storage.set('whoami-player-avatar', playerData.avatar);
+            AppStorage.set('whoami-player-name', playerData.name);
+            AppStorage.set('whoami-player-avatar', playerData.avatar);
 
             const response = await fetch('/api/create-game', {
                 method: 'POST',
@@ -409,7 +413,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 playerData.roomCode = result.gameId;
 
                 console.log('Updated player data:', playerData);
-                Storage.session.set('playerData', playerData);
+                AppStorage.session.set('playerData', playerData);
                 window.location.href = `/game/${result.gameId}`;
             } else {
                 console.error('Create game failed:', result);
@@ -453,8 +457,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to join existing game
     async function joinGame(playerData) {
         try {
-            Storage.set('whoami-player-name', playerData.name);
-            Storage.set('whoami-player-avatar', playerData.avatar);
+            AppStorage.set('whoami-player-name', playerData.name);
+            AppStorage.set('whoami-player-avatar', playerData.avatar);
             const response = await fetch('/api/join-game', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -470,7 +474,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (result.success) {
                 // Store player data and redirect to game room
-                Storage.session.set('playerData', playerData);
+                AppStorage.session.set('playerData', playerData);
                 window.location.href = `/game/${playerData.roomCode}`;
             } else {
                 alert(result.error || getText('failedJoinGame', 'Failed to join game'));

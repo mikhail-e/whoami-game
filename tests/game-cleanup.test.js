@@ -47,7 +47,7 @@ describe('Inactive Game Cleanup', () => {
     });
 
     test('removes games with no connected players after long inactivity', () => {
-        const { gameId, p1, p2 } = createGameWithPlayers();
+        const { gameId } = createGameWithPlayers();
         const game = games.get(gameId);
 
         // Simulate: everyone disconnected 5 hours ago

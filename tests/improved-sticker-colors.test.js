@@ -1,6 +1,8 @@
 // Who am I? Game - Improved Sticker Colors Tests
 // Tests for fixed and unique color assignment system
 
+const fs = require('fs');
+const path = require('path');
 const {
     createGame,
     addPlayerToGame,
@@ -160,16 +162,9 @@ describe('Improved Sticker Colors System', () => {
 
         test('should maintain color uniqueness when players leave and rejoin', () => {
             // Add 3 players
-            const player1 = addPlayerToGame(games, gameId, 'Alice', '😀');
+            addPlayerToGame(games, gameId, 'Alice', '😀');
             const player2 = addPlayerToGame(games, gameId, 'Bob', '😎');
-            const player3 = addPlayerToGame(games, gameId, 'Charlie', '🤖');
-
-            // Store original colors
-            const originalColors = [
-                player1.player.stickerColor,
-                player2.player.stickerColor,
-                player3.player.stickerColor
-            ];
+            addPlayerToGame(games, gameId, 'Charlie', '🤖');
 
             // Remove middle player (simulate leaving)
             const game = games.get(gameId);
@@ -187,8 +182,8 @@ describe('Improved Sticker Colors System', () => {
     describe('Color consistency and persistence', () => {
         test('should maintain fixed colors throughout game lifecycle', () => {
             // Add players
-            const player1 = addPlayerToGame(games, gameId, 'Alice', '😀');
-            const player2 = addPlayerToGame(games, gameId, 'Bob', '😎');
+            addPlayerToGame(games, gameId, 'Alice', '😀');
+            addPlayerToGame(games, gameId, 'Bob', '😎');
 
             const game = games.get(gameId);
 
@@ -241,5 +236,19 @@ describe('Improved Sticker Colors System', () => {
             const color = assignUniqueColor(players);
             expect(color).toBe('orange'); // Next available after red, blue, purple
         });
+    });
+
+    // The server picks the color, the browser only puts it into a class name
+    // (color-<name>): every color needs its sticker style
+    test('every color the server assigns has a sticker style in style.css', () => {
+        const css = fs.readFileSync(path.join(__dirname, '..', 'public/css/style.css'), 'utf8');
+        const players = [];
+        for (let i = 0; i < 10; i++) {
+            players.push({ stickerColor: assignUniqueColor(players) });
+        }
+
+        for (const { stickerColor } of players) {
+            expect(css).toContain(`.character-sticker.color-${stickerColor} {`);
+        }
     });
 });

@@ -2,10 +2,7 @@
 // Tests for automatic room recreation after server restart
 
 const {
-    createGame,
     addPlayerToGame,
-    assignCharacter,
-    startGame,
     recreateGameFromState,
     isValidRoomCode
 } = require('../game-logic');

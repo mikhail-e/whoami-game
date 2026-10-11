@@ -340,9 +340,9 @@ describe('Timeout Protection System', () => {
     describe('Keep-Alive Integration', () => {
         test('should identify games with connected players', () => {
             // Add players with different connection states
-            const player1 = addPlayerToGame(games, gameId, 'Alice', '😀');
-            const player2 = addPlayerToGame(games, gameId, 'Bob', '😎');
-            const player3 = addPlayerToGame(games, gameId, 'Charlie', '🤖');
+            addPlayerToGame(games, gameId, 'Alice', '😀');
+            addPlayerToGame(games, gameId, 'Bob', '😎');
+            addPlayerToGame(games, gameId, 'Charlie', '🤖');
 
             const game = games.get(gameId);
 

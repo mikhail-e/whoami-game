@@ -329,6 +329,7 @@ describe('Leaving keeps the way back open (client wiring)', () => {
     const serverJs = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
 
     test('the leaver is sent to the landing page with the room code prefilled', () => {
+        // eslint-disable-next-line no-template-curly-in-string -- looks for this template literal in the source
         expect(gameRoomJs).toContain('`/?join=${roomCode}`');
     });
 

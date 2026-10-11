@@ -1,8 +1,6 @@
 // Who am I? Game - API Integration Tests
 const request = require('supertest');
 const express = require('express');
-const http = require('http');
-const { v4: uuidv4 } = require('uuid');
 const gameLogic = require('../game-logic');
 
 // Create test app (simplified version of server.js for testing)
@@ -392,7 +390,7 @@ describe('API Integration Tests', () => {
     });
 
     describe('Player Reconnection with ID', () => {
-        let gameId, playerId1, playerId2;
+        let gameId, playerId1;
         
         beforeEach(async () => {
             // Create a game
@@ -407,10 +405,9 @@ describe('API Integration Tests', () => {
                 .send({ gameId, playerName: 'Alice', avatar: '😀' });
             playerId1 = player1Response.body.player.id;
             
-            const player2Response = await request(app)
+            await request(app)
                 .post('/api/join-game')
                 .send({ gameId, playerName: 'Bob', avatar: '😎' });
-            playerId2 = player2Response.body.player.id;
         });
         
         test('allows player to reconnect using their ID', async () => {

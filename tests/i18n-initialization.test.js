@@ -1,6 +1,9 @@
 // Who am I? Game - i18n Initialization Bug Tests
 // Tests to verify that JavaScript code handles cases where i18n is not yet defined
 
+// i18n is the page's global from translations.js: the tests set and delete global.i18n
+/* global i18n */
+
 // Mock DOM elements for testing
 class MockElement {
     constructor(tagName) {
@@ -110,7 +113,7 @@ describe('i18n Initialization Bug Prevention', () => {
     describe('Game Creation Error Handling', () => {
         test('should handle connection error when i18n is undefined', () => {
             // Simulate the createGame function from game.js
-            const createGame = async (playerData) => {
+            const createGame = async () => {
                 try {
                     // Simulate a connection error
                     throw new Error('Network error');

@@ -1,4 +1,6 @@
 // Who am I? Game - PWA Installation and Service Worker Management
+// i18n comes from translations.js (loaded before this file)
+/* global i18n */
 
 class PWAManager {
     constructor() {

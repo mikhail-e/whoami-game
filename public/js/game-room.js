@@ -1,20 +1,18 @@
 // Who am I? Game Room - Frontend JavaScript
-
+// Names from utils.js (loaded before this file; see the note at the top of utils.js)
+/* global MAX_CHARACTER_LENGTH, isCustomAvatar, getText, showNotification, AppStorage, handleApiError, PLAYER_ID */
 
 let socket;
 let currentGame = null;
 let currentPlayer = null;
-let selectedPlayerForAssignment = null;
 let revealModal = null;
 let restartModal = null;
 let leaveModal = null;
 let leaveFallbackTimer = null;
 let leavingGame = false;
 
-// Color palette for character stickers
-const stickerColors = ['red', 'blue', 'purple', 'orange', 'green', 'pink', 'indigo'];
-
-// Removed getStickerColor function - using player.stickerColor directly
+// Sticker colors are chosen by the server (stickerColors in game-logic.js):
+// a player arrives with player.stickerColor, rendered as the color-<name> class
 
 // LocalStorage persistence for game state backup and recovery
 function saveGameStateToStorage() {
@@ -33,13 +31,13 @@ function saveGameStateToStorage() {
     };
 
     const storageKey = `whoami-game-${currentGame.id}`;
-    Storage.set(storageKey, gameState);
+    AppStorage.set(storageKey, gameState);
     console.log('💾 Game state saved to localStorage:', storageKey);
 }
 
 function loadGameStateFromStorage(roomCode) {
     const storageKey = `whoami-game-${roomCode}`;
-    const gameState = Storage.get(storageKey);
+    const gameState = AppStorage.get(storageKey);
 
     if (!gameState) {
         console.log('📭 No saved game state found for room:', roomCode);
@@ -57,7 +55,7 @@ function loadGameStateFromStorage(roomCode) {
 
 function clearGameStateFromStorage(roomCode) {
     const storageKey = `whoami-game-${roomCode}`;
-    Storage.remove(storageKey);
+    AppStorage.remove(storageKey);
     console.log('🗑️ Cleared game state from localStorage:', storageKey);
 }
 
@@ -76,7 +74,7 @@ function finishLeavingGame(roomStillExists = true) {
 
     const roomCode = currentGame ? currentGame.id : null;
     if (roomCode) clearGameStateFromStorage(roomCode);
-    Storage.session.remove('playerData');
+    AppStorage.session.remove('playerData');
 
     window.location.href = (roomStillExists && roomCode) ? `/?join=${roomCode}` : '/';
 }
@@ -129,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Get player data from session storage
-    const playerData = Storage.session.get('playerData');
+    const playerData = AppStorage.session.get('playerData');
     if (!playerData) {
         // If no player data, redirect to landing page with room code pre-filled
         window.location.href = `/?join=${roomCode}`;
@@ -398,7 +396,7 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
                 roomCode: currentGame.id,
                 id: currentPlayer.id
             };
-            Storage.session.set('playerData', playerData);
+            AppStorage.session.set('playerData', playerData);
 
             // Save game state to localStorage for recovery
             saveGameStateToStorage();

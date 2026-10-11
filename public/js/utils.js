@@ -1,4 +1,12 @@
 // Shared Utilities - Common patterns used across the game
+//
+// The pages load their scripts as plain <script> files, so a top-level name here
+// is visible to the scripts loaded after it. ESLint checks each file on its own:
+// "exported" lists what other files use from here, "global" what this file uses
+// from translations.js.
+/* exported MAX_NAME_LENGTH, MAX_CHARACTER_LENGTH, isCustomAvatar, getText, showError, showInfo,
+   showNotification, AppStorage, handleApiError, PLAYER_ID */
+/* global i18n */
 
 // Input limits. Must stay in sync with game-logic.js on the server
 // (a browser script cannot require() it) - tests/input-limits.test.js checks this.
@@ -86,8 +94,9 @@ function showNotification(message, type = 'info', duration = 4000) {
     }, duration);
 }
 
-// Storage helpers
-const Storage = {
+// localStorage and sessionStorage with JSON. Not named Storage: that name is the
+// browser's own (the type of localStorage), and other scripts on the page may use it
+const AppStorage = {
     // Get item with JSON parsing and error handling
     get(key, defaultValue = null) {
         try {
@@ -150,36 +159,11 @@ function handleApiError(error, context = '') {
     alert(message);
 }
 
-// Common success patterns
-function redirectToGameRoom(gameId) {
-    window.location.href = `/game/${gameId}`;
-}
-
-// Button state helpers
-function setButtonLoading(button, loadingText) {
-    button.disabled = true;
-    button.dataset.originalText = button.textContent;
-    button.textContent = loadingText;
-}
-
-function resetButtonState(button) {
-    button.disabled = false;
-    if (button.dataset.originalText) {
-        button.textContent = button.dataset.originalText;
-        delete button.dataset.originalText;
-    }
-}
-
-// Room code validation
-function isValidRoomCode(code) {
-    return code && /^[A-Z0-9]{6}$/.test(code.trim());
-}
-
 // Player ID System - Shared unique player ID generation
 function generatePlayerId() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
         const r = Math.random() * 16 | 0;
-        const v = c == 'x' ? r : (r & 0x3 | 0x8);
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
 }

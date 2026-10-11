@@ -180,7 +180,7 @@ describe('Player Joining', () => {
     test('prevents NEW players from joining started games', () => {
         // Add players and start game
         const player1Result = addPlayerToGame(games, gameId, 'Alice', '😀');
-        const player2Result = addPlayerToGame(games, gameId, 'Bob', '😎');
+        addPlayerToGame(games, gameId, 'Bob', '😎');
         startGame(games, gameId, player1Result.player.id);
         
         // Try to add another NEW player after game started
@@ -193,7 +193,7 @@ describe('Player Joining', () => {
     test('allows EXISTING players to reconnect to started games', () => {
         // Add players and start game
         const player1Result = addPlayerToGame(games, gameId, 'Alice', '😀');
-        const player2Result = addPlayerToGame(games, gameId, 'Bob', '😎');
+        addPlayerToGame(games, gameId, 'Bob', '😎');
         startGame(games, gameId, player1Result.player.id);
         
         // Existing player reconnects with their ID
@@ -207,7 +207,7 @@ describe('Player Joining', () => {
     test('prevents new players from joining started games (no ID provided)', () => {
         // Add players and start game
         const player1Result = addPlayerToGame(games, gameId, 'Alice', '😀');
-        const player2Result = addPlayerToGame(games, gameId, 'Bob', '😎');
+        addPlayerToGame(games, gameId, 'Bob', '😎');
         startGame(games, gameId, player1Result.player.id);
 
         // Try to join as "Alice" without providing player ID - should fail since game started
@@ -218,7 +218,6 @@ describe('Player Joining', () => {
     });
 
     test('validates player data', () => {
-        const game = games.get(gameId);
         const result = addPlayerToGame(games, gameId, 'Alice', '😀');
 
         expect(result.player).toMatchObject({
@@ -353,7 +352,7 @@ describe('Character Assignment', () => {
             'Tony Stark'
         ];
         
-        characters.forEach((character, index) => {
+        characters.forEach((character) => {
             const result = assignCharacter(games, gameId, playerId1, character, playerId2);
             expect(result.success).toBe(true);
             expect(result.character).toBe(character);
@@ -567,7 +566,7 @@ describe('Character Revealing', () => {
         const newGameResult = createGame(games);
         const newGameId = newGameResult.gameId;
         const player3Result = addPlayerToGame(games, newGameId, 'Charlie', '🤖');
-        const player4Result = addPlayerToGame(games, newGameId, 'David', '🚀');
+        addPlayerToGame(games, newGameId, 'David', '🚀');
         
         // Start the game (player3 has no character assigned)
         startGame(games, newGameId, player3Result.player.id);
