@@ -7,6 +7,8 @@
 // yesterday's server.js. With BASE_URL set (npm run test:e2e:prod) the same
 // tests run against that address and no server is started; the free Render
 // plan may take up to a minute to wake, hence the longer timeouts.
+const os = require('os');
+const path = require('path');
 const { defineConfig, devices } = require('@playwright/test');
 
 const TEST_PORT = 3100;
@@ -45,7 +47,9 @@ module.exports = defineConfig({
     ...(!BASE_URL && {
         webServer: {
             command: 'node server.js',
-            env: { PORT: String(TEST_PORT) },
+            // Room backups the keep-alive loop writes go to a temporary folder,
+            // not into games/, where `npm start` would find them
+            env: { PORT: String(TEST_PORT), GAMES_DIR: path.join(os.tmpdir(), 'whoami-e2e-games') },
             url: `http://localhost:${TEST_PORT}/api/version`,
             reuseExistingServer: false,
         },
