@@ -4,6 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const zlib = require('zlib');
 const base = require('@playwright/test');
 
 // translations.js is a page script: it waits for the page's DOMContentLoaded
@@ -147,10 +148,49 @@ async function joinRoom(player, code) {
     await expect(playerCard(page, player.name).first()).toBeVisible();
 }
 
+// CRC-32 of a PNG chunk (type + data), as the PNG format requires
+function crc32(bytes) {
+    let crc = 0xffffffff;
+    for (const byte of bytes) {
+        crc ^= byte;
+        for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type, data) {
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const typeAndData = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(typeAndData));
+    return Buffer.concat([length, typeAndData, crc]);
+}
+
+// A small solid-colour PNG photo for the upload control, built in code so the
+// repository holds no binary test files
+function pngFile(width = 64, height = 64) {
+    const header = Buffer.alloc(13);
+    header.writeUInt32BE(width, 0);
+    header.writeUInt32BE(height, 4);
+    header[8] = 8; // bits per channel
+    header[9] = 2; // RGB
+    const row = Buffer.concat([Buffer.from([0]), Buffer.alloc(width * 3, 0x7f)]); // filter byte + grey pixels
+    const pixels = zlib.deflateSync(Buffer.concat(Array(height).fill(row)));
+    const buffer = Buffer.concat([
+        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        pngChunk('IHDR', header),
+        pngChunk('IDAT', pixels),
+        pngChunk('IEND', Buffer.alloc(0)),
+    ]);
+    return { name: 'photo.png', mimeType: 'image/png', buffer };
+}
+
 module.exports = {
     test,
     expect,
     text,
+    pngFile,
     seedStorage,
     playerCard,
     waitForPlayers,
