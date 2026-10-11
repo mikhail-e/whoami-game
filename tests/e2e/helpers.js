@@ -120,6 +120,14 @@ async function waitForPlayers(page, count) {
     await expect(page.locator('.player-card')).toHaveCount(count);
 }
 
+// Wait until the landing page has set itself up. Its buttons work only after
+// game.js has run: a click before that submits the form the old way and
+// reloads the page. The avatar grid is filled by the same setup, so 12 tiles
+// mean the buttons are ready - the moment a person would see the page
+async function waitForLanding(page) {
+    await expect(page.locator('#avatarSelector .avatar-option')).toHaveCount(12);
+}
+
 // Create a room from the landing page and return its code. A player already on
 // the landing page stays on it, so a test can pick an avatar first
 async function createRoom(player) {
@@ -127,6 +135,7 @@ async function createRoom(player) {
     if (new URL(page.url(), 'http://x').pathname !== '/') {
         await page.goto('/');
     }
+    await waitForLanding(page);
     await page.fill('#playerName', player.name);
     await page.click('#createNewGame');
     await expect(page).toHaveURL(/\/game\/[A-Z0-9]{6}$/);
@@ -142,6 +151,7 @@ async function joinRoom(player, code) {
         await page.goto(`/game/${code}`);
         await expect(page).toHaveURL(new RegExp(`/\\?join=${code}$`));
     }
+    await waitForLanding(page);
     await page.fill('#playerName', player.name);
     await page.click('#joinBtn');
     await expect(page).toHaveURL(new RegExp(`/game/${code}$`));
@@ -171,6 +181,16 @@ async function revealOwnCharacter(player) {
     await expect(page.locator('#revealModal')).toHaveClass(/\bshow\b/);
     await page.click('#confirmReveal');
     await expect(playerCard(page, player.name).locator('.character-sticker.revealed')).toBeVisible();
+}
+
+// Leave the room: the Leave button, confirm in the window, wait to be home
+async function leaveGame(player) {
+    const { page } = player;
+    await page.click('#leaveGame');
+    await expect(page.locator('#leaveModal')).toHaveClass(/\bshow\b/);
+    await page.click('#confirmLeave');
+    await expect(page).not.toHaveURL(/\/game\//);
+    await waitForLanding(page);
 }
 
 const CHARACTERS = ['Napoleon', 'Cleopatra', 'Gandalf', 'Sherlock', 'Frida', 'Einstein'];
@@ -268,4 +288,6 @@ module.exports = {
     startGame,
     revealOwnCharacter,
     startedGame,
+    leaveGame,
+    waitForLanding,
 };
