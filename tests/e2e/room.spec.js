@@ -1,7 +1,8 @@
 // The room before the game: joining, the players list, assigning characters,
 // the Start Game button
 const {
-    test, expect, createRoom, joinRoom, playerCard, waitForPlayers, assignCharacter, countSentEvents,
+    test, expect, text, createRoom, joinRoom, playerCard, waitForPlayers, assignCharacter, countSentEvents,
+    startGame, revealOwnCharacter, leaveGame, waitForLanding,
 } = require('./helpers');
 
 // The names in the list, without the "(You)" label of the viewer's own card
@@ -159,6 +160,26 @@ test('a name and a character with HTML stay text on every screen', async ({ newP
     // An alert from onerror would fail the test through the guard
 });
 
+test('a name and a character with HTML stay text in notifications too', async ({ newPlayer }) => {
+    const { players: [alice, bob] } = await roomWith(newPlayer, ['Alice', '<b>Bob</b>']);
+    const forged = '<img src=x onerror=alert(1)>';
+    const notification = alice.page.locator('.alert.position-fixed');
+    await assignCharacter(alice, '<b>Bob</b>', forged);
+    await assignCharacter(bob, 'Alice', 'Cleopatra');
+    await startGame(alice);
+    await expect(bob.page.locator('#restartGame')).toBeVisible();
+
+    await revealOwnCharacter(bob);
+    await expect(notification).toContainText(
+        text('playerRevealedNotification', 'en', { playerName: '<b>Bob</b>', character: forged }));
+    await expect(notification.locator('b, img')).toHaveCount(0);
+
+    await leaveGame(bob);
+    await expect(notification.last()).toContainText(text('playerLeftNotification', 'en', { playerName: '<b>Bob</b>' }));
+    await expect(notification.locator('b, img')).toHaveCount(0);
+    // An alert from onerror would fail the test through the guard
+});
+
 test('a lower-case room link opens the room', async ({ newPlayer }) => {
     const alice = await newPlayer('Alice');
     const bob = await newPlayer('Bob');
@@ -166,6 +187,7 @@ test('a lower-case room link opens the room', async ({ newPlayer }) => {
 
     await bob.page.goto(`/game/${code.toLowerCase()}`);
     await expect(bob.page).toHaveURL(new RegExp(`/\\?join=${code}$`, 'i'));
+    await waitForLanding(bob.page);
     await bob.page.fill('#playerName', 'Bob');
     await bob.page.click('#joinBtn');
 

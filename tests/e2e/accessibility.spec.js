@@ -8,11 +8,12 @@ const WCAG_21_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
 // "rule: element, element" for each violation - a readable diff when it fails
 async function violations(page, only) {
-    // Measure the page as it settles: a CSS transition (a button turning red
-    // under the finger that opened its window) would be measured half-way
-    await page.evaluate(() => Promise.all(document.getAnimations()
-        .filter(animation => animation.effect.getTiming().iterations !== Infinity)
-        .map(animation => animation.finished)));
+    // Measure the colors as they end up, not half-way through a CSS transition:
+    // on a phone the confirm button sits under the finger that opened its
+    // window and turns red, and .mobile-modal-btn animates that change even
+    // with reduced motion. A transition can start at any moment, so waiting
+    // for running ones is not enough: switch them off for the scan
+    await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; }' });
     let builder = new AxeBuilder({ page }).withTags(WCAG_21_AA);
     if (only) builder = builder.include(only);
     const result = await builder.analyze();

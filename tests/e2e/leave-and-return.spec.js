@@ -1,7 +1,10 @@
 // Leaving a room, coming back to it, reloading the page: one person is always
 // one player
+const fs = require('fs');
+const path = require('path');
 const {
     test, expect, text, seedStorage, createRoom, joinRoom, playerCard, waitForPlayers, startedGame, leaveGame,
+    waitForLanding,
 } = require('./helpers');
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -43,6 +46,22 @@ test('the last player to leave deletes the room', async ({ newPlayer }) => {
     await expect(alice.page).toHaveURL(/\/\?error=room-not-found$/);
 });
 
+test('a room its last player left does not come back from its backup', async ({ newPlayer }) => {
+    test.skip(!!process.env.BASE_URL, 'writes a backup into the folder of the local test server');
+    const { players: [alice, bob], code } = await roomWith(newPlayer, ['Alice', 'Bob']);
+    // The backup the keep-alive loop writes for a room with players online
+    fs.writeFileSync(path.join(process.env.E2E_GAMES_DIR, `${code}.json`), JSON.stringify({
+        id: code, players: [], characters: {}, state: 'waiting', revealedPlayers: [], created: new Date().toISOString(),
+    }));
+
+    await leaveGame(bob);
+    await waitForPlayers(alice.page, 1);
+    await leaveGame(alice);
+
+    await alice.page.goto(`/game/${code}`);
+    await expect(alice.page).toHaveURL(/\/\?error=room-not-found$/);
+});
+
 test('a leaver returns to the started round with the same character, color and place', async ({ newPlayer }) => {
     const { players, code, characters } = await startedGame(newPlayer, ['Alice', 'Bob', 'Carol']);
     const { Alice: alice, Bob: bob } = players;
@@ -70,6 +89,7 @@ test('a newcomer cannot join a started game', async ({ newPlayer }) => {
 
     await dave.page.goto(`/game/${code}`);
     await expect(dave.page).toHaveURL(new RegExp(`/\\?join=${code}$`));
+    await waitForLanding(dave.page);
     await dave.page.fill('#playerName', 'Dave');
     await dave.page.click('#joinBtn');
 

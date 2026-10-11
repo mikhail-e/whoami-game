@@ -13,6 +13,11 @@ const { defineConfig, devices } = require('@playwright/test');
 
 const TEST_PORT = 3100;
 const BASE_URL = process.env.BASE_URL;
+// Room backups of the test server go to a temporary folder, not into games/,
+// where `npm start` would find them. Tests that check backups read the path
+// from E2E_GAMES_DIR (the workers inherit it)
+const GAMES_DIR = path.join(os.tmpdir(), 'whoami-e2e-games');
+process.env.E2E_GAMES_DIR = GAMES_DIR;
 
 module.exports = defineConfig({
     testDir: './tests/e2e',
@@ -47,9 +52,7 @@ module.exports = defineConfig({
     ...(!BASE_URL && {
         webServer: {
             command: 'node server.js',
-            // Room backups the keep-alive loop writes go to a temporary folder,
-            // not into games/, where `npm start` would find them
-            env: { PORT: String(TEST_PORT), GAMES_DIR: path.join(os.tmpdir(), 'whoami-e2e-games') },
+            env: { PORT: String(TEST_PORT), GAMES_DIR },
             url: `http://localhost:${TEST_PORT}/api/version`,
             reuseExistingServer: false,
         },

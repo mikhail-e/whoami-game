@@ -380,9 +380,10 @@ if (!fs.existsSync(gamesDir)) {
     fs.mkdirSync(gamesDir, { recursive: true });
 }
 
-// Remove the disk backup of a deleted game, so its old link cannot bring it
-// back (GET /game/:roomCode restores a room from this file). Only a real room
-// code names a file: anything else is ignored, never turned into a path
+// Remove the disk backup of a game its last player left, so its old link
+// cannot bring it back (GET /game/:roomCode restores a room from this file).
+// Only a real room code names a file: anything else is ignored, never turned
+// into a path
 function deleteGameBackup(gameId) {
     if (typeof gameId !== 'string' || !/^[A-Z0-9]{6}$/.test(gameId)) return;
     try {
@@ -448,7 +449,8 @@ function keepGamesAlive() {
             revealedPlayers: removal.revealedPlayers,
             gameDeleted: removal.gameDeleted
         });
-        if (removal.gameDeleted) deleteGameBackup(removal.gameId);
+        // A room emptied here keeps its disk backup: when every phone of a
+        // group slept through a break, the room link still brings it back
     }
 
     for (const [gameId, game] of games.entries()) {
