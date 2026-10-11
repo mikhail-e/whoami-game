@@ -19,21 +19,22 @@ Web application to play the "Who am I?" guessing game remotely with friends and 
 ```bash
 npm install                        # Install dependencies
 npm start                          # Start server on http://localhost:3000
-npm test                           # Run all tests (Jest: 380 tests, 26 suites)
+npm test                           # All tests (Jest) — run before every merge
 npx jest tests/game-logic.test.js  # Run a single test file
 npm run test:watch                 # Watch mode
 ```
 
 ## Architecture
 ```
-server.js                  # Express + Socket.IO wiring: HTTP API, socket events, disk persistence, keep-alive
+server.js                  # Express + Socket.IO wiring: HTTP API, socket events, disk persistence, keep-alive.
+                           # Listens only when run as `node server.js`; exports `app` for tests
 game-logic.js              # Pure game logic + input validation + connection tracker — no Express/Socket.IO, unit-testable
 public/
 ├── index.html             # Landing page (create/join room, name + avatar selection)
 ├── game.html              # Game room page
 ├── manifest.json          # PWA manifest
 ├── sw.js                  # Service worker: caches icons only; everything else goes straight to the network
-├── favicon.ico, icons/    # Branding (6 SVG icons, 48x48–512x512)
+├── favicon.ico, icons/    # Branding (SVG icons, 48x48–512x512)
 ├── css/style.css          # Custom styles (gradients, sticker colors, responsive layout)
 └── js/
     ├── utils.js           # SHARED code: notifications, Storage helpers, player ID, validation — reusable code goes HERE
@@ -41,17 +42,16 @@ public/
     ├── game-room.js       # Game room logic (player list, character stickers, socket handlers)
     ├── translations.js    # i18n (en/ru): browser auto-detection, localStorage preference, {placeholder} support
     └── pwa.js             # PWA manager: service worker registration, update detection every 30s
-tests/                     # 25 Jest suites: game logic, API (supertest), race conditions, i18n, timeouts, room recreation,
-                           # input validation, connection tracker (refresh race), inactive-game cleanup, leave-game,
-                           # service-worker policy, avatar shuffle, avatar persistence, custom avatar (photo upload),
-                           # input limits, share button, mystery sticker, PWA manifest
+tests/                     # Jest: game logic (unit), HTTP API (supertest), frontend markup and source checks
+docs/release.md            # Git flow, versions, release and hotfix steps, the check of production
+README.md                  # What the game is, how to run it
 render.yaml                # Render.com deploy config (auto-deploys master branch)
 games/                     # Runtime game state backups (*.json, gitignored)
 ```
 
 ### How it works
 - Games live in an in-memory `Map` in server.js, keyed by 6-character room code (e.g. `ABC123`)
-- **HTTP API:** `POST /api/create-game`, `POST /api/join-game`, `POST /api/recreate-game`; `GET /game/:roomCode` serves game.html (restoring from disk if needed) or redirects to `/?error=room-not-found`
+- **HTTP API:** `POST /api/create-game`, `POST /api/join-game`, `POST /api/recreate-game`; `GET /api/version` (the version from package.json, shown in the footer of both pages by `showAppVersion()` in utils.js); `GET /game/:roomCode` serves game.html (restoring from disk if needed) or redirects to `/?error=room-not-found`
 - **Socket.IO events:** `join-room`, `assign-character`, `start-game`, `reveal-character`, `restart-game`, `leave-game`; server broadcasts with `io.to(room)` (includes the sender — intentional, don't switch to `socket.to()`). Every handler is wrapped in `safeHandler()` so a malformed payload can never crash the process
 - **Leaving:** `leave-game` is accepted only from the socket registered to that player (no kicking others). `removePlayerFromGame` drops the player, their character and reveal status; the last player leaving deletes the game. The `player-left` broadcast carries the full state; the leaver redirects to `/?join=CODE` (prefilled rejoin) and the landing page remembers the last used name and avatar (`whoami-player-name` / `whoami-player-avatar` in localStorage, saved on create/join; the saved avatar is placed first in the grid so it gets auto-selected, and is ignored if it's neither in `avatarPool` nor a valid custom data URL)
 - **Returning to a started game:** leaving a started round snapshots the player into `game.recentlyLeft` (character, reveal status, sticker color, join time). Joining with the same `playerId` restores everything and consumes the snapshot; strangers are still rejected with "Game has already started". Restart clears the snapshots. The `player-joined`/`player-reconnected` broadcasts carry `characters`/`revealedPlayers` so other clients see the restored character reappear
@@ -62,7 +62,7 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - **Connection tracking:** `createConnectionTracker()` in game-logic.js maps sockets to players. On page refresh the new socket often connects *before* the old one disconnects, so every disconnect is checked against the player's current socket and stale ones are ignored
 
 ## Rules (important!)
-1. **Bump the cache version in `CACHE_NAME`** (public/sw.js: `whoami-game-v1.5.0` → `v1.5.1`) **when you change the icons**. Since v1.5.0 only icons are cached, so HTML/CSS/JS changes reach players immediately and no longer need a version bump
+1. **Bump the icon cache version in `CACHE_NAME`** (public/sw.js, e.g. `whoami-game-v1.5.0` → `v1.5.1`) **when you change the icons**. Only icons are cached, so HTML/CSS/JS changes reach players without it. This is not the app version — that one is in package.json (`docs/release.md`)
 2. **No code duplication across files** — shared frontend code goes to `public/js/utils.js`
 3. **Update tests whenever logic changes**; run `npm test` before committing
 4. **Localize all UI text** — every user-facing string needs both `en` and `ru` entries in `public/js/translations.js`. `tests/translations-real.test.js` fails if a key exists in only one language. Static markup supports `data-i18n` (text), `data-i18n-placeholder`, `data-i18n-title` and `data-i18n-aria-label` (for icon-only buttons)
@@ -73,7 +73,7 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - `game-logic.js` must stay free of Express/Socket.IO imports so it remains unit-testable
 - Validate on the server, not just in the UI: `sanitizePlayerName` / `sanitizeAvatar` / `sanitizeCharacter` enforce the input limits, and `assignCharacter` refuses to change characters once `state !== 'waiting'` (a late `blur` event can arrive after Start Game)
 - **Input limits (128 chars for names and characters) exist twice** — `game-logic.js` for the server and `public/js/utils.js` for the browser (a browser script cannot `require()` a Node module). `tests/input-limits.test.js` fails if they drift apart. Lengths are counted by character, not UTF-16 code unit, so an emoji counts as one and is never cut in half
-- **Custom avatar (uploaded photo) validation also exists twice** — `isCustomAvatar()` + `MAX_CUSTOM_AVATAR_LENGTH` + `CUSTOM_AVATAR_PATTERN` are mirrored in `game-logic.js` and `public/js/utils.js`; `tests/input-limits.test.js` keeps them in sync. The photo is shrunk in the browser (game.js `processAvatarFile`) to a 128×128 JPEG data URL and stored in the same `player.avatar` field the emoji uses, so all persistence flows carry it for free. The anchored pattern only allows `data:image/(png|jpeg|webp);base64,...` — never loosen it (XSS), and only render it via `img.src` behind the `isCustomAvatar()` guard. JSON API routes use `express.json({ limit: '1mb' })` because recreate-game carries every player's avatar at once
+- **Custom avatar (uploaded photo) validation also exists twice** — `isCustomAvatar()` + `MAX_CUSTOM_AVATAR_LENGTH` + `CUSTOM_AVATAR_PATTERN` are mirrored in `game-logic.js` and `public/js/utils.js`; `tests/input-limits.test.js` keeps them in sync. The photo is shrunk in the browser (game.js `processAvatarFile`) to a small square JPEG data URL (`CUSTOM_AVATAR_SIZE`) and stored in the same `player.avatar` field the emoji uses, so all persistence flows carry it for free. The anchored pattern only allows `data:image/(png|jpeg|webp);base64,...` — never loosen it (XSS), and only render it via `img.src` behind the `isCustomAvatar()` guard. JSON API routes use `express.json({ limit: '1mb' })` because recreate-game carries every player's avatar at once
 - `game-room.js` rebuilds the whole players list (`updatePlayersList()`) on updates instead of patching individual stickers — per-sticker DOM patching caused sync bugs, don't reintroduce it. Rebuilds are **skipped while a character input is open**, so anything that ends editing (game start, socket error) must call `cancelActiveEdits()` first or the UI freezes
 - Dynamic text rendered from JS (game status, player cards) does not react to `data-i18n`. `setLanguage()` fires a `languagechanged` event; game-room.js listens and re-renders. Prefer static markup for controls (like `#shuffleAvatars`) so `data-i18n*` and keyboard focus just work
 - The avatar selector sits inside `<form id="playerForm">`, which has a submit button. **Any `<button>` added there needs `type="button"`** or clicking it joins a game
@@ -85,14 +85,24 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - **PWA link capturing is a platform matter, not a bug.** iOS cannot open links in an installed web app at all (Apple limitation — links always open the browser/webview; no web-side fix exists). Android (installed via Chrome) captures in-scope links because `scope: "/"` covers `/game/*`; messenger in-app browsers bypass this. `launch_handler: navigate-existing` in manifest.json makes a captured link reuse the open app window (Android/desktop). `tests/manifest.test.js` guards these fields
 - **The service worker caches icons and nothing else.** The game requires a live server (a room lives in server memory), so offline support is pointless, and caching HTML/JS only ever produced "player stuck on an old version" bugs. The worker exists for installability plus free icon caching. `tests/service-worker.test.js` fails if HTML/CSS/JS is added back to the cache. Icon matching is by **exact pathname** — an earlier substring check matched every URL because `'/'` was in the list
 
-## Deployment
-- Workflow: work on `develop` → merge to `master` → push; Render auto-deploys `master` (render.yaml)
-- Free Render plan hibernates on inactivity — the keep-alive loop and disk persistence exist to survive restarts
+## Git Workflow (git flow)
+Steps and commands: `docs/release.md`.
+- `master` — production. **Every push to `master` deploys** to Render. Never commit to it directly
+- `develop` — integration branch. Never commit to it directly
+- **All changes go in feature branches**: `feature/<short-name>` from `develop`, finished with a local `git merge --no-ff` into `develop` (no Pull Requests), then the branch is deleted
+- Before every merge: `npm test` must pass
+- **Release**: `release/<x.y.z>` from `develop` → bump the version (`npm version minor --no-git-tag-version`) → merge `--no-ff` into `master`, tag `v<x.y.z>`, merge back into `develop` → push `master`, `develop` and tags. **Push to `master` only after the owner confirms** (it deploys production), then check production (`docs/release.md`)
+- **Hotfix**: `hotfix/<x.y.z>` from `master` → a test that fails on the old code, the fix, a patch bump → merge `--no-ff` into `master` (tag) and `develop`
+- A deploy restarts the server, and rooms live in its memory: a game in progress may be interrupted. Free Render plan also hibernates on inactivity — the keep-alive loop and disk persistence exist to survive restarts
 
-## Current Status
-All core features work: room creation/joining/sharing, Share button (Web Share API with copy fallback), 60-emoji avatar pool with refresh, custom photo avatars (uploaded, shrunk in-browser to a data URL), character assignment with colored stickers, reveal notifications, full en/ru localization, PWA install (online-only, no offline mode by design), reconnection and timeout protection, duplicate player names, room recreation after server restarts.
+## Decisions (why it is so)
+The owner's decisions, with the reason.
+- **No CI**: `npm test` on the developer's machine is the only check before code reaches `develop` and production
+- **The version is written only in package.json**: the server reads it (`/api/version`), the pages ask the server — no copy to keep in sync
+- **Online only, no offline mode**: a room lives in server memory (see the service worker gotcha above)
+- **Docs hold principles, not history**: CLAUDE.md, `docs/` and the skills say how things work and why; no development history, dates or measured numbers (sizes, counts, timings) — those live in the code and in git. A design spec or plan of a feature leaves the repository once the feature is merged; what stays true goes here
 
-### Future goals
+## Ideas for later
 - Concurrent editing protection (two players editing the same character simultaneously)
 - Rooms persistence, custom game rules, spectator mode
 - `copyRoomLink()` (used by Copy Link and the Share fallback) still uses the deprecated `document.execCommand('copy')` — migrate to the async Clipboard API
