@@ -206,3 +206,23 @@ function getUniquePlayerId() {
 
 // Initialize player ID immediately when this script loads
 const PLAYER_ID = getUniquePlayerId();
+
+// Show the running version (package.json on the server) in every
+// [data-app-version] element, so anyone can see which release is live
+async function showAppVersion() {
+    const elements = document.querySelectorAll('[data-app-version]');
+    if (elements.length === 0) return;
+
+    try {
+        const response = await fetch('/api/version');
+        if (!response.ok) return;
+        const { version } = await response.json();
+        elements.forEach(element => {
+            element.textContent = `v${version}`;
+        });
+    } catch (error) {
+        console.warn('Could not load the app version:', error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', showAppVersion);
