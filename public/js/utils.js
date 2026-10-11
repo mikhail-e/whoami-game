@@ -1,4 +1,30 @@
 // Shared Utilities - Common patterns used across the game
+//
+// The pages load their scripts as plain <script> files, so a top-level name here
+// is visible to the scripts loaded after it. ESLint checks each file on its own:
+// "exported" lists what other files use from here, "global" what this file uses
+// from translations.js.
+/* exported debugLog, MAX_NAME_LENGTH, MAX_CHARACTER_LENGTH, isCustomAvatar, getText, showError, showInfo,
+   showNotification, AppStorage, handleApiError, PLAYER_ID */
+/* global i18n */
+
+// Debug output: printed only while debugging is on, so players' consoles stay
+// quiet. Turn it on in the browser console, then reload the page:
+//   localStorage.setItem('whoami-debug', 'on')
+// console.warn and console.error are for real problems and always print.
+let DEBUG_LOG_ENABLED = false;
+try {
+    DEBUG_LOG_ENABLED = localStorage.getItem('whoami-debug') === 'on';
+} catch {
+    // The browser blocks site data: no debugging, and the page script goes on
+}
+
+function debugLog(...args) {
+    if (DEBUG_LOG_ENABLED) {
+        // eslint-disable-next-line no-console -- the one place the pages print debug output
+        console.log(...args);
+    }
+}
 
 // Input limits. Must stay in sync with game-logic.js on the server
 // (a browser script cannot require() it) - tests/input-limits.test.js checks this.
@@ -86,8 +112,9 @@ function showNotification(message, type = 'info', duration = 4000) {
     }, duration);
 }
 
-// Storage helpers
-const Storage = {
+// localStorage and sessionStorage with JSON. Not named Storage: that name is the
+// browser's own (the type of localStorage), and other scripts on the page may use it
+const AppStorage = {
     // Get item with JSON parsing and error handling
     get(key, defaultValue = null) {
         try {
@@ -150,36 +177,11 @@ function handleApiError(error, context = '') {
     alert(message);
 }
 
-// Common success patterns
-function redirectToGameRoom(gameId) {
-    window.location.href = `/game/${gameId}`;
-}
-
-// Button state helpers
-function setButtonLoading(button, loadingText) {
-    button.disabled = true;
-    button.dataset.originalText = button.textContent;
-    button.textContent = loadingText;
-}
-
-function resetButtonState(button) {
-    button.disabled = false;
-    if (button.dataset.originalText) {
-        button.textContent = button.dataset.originalText;
-        delete button.dataset.originalText;
-    }
-}
-
-// Room code validation
-function isValidRoomCode(code) {
-    return code && /^[A-Z0-9]{6}$/.test(code.trim());
-}
-
 // Player ID System - Shared unique player ID generation
 function generatePlayerId() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
         const r = Math.random() * 16 | 0;
-        const v = c == 'x' ? r : (r & 0x3 | 0x8);
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
 }
@@ -197,12 +199,32 @@ function getUniquePlayerId() {
     if (!playerId || !PLAYER_ID_PATTERN.test(playerId)) {
         playerId = generatePlayerId();
         localStorage.setItem('playerId', playerId);
-        console.log(`🆔 Generated new unique player ID:`, playerId);
+        debugLog(`🆔 Generated new unique player ID:`, playerId);
     } else {
-        console.log(`🆔 Using existing player ID:`, playerId);
+        debugLog(`🆔 Using existing player ID:`, playerId);
     }
     return playerId;
 }
 
 // Initialize player ID immediately when this script loads
 const PLAYER_ID = getUniquePlayerId();
+
+// Show the running version (package.json on the server) in every
+// [data-app-version] element, so anyone can see which release is live
+async function showAppVersion() {
+    const elements = document.querySelectorAll('[data-app-version]');
+    if (elements.length === 0) return;
+
+    try {
+        const response = await fetch('/api/version');
+        if (!response.ok) return;
+        const { version } = await response.json();
+        elements.forEach(element => {
+            element.textContent = `v${version}`;
+        });
+    } catch (error) {
+        console.warn('Could not load the app version:', error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', showAppVersion);

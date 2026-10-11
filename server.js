@@ -21,6 +21,9 @@ const io = socketIo(server, {
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
+// The release version is written only in package.json (docs/release.md)
+const { version: APP_VERSION } = require('./package.json');
+
 // Store games in memory for now (will move to files later)
 const games = new Map();
 
@@ -86,6 +89,12 @@ app.get('/game/:roomCode', (req, res) => {
 // Custom image avatars ride inside JSON bodies; recreate-game carries every
 // player's avatar at once, which can exceed express.json()'s 100kb default
 const jsonBody = express.json({ limit: '1mb' });
+
+// The running version: every page shows it at the bottom, and after a deploy
+// it tells which release is live
+app.get('/api/version', (req, res) => {
+    res.json({ version: APP_VERSION });
+});
 
 // API endpoint to create a new game
 app.post('/api/create-game', jsonBody, (req, res) => {
@@ -363,16 +372,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// Start server
-server.listen(PORT, '0.0.0.0', () => {
-    if (NODE_ENV === 'production') {
-        console.log(`🎭 Who am I? server running in production on port ${PORT}`);
-    } else {
-        console.log(`🎭 Who am I? server running on http://localhost:${PORT}`);
-        console.log('Press Ctrl+C to stop the server');
-    }
-});
-
 // Create games directory if it doesn't exist
 const gamesDir = path.join(__dirname, 'games');
 if (!fs.existsSync(gamesDir)) {
@@ -478,9 +477,28 @@ function keepGamesAlive() {
     cleanupOldGameFiles();
 }
 
-// Run keep-alive every 5 minutes
 const KEEP_ALIVE_INTERVAL = 5 * 60 * 1000; // 5 minutes
-setInterval(keepGamesAlive, KEEP_ALIVE_INTERVAL);
 
-// Initial keep-alive after 1 minute
-setTimeout(keepGamesAlive, 60 * 1000);
+// Open the port and start the keep-alive loop
+function startServer() {
+    server.listen(PORT, '0.0.0.0', () => {
+        if (NODE_ENV === 'production') {
+            console.log(`🎭 Who am I? server running in production on port ${PORT}`);
+        } else {
+            console.log(`🎭 Who am I? server running on http://localhost:${PORT}`);
+            console.log('Press Ctrl+C to stop the server');
+        }
+    });
+
+    // Run keep-alive every 5 minutes, the first time after 1 minute
+    setInterval(keepGamesAlive, KEEP_ALIVE_INTERVAL);
+    setTimeout(keepGamesAlive, 60 * 1000);
+}
+
+// Start only when run as `node server.js` (npm start). Tests require() this
+// file to reach the real routes through `app` without opening a port.
+if (require.main === module) {
+    startServer();
+}
+
+module.exports = { app };

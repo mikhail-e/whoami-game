@@ -1,4 +1,4 @@
-# Node.js
+# Node.js (package-lock.json is tracked: it pins the exact version of every package)
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -10,6 +10,9 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Test coverage reports (npx jest --coverage)
+coverage/
 
 # Logs
 logs
@@ -25,16 +28,23 @@ pids
 .DS_Store
 .DS_Store?
 
-# IDE
-.vscode/
+# IDE: the shared VS Code settings are tracked (ESLint fixes on save, the ESLint
+# extension recommended), everything else in .vscode/ is personal
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 
 # Temporary files
 *.tmp
 *.temp
 
-# Game data (if you add file-based storage later)
+# Game state backups the running server writes every 5 minutes (server.js keep-alive)
 games/*.json
 !games/.gitkeep
-.claude/settings.local.json
+
+# Playwright MCP: page snapshots and screenshots from checking the app by hand
+.playwright-mcp/
+
+# This machine's Claude Code permissions (.claude/settings.json is shared with the project)
 .claude/settings.local.json
