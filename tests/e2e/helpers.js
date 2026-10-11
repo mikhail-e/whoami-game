@@ -218,6 +218,21 @@ async function startedGame(newPlayer, names) {
     return { players: Object.fromEntries(list.map(player => [player.name, player])), code, characters };
 }
 
+// Stand in for the phone's share sheet (the real one would stop the browser).
+// Call before the page loads. 'record' keeps every navigator.share() argument
+// in window.shareCalls; 'abort' records too, then fails the way a closed sheet
+// does (AbortError); 'unsupported' takes Web Share away, like a desktop browser
+async function stubShare(page, behaviour) {
+    await page.addInitScript(mode => {
+        window.shareCalls = [];
+        const share = mode === 'unsupported' ? undefined : async data => {
+            window.shareCalls.push(data);
+            if (mode === 'abort') throw new DOMException('Share canceled', 'AbortError');
+        };
+        Object.defineProperty(Navigator.prototype, 'share', { value: share, configurable: true, writable: true });
+    }, behaviour);
+}
+
 // Count the Socket.IO events of this name the page sends to the server, over
 // the WebSocket and over HTTP polling (used before the upgrade). Call it before
 // the player opens the room: the socket connects as the room page loads.
@@ -290,4 +305,5 @@ module.exports = {
     startedGame,
     leaveGame,
     waitForLanding,
+    stubShare,
 };

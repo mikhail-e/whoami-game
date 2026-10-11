@@ -39,10 +39,14 @@ test('Cancel in the reveal window reveals nothing', async ({ newPlayer }) => {
     await playerCard(alice.page, 'Alice').locator('.character-sticker.mystery').click();
     await expect(alice.page.locator('#revealModal')).toHaveClass(/\bshow\b/);
     await alice.page.locator('#revealModal .btn-secondary').click();
-
     await expect(alice.page.locator('#revealModal')).not.toHaveClass(/\bshow\b/);
-    await expect(playerCard(alice.page, 'Alice').locator('.character-sticker.mystery')).toBeVisible();
-    await expect(notifications(bob.page)).toHaveCount(0);
+
+    // Nothing to wait for when nothing happens: let Bob reveal, and once his
+    // reveal has reached both pages, anything Alice's Cancel sent has too
+    await revealOwnCharacter(bob);
+    await expect(playerCard(alice.page, 'Bob').locator('.character-sticker.revealed')).toBeVisible();
+    expect(await playerCard(bob.page, 'Alice').locator('.character-sticker.revealed').count()).toBe(0);
+    expect(await playerCard(alice.page, 'Alice').locator('.character-sticker.mystery').count()).toBe(1);
 });
 
 test('revealing shows your character and tells everyone', async ({ newPlayer }) => {
