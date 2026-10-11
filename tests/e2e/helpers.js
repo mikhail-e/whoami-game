@@ -157,6 +157,47 @@ async function assignCharacter(player, toName, character) {
     await expect(card.locator('.character-sticker')).toHaveText(character);
 }
 
+// Press Start Game and wait until the room is in a started game (the own 🎭
+// shows before the start too; the Restart button appears only after it)
+async function startGame(player) {
+    await player.page.click('#startGame');
+    await expect(player.page.locator('#restartGame')).toBeVisible();
+}
+
+// Click your own 🎭, confirm in the window, wait for your character to show
+async function revealOwnCharacter(player) {
+    const { page } = player;
+    await playerCard(page, player.name).locator('.character-sticker.mystery').click();
+    await expect(page.locator('#revealModal')).toHaveClass(/\bshow\b/);
+    await page.click('#confirmReveal');
+    await expect(playerCard(page, player.name).locator('.character-sticker.revealed')).toBeVisible();
+}
+
+const CHARACTERS = ['Napoleon', 'Cleopatra', 'Gandalf', 'Sherlock', 'Frida', 'Einstein'];
+
+// A started game with these players: the first creates the room, the rest
+// join, each gives the next one in the circle a character, the first starts.
+// Returns { players: { name: player }, code, characters: { name: what they wear } }
+async function startedGame(newPlayer, names) {
+    const list = [];
+    for (const name of names) list.push(await newPlayer(name));
+    const code = await createRoom(list[0]);
+    for (const player of list.slice(1)) await joinRoom(player, code);
+    for (const player of list) await waitForPlayers(player.page, list.length);
+
+    const characters = {};
+    for (const [index, player] of list.entries()) {
+        const target = list[(index + 1) % list.length];
+        characters[target.name] = CHARACTERS[index];
+        await assignCharacter(player, target.name, CHARACTERS[index]);
+    }
+    for (const player of list) await expect(player.page.locator('#startGame')).toBeEnabled();
+    await startGame(list[0]);
+    for (const player of list.slice(1)) await expect(player.page.locator('#restartGame')).toBeVisible();
+
+    return { players: Object.fromEntries(list.map(player => [player.name, player])), code, characters };
+}
+
 // Count the Socket.IO events of this name the page sends to the server, over
 // the WebSocket and over HTTP polling (used before the upgrade). Call it before
 // the player opens the room: the socket connects as the room page loads.
@@ -224,4 +265,7 @@ module.exports = {
     joinRoom,
     assignCharacter,
     countSentEvents,
+    startGame,
+    revealOwnCharacter,
+    startedGame,
 };
