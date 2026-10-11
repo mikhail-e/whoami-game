@@ -336,6 +336,7 @@ io.on('connection', (socket) => {
 
         if (result.gameDeleted) {
             console.log(`🗑️ Game ${gameId} removed - last player left`);
+            deleteGameBackup(gameId);
         }
     });
 
@@ -372,10 +373,24 @@ io.on('connection', (socket) => {
     });
 });
 
-// Create games directory if it doesn't exist
-const gamesDir = path.join(__dirname, 'games');
+// Game backups live in games/; GAMES_DIR moves them (the browser tests keep
+// theirs out of the project). Created if missing
+const gamesDir = process.env.GAMES_DIR || path.join(__dirname, 'games');
 if (!fs.existsSync(gamesDir)) {
-    fs.mkdirSync(gamesDir);
+    fs.mkdirSync(gamesDir, { recursive: true });
+}
+
+// Remove the disk backup of a game its last player left, so its old link
+// cannot bring it back (GET /game/:roomCode restores a room from this file).
+// Only a real room code names a file: anything else is ignored, never turned
+// into a path
+function deleteGameBackup(gameId) {
+    if (typeof gameId !== 'string' || !/^[A-Z0-9]{6}$/.test(gameId)) return;
+    try {
+        fs.rmSync(path.join(gamesDir, `${gameId}.json`), { force: true });
+    } catch (error) {
+        console.error(`❌ Failed to remove the backup of game ${gameId}:`, error);
+    }
 }
 
 // Clean up old game files (older than 4 hours)
@@ -434,6 +449,8 @@ function keepGamesAlive() {
             revealedPlayers: removal.revealedPlayers,
             gameDeleted: removal.gameDeleted
         });
+        // A room emptied here keeps its disk backup: when every phone of a
+        // group slept through a break, the room link still brings it back
     }
 
     for (const [gameId, game] of games.entries()) {
@@ -501,4 +518,4 @@ if (require.main === module) {
     startServer();
 }
 
-module.exports = { app };
+module.exports = { app, deleteGameBackup };

@@ -60,12 +60,26 @@ export default [
 
     // Tests (Jest, CommonJS)
     {
-        files: ["tests/**/*.js"],
+        files: ["tests/*.js"],
         languageOptions: {
             sourceType: "commonjs",
             globals: {
                 ...globals.node,
                 ...globals.jest,
+            },
+        },
+        rules: sharedRules,
+    },
+
+    // Browser tests (Playwright, CommonJS): callbacks passed to page.evaluate()
+    // run in the page, where browser names exist
+    {
+        files: ["tests/e2e/**/*.js", "playwright.config.js"],
+        languageOptions: {
+            sourceType: "commonjs",
+            globals: {
+                ...globals.node,
+                ...globals.browser,
             },
         },
         rules: sharedRules,
@@ -86,6 +100,8 @@ export default [
             "node_modules/",
             "games/",
             "coverage/",
+            "test-results/",
+            "playwright-report/",
         ],
     },
 ];
