@@ -1,6 +1,6 @@
 // Who am I? Game - PWA Installation and Service Worker Management
-// i18n comes from translations.js (loaded before this file)
-/* global i18n */
+// i18n comes from translations.js, debugLog from utils.js (both loaded before this file)
+/* global i18n, debugLog */
 
 class PWAManager {
     constructor() {
@@ -19,11 +19,11 @@ class PWAManager {
         if ('serviceWorker' in navigator) {
             try {
                 const registration = await navigator.serviceWorker.register('/sw.js');
-                console.log('✅ Service Worker registered successfully:', registration.scope);
+                debugLog('✅ Service Worker registered successfully:', registration.scope);
 
                 // Handle updates
                 registration.addEventListener('updatefound', () => {
-                    console.log('🔄 New service worker version available');
+                    debugLog('🔄 New service worker version available');
                     const newWorker = registration.installing;
 
                     newWorker.addEventListener('statechange', () => {
@@ -40,7 +40,7 @@ class PWAManager {
                 console.error('❌ Service Worker registration failed:', error);
             }
         } else {
-            console.log('🚫 Service Worker not supported');
+            debugLog('🚫 Service Worker not supported');
         }
     }
 
@@ -49,12 +49,12 @@ class PWAManager {
     checkInstallation() {
         // Check if running in standalone mode (for logging purposes)
         if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
-            console.log('📱 App is running in standalone mode');
+            debugLog('📱 App is running in standalone mode');
         }
 
         // Check if running as PWA on iOS
         if (window.navigator.standalone) {
-            console.log('🍎 App is running in iOS standalone mode');
+            debugLog('🍎 App is running in iOS standalone mode');
         }
     }
 
@@ -79,7 +79,7 @@ class PWAManager {
 
     // Show update available notification
     showUpdateAvailable() {
-        console.log('🆕 App update is available!');
+        debugLog('🆕 App update is available!');
 
         const updateBanner = document.createElement('div');
         updateBanner.className = 'alert alert-warning alert-dismissible fade show';
@@ -115,7 +115,7 @@ class PWAManager {
         try {
             const registration = await navigator.serviceWorker.getRegistration();
             if (registration) {
-                console.log('🔄 Forcing service worker update...');
+                debugLog('🔄 Forcing service worker update...');
                 await registration.update();
 
                 // Send message to service worker to skip waiting
@@ -149,6 +149,6 @@ window.forceAppUpdate = () => {
     if (window.pwaManager) {
         window.pwaManager.forceUpdate();
     } else {
-        console.log('PWA Manager not initialized yet');
+        debugLog('PWA Manager not initialized yet');
     }
 };

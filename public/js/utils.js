@@ -4,9 +4,22 @@
 // is visible to the scripts loaded after it. ESLint checks each file on its own:
 // "exported" lists what other files use from here, "global" what this file uses
 // from translations.js.
-/* exported MAX_NAME_LENGTH, MAX_CHARACTER_LENGTH, isCustomAvatar, getText, showError, showInfo,
+/* exported debugLog, MAX_NAME_LENGTH, MAX_CHARACTER_LENGTH, isCustomAvatar, getText, showError, showInfo,
    showNotification, AppStorage, handleApiError, PLAYER_ID */
 /* global i18n */
+
+// Debug output: printed only while debugging is on, so players' consoles stay
+// quiet. Turn it on in the browser console, then reload the page:
+//   localStorage.setItem('whoami-debug', 'on')
+// console.warn and console.error are for real problems and always print.
+const DEBUG_LOG_ENABLED = localStorage.getItem('whoami-debug') === 'on';
+
+function debugLog(...args) {
+    if (DEBUG_LOG_ENABLED) {
+        // eslint-disable-next-line no-console -- the one place the pages print debug output
+        console.log(...args);
+    }
+}
 
 // Input limits. Must stay in sync with game-logic.js on the server
 // (a browser script cannot require() it) - tests/input-limits.test.js checks this.
@@ -181,9 +194,9 @@ function getUniquePlayerId() {
     if (!playerId || !PLAYER_ID_PATTERN.test(playerId)) {
         playerId = generatePlayerId();
         localStorage.setItem('playerId', playerId);
-        console.log(`🆔 Generated new unique player ID:`, playerId);
+        debugLog(`🆔 Generated new unique player ID:`, playerId);
     } else {
-        console.log(`🆔 Using existing player ID:`, playerId);
+        debugLog(`🆔 Using existing player ID:`, playerId);
     }
     return playerId;
 }

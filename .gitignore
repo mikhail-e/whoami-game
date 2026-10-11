@@ -25,8 +25,11 @@ pids
 .DS_Store
 .DS_Store?
 
-# IDE
-.vscode/
+# IDE: the shared VS Code settings are tracked (ESLint fixes on save, the ESLint
+# extension recommended), everything else in .vscode/ is personal
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 
 # Temporary files

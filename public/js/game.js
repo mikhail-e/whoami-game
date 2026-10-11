@@ -1,6 +1,6 @@
 // Who am I? Game - Frontend JavaScript
 // Names from utils.js (loaded before this file; see the note at the top of utils.js)
-/* global MAX_NAME_LENGTH, isCustomAvatar, getText, showError, showInfo, AppStorage, handleApiError, PLAYER_ID */
+/* global debugLog, MAX_NAME_LENGTH, isCustomAvatar, getText, showError, showInfo, AppStorage, handleApiError, PLAYER_ID */
 
 // Avatar pool - 60 emojis total (12 original + 48 new)
 const avatarPool = [
@@ -389,7 +389,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to create new game
     async function createGame(playerData) {
         try {
-            console.log('Creating game with player data:', playerData);
+            debugLog('Creating game with player data:', playerData);
             AppStorage.set('whoami-player-name', playerData.name);
             AppStorage.set('whoami-player-avatar', playerData.avatar);
 
@@ -399,20 +399,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({})
             });
             
-            console.log('Create game response status:', response.status);
+            debugLog('Create game response status:', response.status);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
             const result = await response.json();
-            console.log('Create game result:', result);
+            debugLog('Create game result:', result);
             
             if (result.success) {
                 // Update player data with the new room code
                 playerData.roomCode = result.gameId;
 
-                console.log('Updated player data:', playerData);
+                debugLog('Updated player data:', playerData);
                 AppStorage.session.set('playerData', playerData);
                 window.location.href = `/game/${result.gameId}`;
             } else {

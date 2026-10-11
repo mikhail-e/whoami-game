@@ -39,7 +39,11 @@ export default [
                 io: "readonly",
             },
         },
-        rules: sharedRules,
+        rules: {
+            ...sharedRules,
+            // Debug output goes through debugLog() (utils.js): players' consoles stay quiet
+            "no-console": ["error", { allow: ["warn", "error"] }],
+        },
     },
 
     // Service worker — its own global scope

@@ -1,6 +1,6 @@
 // Who am I? Game Room - Frontend JavaScript
 // Names from utils.js (loaded before this file; see the note at the top of utils.js)
-/* global MAX_CHARACTER_LENGTH, isCustomAvatar, getText, showNotification, AppStorage, handleApiError, PLAYER_ID */
+/* global debugLog, MAX_CHARACTER_LENGTH, isCustomAvatar, getText, showNotification, AppStorage, handleApiError, PLAYER_ID */
 
 let socket;
 let currentGame = null;
@@ -32,7 +32,7 @@ function saveGameStateToStorage() {
 
     const storageKey = `whoami-game-${currentGame.id}`;
     AppStorage.set(storageKey, gameState);
-    console.log('💾 Game state saved to localStorage:', storageKey);
+    debugLog('💾 Game state saved to localStorage:', storageKey);
 }
 
 function loadGameStateFromStorage(roomCode) {
@@ -40,12 +40,12 @@ function loadGameStateFromStorage(roomCode) {
     const gameState = AppStorage.get(storageKey);
 
     if (!gameState) {
-        console.log('📭 No saved game state found for room:', roomCode);
+        debugLog('📭 No saved game state found for room:', roomCode);
         return null;
     }
 
     try {
-        console.log('📂 Loaded game state from localStorage:', gameState);
+        debugLog('📂 Loaded game state from localStorage:', gameState);
         return gameState;
     } catch (error) {
         console.error('❌ Error parsing saved game state:', error);
@@ -56,7 +56,7 @@ function loadGameStateFromStorage(roomCode) {
 function clearGameStateFromStorage(roomCode) {
     const storageKey = `whoami-game-${roomCode}`;
     AppStorage.remove(storageKey);
-    console.log('🗑️ Cleared game state from localStorage:', storageKey);
+    debugLog('🗑️ Cleared game state from localStorage:', storageKey);
 }
 
 // Clean up local state and return to the landing page after leaving.
@@ -81,7 +81,7 @@ function finishLeavingGame(roomStillExists = true) {
 
 async function recreateRoomFromStorage(roomCode, savedGameState) {
     try {
-        console.log('🔧 Recreating room with saved state...');
+        debugLog('🔧 Recreating room with saved state...');
 
         // First, create a new game with the same room code
         const createResponse = await fetch('/api/recreate-game', {
@@ -100,7 +100,7 @@ async function recreateRoomFromStorage(roomCode, savedGameState) {
         const createResult = await createResponse.json();
 
         if (createResult.success) {
-            console.log('✅ Room recreated successfully, now joining...');
+            debugLog('✅ Room recreated successfully, now joining...');
 
             // Now join the recreated game (with flag to prevent recursion)
             await joinGameRoom(roomCode, true);
@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function() {
         roomCode: playerData.roomCode
     };
 
-    console.log('Using global player ID:', PLAYER_ID);
+    debugLog('Using global player ID:', PLAYER_ID);
     
     // Initialize the game room
     initializeGameRoom(roomCode);
@@ -172,8 +172,8 @@ function initializeSocket(roomCode) {
     socket = io();
     
     socket.on('connect', () => {
-        console.log('Connected to server');
-        console.log('🔧 About to set up all Socket.IO event handlers...');
+        debugLog('Connected to server');
+        debugLog('🔧 About to set up all Socket.IO event handlers...');
 
         // First join the game via API, then join the socket room
         joinGameRoom(roomCode).then(() => {
@@ -188,13 +188,13 @@ function initializeSocket(roomCode) {
     });
     
     socket.on('game-state', (game) => {
-        console.log('Received game state:', game);
+        debugLog('Received game state:', game);
         currentGame = game;
         updateGameDisplay();
     });
     
     socket.on('player-joined', (data) => {
-        console.log('Player joined:', data);
+        debugLog('Player joined:', data);
         if (currentGame) {
             currentGame.players = data.players;
             // A returning leaver comes back with their character restored -
@@ -207,7 +207,7 @@ function initializeSocket(roomCode) {
     });
 
     socket.on('player-reconnected', (data) => {
-        console.log('Player reconnected:', data);
+        debugLog('Player reconnected:', data);
         if (currentGame) {
             currentGame.players = data.players;
             if (data.characters) currentGame.characters = data.characters;
@@ -217,7 +217,7 @@ function initializeSocket(roomCode) {
     });
     
     socket.on('player-disconnected', (data) => {
-        console.log('Player disconnected:', data);
+        debugLog('Player disconnected:', data);
         if (currentGame && data && data.playerId) {
             const player = currentGame.players.find(p => p.id === data.playerId);
             if (player) {
@@ -227,7 +227,7 @@ function initializeSocket(roomCode) {
     });
 
     socket.on('player-left', (data) => {
-        console.log('Player left:', data);
+        debugLog('Player left:', data);
         if (!currentGame || !data) return;
 
         if (data.playerId === currentPlayer.id) {
@@ -258,15 +258,15 @@ function initializeSocket(roomCode) {
     // Real-time updates removed - keeping it simple
 
     // Handle final character confirmation
-    console.log('🔧 Setting up character-finalized event handler...');
+    debugLog('🔧 Setting up character-finalized event handler...');
     socket.on('character-finalized', (data) => {
-        console.log('📨 RECEIVED character-finalized event:', data);
+        debugLog('📨 RECEIVED character-finalized event:', data);
         const { playerId, allCharacters } = data;
 
         // Update local game state with complete character data
         if (currentGame && allCharacters) {
             currentGame.characters = allCharacters;
-            console.log('✅ Updated all character data from server');
+            debugLog('✅ Updated all character data from server');
 
             // Save updated game state to localStorage
             saveGameStateToStorage();
@@ -278,7 +278,7 @@ function initializeSocket(roomCode) {
             if (specificPlayerCard) {
                 const specificInput = specificPlayerCard.querySelector('.character-input');
                 if (specificInput) {
-                    console.log(`🧹 Cleaning up input for finalized character (playerId: ${playerId})`);
+                    debugLog(`🧹 Cleaning up input for finalized character (playerId: ${playerId})`);
                     const stickerWrapper = specificInput.closest('.character-sticker');
                     if (stickerWrapper) {
                         stickerWrapper.remove();
@@ -293,7 +293,7 @@ function initializeSocket(roomCode) {
     });
     
     socket.on('game-started', (data) => {
-        console.log('Game started:', data);
+        debugLog('Game started:', data);
         if (currentGame) {
             currentGame.state = 'started';
             // Close any character input that is still open - editing is no
@@ -305,7 +305,7 @@ function initializeSocket(roomCode) {
     });
     
     socket.on('character-revealed', (data) => {
-        console.log('Character revealed:', data);
+        debugLog('Character revealed:', data);
         if (currentGame) {
             currentGame.revealedPlayers = data.revealedPlayers;
             saveGameStateToStorage();
@@ -314,7 +314,7 @@ function initializeSocket(roomCode) {
     });
     
     socket.on('game-restarted', (data) => {
-        console.log('Game restarted! Returning to setup phase.');
+        debugLog('Game restarted! Returning to setup phase.');
         if (currentGame) {
             currentGame.state = 'waiting';
             currentGame.revealedPlayers = data.revealedPlayers || [];
@@ -329,7 +329,7 @@ function initializeSocket(roomCode) {
 
     // Handle reveal notification
     socket.on('player-revealed-notification', (data) => {
-        console.log('Player revealed notification:', data);
+        debugLog('Player revealed notification:', data);
 
         // Show notification to all players
         const playerName = data.playerName;
@@ -350,13 +350,13 @@ function initializeSocket(roomCode) {
     });
     
     socket.on('disconnect', () => {
-        console.log('Disconnected from server');
+        debugLog('Disconnected from server');
     });
 }
 
 async function joinGameRoom(roomCode, skipRecreation = false) {
     try {
-        console.log('Attempting to join game:', roomCode, 'with player:', currentPlayer);
+        debugLog('Attempting to join game:', roomCode, 'with player:', currentPlayer);
         
         const requestBody = {
             gameId: roomCode,
@@ -366,11 +366,11 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
 
         // Ensure we always have a player ID
         if (!currentPlayer.id) {
-            console.log('⚠️ Player ID missing, using shared ID...');
+            debugLog('⚠️ Player ID missing, using shared ID...');
             currentPlayer.id = PLAYER_ID;
         }
         requestBody.playerId = currentPlayer.id;
-        console.log('Sending request body:', requestBody);
+        debugLog('Sending request body:', requestBody);
         
         const response = await fetch('/api/join-game', {
             method: 'POST',
@@ -378,13 +378,13 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
             body: JSON.stringify(requestBody)
         });
         
-        console.log('Response status:', response.status);
+        debugLog('Response status:', response.status);
 
         const result = await response.json();
-        console.log('Join game result:', result);
+        debugLog('Join game result:', result);
         
         if (result.success) {
-            console.log('Successfully joined game');
+            debugLog('Successfully joined game');
             currentGame = result.game;
             // Update currentPlayer with the server-assigned player data
             currentPlayer = result.player;
@@ -407,11 +407,11 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
 
             // Check if it's a "Game not found" error and try to recreate the room (only on first attempt)
             if (result.error === 'Game not found' && !skipRecreation) {
-                console.log('🔄 Game not found - attempting room recreation...');
+                debugLog('🔄 Game not found - attempting room recreation...');
 
                 // Validate room code format before recreation attempt
                 if (!roomCode || roomCode.length !== 6 || !/^[A-Z0-9]{6}$/.test(roomCode)) {
-                    console.log('❌ Invalid room code format, cannot recreate');
+                    debugLog('❌ Invalid room code format, cannot recreate');
                     alert(getText('invalidRoomCodeFormat', 'Invalid room code format'));
                     window.location.href = '/';
                     return;
@@ -420,7 +420,7 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
                 const savedGameState = loadGameStateFromStorage(roomCode);
 
                 if (savedGameState && savedGameState.playerId === currentPlayer.id) {
-                    console.log('🎯 Found matching saved game state, recreating room...');
+                    debugLog('🎯 Found matching saved game state, recreating room...');
                     await recreateRoomFromStorage(roomCode, savedGameState);
                     return;
                 }
@@ -533,7 +533,7 @@ function cancelActiveEdits() {
 }
 
 function updatePlayersList() {
-    console.log('🎨 Simple updatePlayersList called');
+    debugLog('🎨 Simple updatePlayersList called');
     const playerListEl = document.getElementById('playerList');
 
     if (!currentGame || !currentGame.players) {
@@ -544,11 +544,11 @@ function updatePlayersList() {
     // CRITICAL: Check for active editing - prevent rebuilds that lose user input
     const activeInputs = playerListEl.querySelectorAll('.character-input');
     if (activeInputs.length > 0) {
-        console.log('🚫 Skipping rebuild - user is actively editing');
-        console.log('🔍 Active inputs found:', activeInputs.length, 'inputs detected');
+        debugLog('🚫 Skipping rebuild - user is actively editing');
+        debugLog('🔍 Active inputs found:', activeInputs.length, 'inputs detected');
         activeInputs.forEach((input, index) => {
             const playerId = input.closest('[data-player-id]')?.dataset.playerId;
-            console.log(`   Input ${index + 1}: playerId=${playerId}, value="${input.value}"`);
+            debugLog(`   Input ${index + 1}: playerId=${playerId}, value="${input.value}"`);
         });
         return;
     }
@@ -669,7 +669,7 @@ function updatePlayersList() {
 
 // Function to add a new character - now uses streaming like editCharacter
 function addCharacter(playerId, buttonElement) {
-    console.log(`🎯 addCharacter called for player ${playerId} (using streaming)`);
+    debugLog(`🎯 addCharacter called for player ${playerId} (using streaming)`);
 
     // Replace the + button with an input field
     const inputElement = document.createElement('input');
@@ -697,20 +697,20 @@ function addCharacter(playerId, buttonElement) {
     // Handle saving
     const saveCharacter = (triggeredBy = 'unknown') => {
         if (saveInProgress) {
-            console.log(`🚫 saveCharacter blocked - already in progress`);
+            debugLog(`🚫 saveCharacter blocked - already in progress`);
             return;
         }
 
         // If saved via Enter, ignore subsequent blur events
         if (triggeredBy === 'blur' && savedViaEnter) {
-            console.log(`🚫 saveCharacter blocked - already saved via Enter`);
+            debugLog(`🚫 saveCharacter blocked - already saved via Enter`);
             return;
         }
 
         // Characters are locked once the game has started (e.g. a blur event
         // can fire after another player pressed Start Game)
         if (currentGame && currentGame.state !== 'waiting') {
-            console.log(`🚫 saveCharacter blocked - game already started`);
+            debugLog(`🚫 saveCharacter blocked - game already started`);
             return;
         }
 
@@ -720,7 +720,7 @@ function addCharacter(playerId, buttonElement) {
         }
 
         const character = inputElement.value.trim();
-        console.log(`🔧 saveCharacter called: playerId=${playerId}, newCharacter="${character}", triggeredBy=${triggeredBy}`);
+        debugLog(`🔧 saveCharacter called: playerId=${playerId}, newCharacter="${character}", triggeredBy=${triggeredBy}`);
 
         // Send final character assignment
         const assignData = {
@@ -729,14 +729,14 @@ function addCharacter(playerId, buttonElement) {
             character: character,
             assignedBy: currentPlayer.id
         };
-        console.log(`🔧 Sending assign-character:`, assignData);
+        debugLog(`🔧 Sending assign-character:`, assignData);
         socket.emit('assign-character', assignData);
 
         // Input will be cleaned up when server confirms via character-finalized event
 
         // Don't update UI immediately - wait for server confirmation via character-finalized event
         // This ensures all players see the update at the same time and prevents desync issues
-        console.log(`⏳ Waiting for server confirmation before updating UI`);
+        debugLog(`⏳ Waiting for server confirmation before updating UI`);
 
         // Note: Empty characters are now handled by the backend
         // The server will remove the character and trigger a 'character-finalized' event
@@ -769,7 +769,7 @@ function addCharacter(playerId, buttonElement) {
 
 // Function to edit an existing character
 function editCharacter(playerId, currentCharacter, stickerElement, editState = null) {
-    console.log(`🎯 editCharacter called for player ${playerId} with character "${currentCharacter}"`);
+    debugLog(`🎯 editCharacter called for player ${playerId} with character "${currentCharacter}"`);
 
     // Create input field
     const inputElement = document.createElement('input');
@@ -812,20 +812,20 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
     // Handle saving
     const saveCharacter = (triggeredBy = 'unknown') => {
         if (saveInProgress) {
-            console.log(`🚫 saveCharacter blocked - already in progress`);
+            debugLog(`🚫 saveCharacter blocked - already in progress`);
             return;
         }
 
         // If saved via Enter, ignore subsequent blur events
         if (triggeredBy === 'blur' && savedViaEnter) {
-            console.log(`🚫 saveCharacter blocked - already saved via Enter`);
+            debugLog(`🚫 saveCharacter blocked - already saved via Enter`);
             return;
         }
 
         // Characters are locked once the game has started (e.g. a blur event
         // can fire after another player pressed Start Game)
         if (currentGame && currentGame.state !== 'waiting') {
-            console.log(`🚫 saveCharacter blocked - game already started`);
+            debugLog(`🚫 saveCharacter blocked - game already started`);
             return;
         }
 
@@ -835,7 +835,7 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
         }
 
         const character = inputElement.value.trim();
-        console.log(`🔧 saveCharacter called: playerId=${playerId}, newCharacter="${character}", triggeredBy=${triggeredBy}`);
+        debugLog(`🔧 saveCharacter called: playerId=${playerId}, newCharacter="${character}", triggeredBy=${triggeredBy}`);
 
         // Send final character assignment
         const assignData = {
@@ -844,14 +844,14 @@ function editCharacter(playerId, currentCharacter, stickerElement, editState = n
             character: character,
             assignedBy: currentPlayer.id
         };
-        console.log(`🔧 Sending assign-character:`, assignData);
+        debugLog(`🔧 Sending assign-character:`, assignData);
         socket.emit('assign-character', assignData);
 
         // Input will be cleaned up when server confirms via character-finalized event
 
         // Don't update UI immediately - wait for server confirmation via character-finalized event
         // This ensures all players see the update at the same time and prevents desync issues
-        console.log(`⏳ Waiting for server confirmation before updating UI`);
+        debugLog(`⏳ Waiting for server confirmation before updating UI`);
     };
     
     // Handle keyboard events (Enter and Escape)
@@ -929,7 +929,7 @@ function setupEventListeners() {
 
     // Refresh page button
     document.getElementById('refreshPage').addEventListener('click', () => {
-        console.log('Refresh button clicked');
+        debugLog('Refresh button clicked');
         window.location.reload();
     });
 
@@ -958,9 +958,9 @@ function setupEventListeners() {
     const restartButton = document.getElementById('restartGame');
     if (restartButton) {
         restartButton.addEventListener('click', () => {
-            console.log('Restart game button clicked');
+            debugLog('Restart game button clicked');
             if (restartModal) {
-                console.log('Showing restart modal');
+                debugLog('Showing restart modal');
                 restartModal.show();
             } else {
                 console.error('Restart modal not initialized');
@@ -973,9 +973,9 @@ function setupEventListeners() {
     const confirmRestartButton = document.getElementById('confirmRestart');
     if (confirmRestartButton) {
         confirmRestartButton.addEventListener('click', () => {
-            console.log('Confirm restart clicked');
-            console.log('Current game:', currentGame);
-            console.log('Current player:', currentPlayer);
+            debugLog('Confirm restart clicked');
+            debugLog('Current game:', currentGame);
+            debugLog('Current player:', currentPlayer);
             
             if (!currentGame || !currentPlayer) {
                 console.error('Missing game or player data');
