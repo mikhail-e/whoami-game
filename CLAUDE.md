@@ -19,7 +19,8 @@ Web application to play the "Who am I?" guessing game remotely with friends and 
 ```bash
 npm install                        # Install dependencies
 npm start                          # Start server on http://localhost:3000
-npm test                           # All tests (Jest) — run before every merge
+npm test                           # All checks: ESLint, then Jest — run before every merge
+npm run lint                       # ESLint only (any warning fails); npm run lint:fix fixes what it can
 npx jest tests/game-logic.test.js  # Run a single test file
 npm run test:watch                 # Watch mode
 ```
@@ -37,7 +38,7 @@ public/
 ├── favicon.ico, icons/    # Branding (SVG icons, 48x48–512x512)
 ├── css/style.css          # Custom styles (gradients, sticker colors, responsive layout)
 └── js/
-    ├── utils.js           # SHARED code: notifications, Storage helpers, player ID, validation — reusable code goes HERE
+    ├── utils.js           # SHARED code: debugLog, notifications, AppStorage, player ID, validation, app version — reusable code goes HERE
     ├── game.js            # Landing page logic (avatar pool + refresh, create/join buttons)
     ├── game-room.js       # Game room logic (player list, character stickers, socket handlers)
     ├── translations.js    # i18n (en/ru): browser auto-detection, localStorage preference, {placeholder} support
@@ -45,6 +46,8 @@ public/
 tests/                     # Jest: game logic (unit), HTTP API (supertest), frontend markup and source checks
 docs/release.md            # Git flow, versions, release and hotfix steps, the check of production
 README.md                  # What the game is, how to run it
+eslint.config.mjs          # ESLint: one block per environment (server, pages, service worker, tests)
+.vscode/                   # Shared VS Code settings: ESLint fixes on save, the ESLint extension recommended
 render.yaml                # Render.com deploy config (auto-deploys master branch)
 games/                     # Runtime game state backups (*.json, gitignored)
 ```
@@ -67,9 +70,11 @@ games/                     # Runtime game state backups (*.json, gitignored)
 3. **Update tests whenever logic changes**; run `npm test` before committing
 4. **Localize all UI text** — every user-facing string needs both `en` and `ru` entries in `public/js/translations.js`. `tests/translations-real.test.js` fails if a key exists in only one language. Static markup supports `data-i18n` (text), `data-i18n-placeholder`, `data-i18n-title` and `data-i18n-aria-label` (for icon-only buttons)
 5. **Never build DOM from user data with `innerHTML`** — player names and characters go through `textContent` (see `createAlertElement()` in utils.js and `updatePlayersList()` in game-room.js)
+6. **Debug output goes through `debugLog()`** (utils.js), never `console.log` in `public/js` (ESLint fails on it). It prints only after `localStorage.setItem('whoami-debug', 'on')` and a reload. `console.warn`/`console.error` are for real problems. The server keeps `console.log`: that is what Render's log shows
+7. **The pages share names through plain `<script>` files** — a top-level name in utils.js or translations.js is visible to the scripts loaded after it. ESLint checks each file on its own, so a file lists what it takes from the others in `/* global ... */` and what it gives in `/* exported ... */`
 
 ## Gotchas
-- `stickerColors` is duplicated in `game-logic.js` and `public/js/game-room.js` — keep the two lists in sync. (The avatar pool lives **only** in `public/js/game.js`; the server does not need it.)
+- **Sticker colors are picked by the server** (`stickerColors` in game-logic.js); the browser only renders `player.stickerColor` as the `color-<name>` class, so every color needs a `.character-sticker.color-<name>` rule in style.css (`tests/improved-sticker-colors.test.js` checks). The avatar pool lives **only** in `public/js/game.js`; the server does not need it
 - `game-logic.js` must stay free of Express/Socket.IO imports so it remains unit-testable
 - Validate on the server, not just in the UI: `sanitizePlayerName` / `sanitizeAvatar` / `sanitizeCharacter` enforce the input limits, and `assignCharacter` refuses to change characters once `state !== 'waiting'` (a late `blur` event can arrive after Start Game)
 - **Input limits (128 chars for names and characters) exist twice** — `game-logic.js` for the server and `public/js/utils.js` for the browser (a browser script cannot `require()` a Node module). `tests/input-limits.test.js` fails if they drift apart. Lengths are counted by character, not UTF-16 code unit, so an emoji counts as one and is never cut in half
@@ -83,7 +88,7 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - **Share button** (`#shareButton` in game.html): `navigator.share` must be called with no `await` before it in the click handler (iOS rejects otherwise); `AbortError` (user closed the share sheet) is intentionally silent; unsupported browsers fall back to `copyRoomLink()`. Test with a stubbed `navigator.share` — a real click opens the OS share sheet, which blocks automation
 - Button feedback flashes ("✅ Copied!") set `textContent`, which flattens the inner `data-i18n` span — after the first flash that button's label stops reacting to language switches until reload (long-standing quirk of Copy Link, shared by Share via `copyRoomLink()`)
 - **PWA link capturing is a platform matter, not a bug.** iOS cannot open links in an installed web app at all (Apple limitation — links always open the browser/webview; no web-side fix exists). Android (installed via Chrome) captures in-scope links because `scope: "/"` covers `/game/*`; messenger in-app browsers bypass this. `launch_handler: navigate-existing` in manifest.json makes a captured link reuse the open app window (Android/desktop). `tests/manifest.test.js` guards these fields
-- **The service worker caches icons and nothing else.** The game requires a live server (a room lives in server memory), so offline support is pointless, and caching HTML/JS only ever produced "player stuck on an old version" bugs. The worker exists for installability plus free icon caching. `tests/service-worker.test.js` fails if HTML/CSS/JS is added back to the cache. Icon matching is by **exact pathname** — an earlier substring check matched every URL because `'/'` was in the list
+- **The service worker caches icons and nothing else.** The game requires a live server (a room lives in server memory), so offline support is pointless, and caching HTML/JS only ever produced "player stuck on an old version" bugs. The worker exists for installability plus free icon caching. `tests/service-worker.test.js` fails if HTML/CSS/JS is added back to the cache. Icon matching is by **exact pathname** — an earlier substring check matched every URL because `'/'` was in the list. **Any change to sw.js, even a comment, is a new worker**: browsers install it and pwa.js shows every open page the "Update available — Reload" banner, so edit sw.js only for a real reason
 
 ## Git Workflow (git flow)
 Steps and commands: `docs/release.md`.

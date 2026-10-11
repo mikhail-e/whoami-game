@@ -15,7 +15,7 @@ The classic guessing party game, played remotely. Every player gets a secret cha
 
 ## How to Run
 
-Needs Node.js 18 or newer.
+Running the game needs Node.js 18 or newer; the development tools (ESLint) need Node.js 20.19+, 22.13+ or 24+.
 
 ```bash
 npm install
@@ -25,7 +25,8 @@ npm start          # http://localhost:3000
 ## Development
 
 ```bash
-npm test           # all tests (Jest)
+npm test           # all checks: ESLint, then Jest
+npm run lint       # ESLint only
 ```
 
 - `CLAUDE.md` — architecture, rules, git flow
@@ -35,7 +36,7 @@ npm test           # all tests (Jest)
 
 - Server: Node.js, Express, Socket.IO
 - Browser: plain JavaScript and Bootstrap 5 — no framework, no build step
-- Tests: Jest, supertest
+- Checks: ESLint, Jest, supertest
 - Hosting: Render
 
 ## Credits

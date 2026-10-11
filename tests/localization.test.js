@@ -1,6 +1,4 @@
 // Who am I? Game - Localization Tests
-const fs = require('fs');
-const path = require('path');
 
 // Mock DOM elements for testing
 class MockElement {

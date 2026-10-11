@@ -1,4 +1,6 @@
 // Localization system for Who am I? game
+// i18n is used by the scripts loaded after this one (see the note at the top of utils.js)
+/* exported i18n */
 
 const translations = {
     en: {
@@ -132,19 +134,16 @@ const translations = {
         // UI messages
         noPlayersYet: "No players yet",
         yourCharacterClickReveal: "Your character - click to reveal!",
-        yourCharacterHidden: "Your character is hidden from you!",
         yourRevealedCharacter: "Your revealed character",
         characterRevealedByPlayer: "Character revealed by player",
         characterReadOnly: "Character: {character} (read-only during game)",
         characterClickToEdit: "Character: {character} (click to edit)",
-        assignCharacter: "Assign character",
         someoneNeedsToAssign: "Someone needs to assign you a character!",
         copiedSuccess: "✅ Copied!",
 
         // Error messages
         invalidRoomCode: "Invalid room code",
         invalidRoomCodeFormat: "Invalid room code format",
-        failedJoinGame: "Failed to join game",
         failedRecoverGame: "Failed to recover game",
         connectionErrorTryAgain: "Please try again.",
         pleaseCreateNewRoom: "Please create a new room.",
@@ -296,19 +295,16 @@ const translations = {
         // UI messages
         noPlayersYet: "Игроков пока нет",
         yourCharacterClickReveal: "Ваш персонаж - нажмите, чтобы раскрыть!",
-        yourCharacterHidden: "Ваш персонаж скрыт от вас!",
         yourRevealedCharacter: "Ваш раскрытый персонаж",
         characterRevealedByPlayer: "Персонаж раскрыт игроком",
         characterReadOnly: "Персонаж: {character} (нельзя изменить во время игры)",
         characterClickToEdit: "Персонаж: {character} (нажмите, чтобы изменить)",
-        assignCharacter: "Назначить персонажа",
         someoneNeedsToAssign: "Кто-то должен назначить вам персонажа!",
         copiedSuccess: "✅ Скопировано!",
 
         // Error messages
         invalidRoomCode: "Неверный код комнаты",
         invalidRoomCodeFormat: "Неверный формат кода комнаты",
-        failedJoinGame: "Не удалось присоединиться к игре",
         failedRecoverGame: "Не удалось восстановить игру",
         connectionErrorTryAgain: "Попробуйте еще раз.",
         pleaseCreateNewRoom: "Пожалуйста, создайте новую комнату.",
@@ -435,7 +431,7 @@ class Localization {
             // Add click handler to toggle button
             const toggleBtn = container.querySelector('.lang-toggle-btn');
             if (toggleBtn) {
-                toggleBtn.addEventListener('click', (e) => {
+                toggleBtn.addEventListener('click', () => {
                     // Switch to opposite language
                     const newLang = this.currentLanguage === 'en' ? 'ru' : 'en';
                     this.setLanguage(newLang);
@@ -467,7 +463,9 @@ document.addEventListener('DOMContentLoaded', () => {
     i18n = new Localization();
 });
 
-// Export for use in other scripts
+// Jest loads this file with require() (tests/translations-real.test.js); in the
+// browser there is no `module`
+/* global module */
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { translations, Localization };
 }

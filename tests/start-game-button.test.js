@@ -7,7 +7,7 @@ const mockElements = {};
 // Mock document methods
 global.document = {
     getElementById: (id) => mockElements[id] || null,
-    createElement: (tag) => ({ classList: { add: jest.fn() } }),
+    createElement: () => ({ classList: { add: jest.fn() } }),
     addEventListener: jest.fn()
 };
 
@@ -41,7 +41,6 @@ describe('Start Game Button State', () => {
     let games;
     let gameId;
     let currentGame;
-    let currentPlayer;
 
     beforeEach(() => {
         // Reset mock elements
@@ -59,10 +58,8 @@ describe('Start Game Button State', () => {
         gameId = createResult.gameId;
 
         // Add test players
-        const player1Result = addPlayerToGame(games, gameId, 'Alice', '😀');
-        const player2Result = addPlayerToGame(games, gameId, 'Bob', '😎');
-
-        currentPlayer = player1Result.player;
+        addPlayerToGame(games, gameId, 'Alice', '😀');
+        addPlayerToGame(games, gameId, 'Bob', '😎');
 
         // Set up current game state to match what frontend expects
         const game = games.get(gameId);
