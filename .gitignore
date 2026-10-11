@@ -1,4 +1,4 @@
-# Node.js
+# Node.js (package-lock.json is tracked: it pins the exact version of every package)
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -33,8 +33,12 @@ pids
 *.tmp
 *.temp
 
-# Game data (if you add file-based storage later)
+# Game state backups the running server writes every 5 minutes (server.js keep-alive)
 games/*.json
 !games/.gitkeep
-.claude/settings.local.json
+
+# Playwright MCP: page snapshots and screenshots from checking the app by hand
+.playwright-mcp/
+
+# This machine's Claude Code permissions (.claude/settings.json is shared with the project)
 .claude/settings.local.json
