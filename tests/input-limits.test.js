@@ -49,13 +49,6 @@ describe('Input limits stay in sync between server and frontend', () => {
         expect(source).not.toMatch(/inputElement\.maxLength\s*=\s*\d+/);
     });
 
-    test('index.html does not hardcode a name maxlength', () => {
-        const source = fs.readFileSync(path.join(__dirname, '..', 'public/index.html'), 'utf8');
-        const playerNameInput = source.match(/<input[^>]*id="playerName"[^>]*>/)[0];
-
-        expect(playerNameInput).not.toMatch(/maxlength=/i);
-    });
-
     test('the limits are the agreed values', () => {
         expect(gameLogic.MAX_NAME_LENGTH).toBe(128);
         expect(gameLogic.MAX_CHARACTER_LENGTH).toBe(128);

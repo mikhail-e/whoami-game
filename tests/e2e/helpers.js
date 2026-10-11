@@ -95,8 +95,65 @@ const test = base.test.extend({
     },
 });
 
+const { expect } = base;
+
+// Put values into the player's localStorage (the app stores JSON for its own
+// keys). Leaves the player on the landing page; reload or navigate next
+async function seedStorage(player, entries) {
+    await player.page.goto('/');
+    await player.page.evaluate(values => {
+        for (const [key, value] of Object.entries(values)) localStorage.setItem(key, value);
+    }, entries);
+}
+
+// The card of the player with exactly this name. The viewer's own card reads
+// "Name (You)" in the page's language, so a label in brackets may follow
+function playerCard(page, name) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return page.locator('.player-card').filter({
+        has: page.locator('.player-name', { hasText: new RegExp(`^${escaped}(?: \\(.+\\))?$`) }),
+    });
+}
+
+async function waitForPlayers(page, count) {
+    await expect(page.locator('.player-card')).toHaveCount(count);
+}
+
+// Create a room from the landing page and return its code. A player already on
+// the landing page stays on it, so a test can pick an avatar first
+async function createRoom(player) {
+    const { page } = player;
+    if (new URL(page.url(), 'http://x').pathname !== '/') {
+        await page.goto('/');
+    }
+    await page.fill('#playerName', player.name);
+    await page.click('#createNewGame');
+    await expect(page).toHaveURL(/\/game\/[A-Z0-9]{6}$/);
+    await expect(playerCard(page, player.name).first()).toBeVisible();
+    return new URL(page.url()).pathname.split('/').pop();
+}
+
+// Join a room the way a friend does: open the room link, land on /?join=CODE,
+// enter a name, press Join. A player already on that page stays on it
+async function joinRoom(player, code) {
+    const { page } = player;
+    if (!page.url().endsWith(`/?join=${code}`)) {
+        await page.goto(`/game/${code}`);
+        await expect(page).toHaveURL(new RegExp(`/\\?join=${code}$`));
+    }
+    await page.fill('#playerName', player.name);
+    await page.click('#joinBtn');
+    await expect(page).toHaveURL(new RegExp(`/game/${code}$`));
+    await expect(playerCard(page, player.name).first()).toBeVisible();
+}
+
 module.exports = {
     test,
-    expect: base.expect,
+    expect,
     text,
+    seedStorage,
+    playerCard,
+    waitForPlayers,
+    createRoom,
+    joinRoom,
 };
