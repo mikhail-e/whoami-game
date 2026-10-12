@@ -2,7 +2,7 @@
 // axe cannot measure contrast on the page's gradient background (it reports
 // such text as "incomplete", not as a violation): that needs a pixel check
 const { AxeBuilder } = require('@axe-core/playwright');
-const { test, expect, createRoom, joinRoom, waitForPlayers, playerCard, startedGame } = require('./helpers');
+const { test, expect, text, PAGE_STATUS_404, createRoom, joinRoom, waitForPlayers, playerCard, startedGame } = require('./helpers');
 
 const WCAG_21_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
@@ -12,8 +12,13 @@ async function violations(page, only) {
     // on a phone the confirm button sits under the finger that opened its
     // window and turns red, and .mobile-modal-btn animates that change even
     // with reduced motion. A transition can start at any moment, so waiting
-    // for running ones is not enough: switch them off for the scan
-    await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; }' });
+    // for running ones is not enough: switch them off for the scan. An added
+    // <style> tag is inline code the Content Security Policy blocks; a rule
+    // put into the page's own stylesheet from a script is allowed
+    await page.evaluate(() => {
+        const sheet = [...document.styleSheets].find(each => each.href && each.href.endsWith('/css/style.css'));
+        sheet.insertRule('*, *::before, *::after { transition: none !important; }', sheet.cssRules.length);
+    });
     let builder = new AxeBuilder({ page }).withTags(WCAG_21_AA);
     if (only) builder = builder.include(only);
     const result = await builder.analyze();
@@ -27,6 +32,15 @@ test('the landing page', async ({ newPlayer }) => {
     await expect(page.locator('#avatarSelector .avatar-option')).toHaveCount(12);
 
     expect(await violations(page)).toEqual([]);
+});
+
+test('the page-not-found page', async ({ newPlayer }) => {
+    const alice = await newPlayer('Alice');
+    alice.allowConsoleError(PAGE_STATUS_404);
+    await alice.page.goto('/no-such/page/here');
+    await expect(alice.page.getByRole('heading', { name: text('notFoundTitle') })).toBeVisible();
+
+    expect(await violations(alice.page)).toEqual([]);
 });
 
 test('a room while players assign characters', async ({ newPlayer }) => {

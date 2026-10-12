@@ -162,7 +162,15 @@ const translations = {
         // PWA messages
         updateAvailable: "🆕 Update Available!",
         updateDescription: "A new version of the app is ready. Reload to get the latest features.",
-        updateNow: "Update Now"
+        updateNow: "Update Now",
+
+        // Footer of the landing page
+        buyCoffee: "Support the author: buy me a coffee",
+
+        // Page for an address with nothing on it (404.html)
+        notFoundTitle: "Page not found",
+        notFoundText: "There is nothing at this address. The game is on the main page.",
+        openGame: "Open the game"
     },
     
     ru: {
@@ -324,7 +332,15 @@ const translations = {
         // PWA messages
         updateAvailable: "🆕 Доступно обновление!",
         updateDescription: "Новая версия приложения готова. Перезагрузите, чтобы получить последние функции.",
-        updateNow: "Обновить сейчас"
+        updateNow: "Обновить сейчас",
+
+        // Footer of the landing page
+        buyCoffee: "Поддержать автора: угостить кофе",
+
+        // Page for an address with nothing on it (404.html)
+        notFoundTitle: "Страница не найдена",
+        notFoundText: "По этому адресу ничего нет. Игра — на главной странице.",
+        openGame: "Открыть игру"
     }
 };
 
