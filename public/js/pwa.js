@@ -1,6 +1,6 @@
 // Who am I? Game - PWA Installation and Service Worker Management
-// i18n comes from translations.js, debugLog from utils.js (both loaded before this file)
-/* global i18n, debugLog */
+// debugLog and getText come from utils.js (loaded before this file)
+/* global debugLog, getText */
 
 class PWAManager {
     constructor() {
@@ -85,10 +85,10 @@ class PWAManager {
         updateBanner.className = 'alert alert-warning alert-dismissible fade show';
 
         // Get localized text (fallback to English if i18n not available)
-        const updateAvailableText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('updateAvailable') : '🆕 Update Available!';
-        const updateDescriptionText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('updateDescription') : 'A new version of the app is ready. Reload to get the latest features.';
-        const updateNowText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('updateNow') : 'Update Now';
-        const closeText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('close') : 'Close';
+        const updateAvailableText = getText('updateAvailable', '🆕 Update Available!');
+        const updateDescriptionText = getText('updateDescription', 'A new version of the app is ready. Reload to get the latest features.');
+        const updateNowText = getText('updateNow', 'Update Now');
+        const closeText = getText('close', 'Close');
 
         updateBanner.innerHTML = `
             <div class="d-flex align-items-center">

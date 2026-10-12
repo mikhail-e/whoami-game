@@ -430,7 +430,7 @@ class Localization {
     // list does not know, like a network error, is shown as it came
     serverErrorText(error) {
         const texts = serverErrors[this.currentLanguage];
-        return texts && Object.hasOwn(texts, error) ? texts[error] : error;
+        return texts && Object.prototype.hasOwnProperty.call(texts, error) ? texts[error] : error;
     }
 
     updateTexts() {
