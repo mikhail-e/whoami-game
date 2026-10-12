@@ -165,7 +165,12 @@ const translations = {
         updateNow: "Update Now",
 
         // Footer of the landing page
-        buyCoffee: "Support the author: buy me a coffee"
+        buyCoffee: "Support the author: buy me a coffee",
+
+        // Page for an address with nothing on it (404.html)
+        notFoundTitle: "Page not found",
+        notFoundText: "There is nothing at this address. The game is on the main page.",
+        openGame: "Open the game"
     },
     
     ru: {
@@ -330,7 +335,12 @@ const translations = {
         updateNow: "Обновить сейчас",
 
         // Footer of the landing page
-        buyCoffee: "Поддержать автора: угостить кофе"
+        buyCoffee: "Поддержать автора: угостить кофе",
+
+        // Page for an address with nothing on it (404.html)
+        notFoundTitle: "Страница не найдена",
+        notFoundText: "По этому адресу ничего нет. Игра — на главной странице.",
+        openGame: "Открыть игру"
     }
 };
 

@@ -18,7 +18,7 @@ test('the pages load nothing from other sites', async ({ newPlayer, baseURL }) =
     expect(foreign).toEqual([]);
 });
 
-for (const address of ['/', '/js/game.js', '/vendor/bootstrap/bootstrap.min.css', 'a room']) {
+for (const address of ['/', '/js/game.js', '/vendor/bootstrap/bootstrap.min.css', '/no-such/page', 'a room']) {
     test(`${address} answers with the security headers`, async ({ newPlayer, request }) => {
         let url = address;
         if (address === 'a room') url = `/game/${await createRoom(await newPlayer('Alice'))}`;

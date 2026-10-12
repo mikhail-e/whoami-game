@@ -205,6 +205,11 @@ app.post('/api/recreate-game', jsonBody, (req, res) => {
     res.json(result);
 });
 
+// Any address nobody answered above: the game's own page, status 404
+app.use((req, res) => {
+    res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+});
+
 // Wrap a socket event handler so a bad payload can never crash the server:
 // guarantees `data` is an object and catches unexpected errors.
 function safeHandler(socket, eventName, handler) {
