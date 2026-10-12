@@ -59,6 +59,19 @@ test('the switch changes texts, placeholders, titles and aria-labels and is reme
     await expect(heading(page)).toHaveText(text('title', 'ru'));
 });
 
+// A screen reader picks its voice by the page's lang, a browser decides by it
+// whether to offer a translation
+test('the page says which language it is in', async ({ newPlayer }) => {
+    const { page } = await newPlayer('Алиса', { locale: 'ru-RU' });
+    await page.goto('/');
+    await expect(heading(page)).toHaveText(text('title', 'ru'));
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
+
+    await page.locator('.lang-toggle-btn').click();
+
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+});
+
 test('in a room the switch re-renders the status and the cards', async ({ newPlayer }) => {
     const alice = await newPlayer('Alice');
     const bob = await newPlayer('Bob', { locale: 'ru-RU' });

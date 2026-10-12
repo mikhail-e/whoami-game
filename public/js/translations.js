@@ -432,6 +432,10 @@ class Localization {
     }
 
     updateTexts() {
+        // The page's language: a screen reader picks its voice by it, a browser
+        // decides by it whether to offer a translation
+        document.documentElement.lang = this.currentLanguage;
+
         // Update all elements with data-i18n attribute
         document.querySelectorAll('[data-i18n]').forEach(element => {
             const key = element.getAttribute('data-i18n');
