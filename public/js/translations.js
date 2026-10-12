@@ -162,7 +162,10 @@ const translations = {
         // PWA messages
         updateAvailable: "🆕 Update Available!",
         updateDescription: "A new version of the app is ready. Reload to get the latest features.",
-        updateNow: "Update Now"
+        updateNow: "Update Now",
+
+        // Footer of the landing page
+        buyCoffee: "Support the author: buy me a coffee"
     },
     
     ru: {
@@ -324,7 +327,10 @@ const translations = {
         // PWA messages
         updateAvailable: "🆕 Доступно обновление!",
         updateDescription: "Новая версия приложения готова. Перезагрузите, чтобы получить последние функции.",
-        updateNow: "Обновить сейчас"
+        updateNow: "Обновить сейчас",
+
+        // Footer of the landing page
+        buyCoffee: "Поддержать автора: угостить кофе"
     }
 };
 

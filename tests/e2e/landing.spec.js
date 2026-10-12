@@ -143,3 +143,13 @@ test('a tampered saved avatar is ignored', async ({ newPlayer }) => {
     await expect(avatarTiles(alice.page)).toHaveCount(12);
     expect(await avatarValues(alice.page)).not.toContain('<b>x</b>');
 });
+
+test('the coffee button opens Buy Me a Coffee in a new tab', async ({ newPlayer }) => {
+    const { page } = await newPlayer('Alice');
+    await page.goto('/');
+    const link = page.getByRole('link', { name: text('buyCoffee') });
+
+    await expect(link).toHaveAttribute('href', 'https://www.buymeacoffee.com/mikhail.e');
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', /\bnoopener\b/);
+});
