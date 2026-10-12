@@ -31,6 +31,16 @@ function text(key, lang = 'en', placeholders = {}) {
     return value;
 }
 
+// The trace Playwright records for a failed test (trace: 'retain-on-failure')
+// copies the page's images, a blob: one too, with fetch(), and the Content
+// Security Policy's connect-src 'self' blocks that. The game itself never
+// fetches a blob: address: this violation is the test tool's own
+const TRACE_RECORDER_VIOLATION = /^Connecting to 'blob:[^']*' violates the following Content Security Policy directive: "connect-src|^Content Security Policy: connect-src blocked blob$/;
+
+// A page the server answers with status 404 (404.html): the browser reports
+// that status in the console, and a test that opens such a page expects it
+const PAGE_STATUS_404 = /^Failed to load resource: the server responded with a status of 404/;
+
 // Collect what must never happen on a player's page unless the test said so:
 // a JavaScript error, a console.error, an alert/confirm dialog
 function watchForProblems(player) {
@@ -39,6 +49,7 @@ function watchForProblems(player) {
     page.on('pageerror', error => problems.push(`${player.name}: page error: ${error.message}`));
     page.on('console', message => {
         if (message.type() !== 'error') return;
+        if (TRACE_RECORDER_VIOLATION.test(message.text())) return;
         if (allowedErrors.some(pattern => pattern.test(message.text()))) return;
         problems.push(`${player.name}: console.error: ${message.text()}`);
     });
@@ -71,6 +82,14 @@ const test = base.test.extend({
             const context = await browser.newContext({
                 baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch, reducedMotion, serviceWorkers,
                 locale: options.locale || locale,
+            });
+            // Whatever the Content Security Policy blocks becomes a console.error,
+            // which the guard below fails on. Chromium logs a violation itself
+            // too; this line names the rule and what it blocked
+            await context.addInitScript(() => {
+                document.addEventListener('securitypolicyviolation', event => {
+                    console.error(`Content Security Policy: ${event.violatedDirective} blocked ${event.blockedURI || 'inline code'}`);
+                });
             });
             const page = await context.newPage();
             const player = {
@@ -292,6 +311,7 @@ module.exports = {
     test,
     expect,
     text,
+    PAGE_STATUS_404,
     pngFile,
     seedStorage,
     playerCard,

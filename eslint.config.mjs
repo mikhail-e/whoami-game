@@ -14,6 +14,9 @@ const sharedRules = {
 };
 
 export default [
+    // Third-party code is checked by its authors, not by our rules
+    { ignores: ["public/vendor/"] },
+
     js.configs.recommended,
 
     // Server (Node, CommonJS)

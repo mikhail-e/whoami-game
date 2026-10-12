@@ -95,14 +95,18 @@ class PWAManager {
                     <strong>${updateAvailableText}</strong><br>
                     <small>${updateDescriptionText}</small>
                 </div>
-                <div class="ms-3">
-                    <button type="button" class="btn btn-warning btn-sm" onclick="window.location.reload()">
-                        ${updateNowText}
-                    </button>
-                </div>
+                <div class="ms-3"></div>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
+
+        // A listener, not onclick="...": the pages run no inline code (CSP)
+        const updateButton = document.createElement('button');
+        updateButton.type = 'button';
+        updateButton.className = 'btn btn-warning btn-sm';
+        updateButton.textContent = updateNowText;
+        updateButton.addEventListener('click', () => window.location.reload());
+        updateBanner.querySelector('.ms-3').append(updateButton);
 
         const container = document.querySelector('.container');
         if (container) {

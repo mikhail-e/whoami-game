@@ -31,3 +31,12 @@ test('the guard fails a test when a page throws', async ({ newPlayer }) => {
     await alice.page.evaluate(() => setTimeout(() => { throw new Error('boom'); }));
     await expect(alice.page.locator('body')).toBeVisible();
 });
+
+test('the guard fails a test when a page breaks the Content Security Policy', async ({ newPlayer }) => {
+    test.fail(true, 'a style the policy blocks must fail the test');
+    const alice = await newPlayer('Alice');
+
+    await alice.page.goto('/');
+    await alice.page.evaluate(() => document.body.setAttribute('style', 'outline: 1px solid red'));
+    await expect(alice.page.locator('body')).toBeVisible();
+});
