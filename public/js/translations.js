@@ -141,6 +141,7 @@ const translations = {
         characterClickToEdit: "Character: {character} (click to edit)",
         someoneNeedsToAssign: "Someone needs to assign you a character!",
         copiedSuccess: "✅ Copied!",
+        close: "Close",
 
         // Error messages
         invalidRoomCode: "Invalid room code",
@@ -311,6 +312,7 @@ const translations = {
         characterClickToEdit: "Персонаж: {character} (нажмите, чтобы изменить)",
         someoneNeedsToAssign: "Кто-то должен назначить вам персонажа!",
         copiedSuccess: "✅ Скопировано!",
+        close: "Закрыть",
 
         // Error messages
         invalidRoomCode: "Неверный код комнаты",

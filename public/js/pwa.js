@@ -88,6 +88,7 @@ class PWAManager {
         const updateAvailableText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('updateAvailable') : '🆕 Update Available!';
         const updateDescriptionText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('updateDescription') : 'A new version of the app is ready. Reload to get the latest features.';
         const updateNowText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('updateNow') : 'Update Now';
+        const closeText = (typeof i18n !== 'undefined' && i18n) ? i18n.getText('close') : 'Close';
 
         updateBanner.innerHTML = `
             <div class="d-flex align-items-center">
@@ -97,7 +98,7 @@ class PWAManager {
                 </div>
                 <div class="ms-3"></div>
             </div>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" data-i18n-aria-label="close" aria-label="${closeText}"></button>
         `;
 
         // A listener, not onclick="...": the pages run no inline code (CSP)

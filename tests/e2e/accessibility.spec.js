@@ -59,6 +59,18 @@ test('a started game', async ({ newPlayer }) => {
     expect(await violations(alice.page)).toEqual([]);
 });
 
+test('the update banner', async ({ newPlayer }) => {
+    const { page } = await newPlayer('Alice');
+    await page.goto('/');
+    await expect(page.locator('#avatarSelector .avatar-option')).toHaveCount(12);
+    // A release cannot be staged in a test: show the banner the way pwa.js
+    // does when a new service worker is ready (site-headers.spec.js)
+    await page.evaluate(() => window.pwaManager.showUpdateAvailable());
+    await expect(page.getByRole('button', { name: text('updateNow') })).toBeVisible();
+
+    expect(await violations(page, '.alert-warning')).toEqual([]);
+});
+
 const windows = [
     { id: 'revealModal', open: page => playerCard(page, 'Alice').locator('.character-sticker.mystery').click() },
     { id: 'restartModal', open: page => page.click('#restartGame') },

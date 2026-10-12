@@ -114,6 +114,24 @@ test("a server error reads in the player's language", async ({ newPlayer }) => {
     await expect.poll(() => dasha.expectedDialogs.length).toBe(0);
 });
 
+test("the close buttons are named in the player's language", async ({ newPlayer }) => {
+    const { players: { Alice: alice } } = await startedGame(newPlayer, ['Alice', 'Bob']);
+    const { page } = alice;
+    await page.locator('.lang-toggle-btn').click();
+    await expect(heading(page)).toHaveText(text('title', 'ru'));
+
+    await page.click('#leaveGame');
+    await expect(page.locator('#leaveModal')).toHaveClass(/\bshow\b/);
+    await expect(page.locator('#leaveModal').getByRole('button', { name: text('close', 'ru'), exact: true })).toBeVisible();
+    await page.locator('#leaveModal').getByRole('button', { name: text('close', 'ru'), exact: true }).click();
+    await expect(page.locator('#leaveModal')).not.toHaveClass(/\bshow\b/);
+
+    // A release cannot be staged in a test: show the banner the way pwa.js does
+    await page.evaluate(() => window.pwaManager.showUpdateAvailable());
+    await page.locator('.alert-warning').getByRole('button', { name: text('close', 'ru'), exact: true }).click();
+    await expect(page.locator('.alert-warning')).toHaveCount(0);
+});
+
 test('an unknown text key shows the key itself', async ({ newPlayer }) => {
     const { page } = await newPlayer('Alice');
     await page.goto('/');
