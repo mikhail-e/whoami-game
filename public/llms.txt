@@ -10,12 +10,12 @@ Key facts:
 - Each player writes a secret character on another player's colored sticker; everyone sees the stickers except their own
 - Your own sticker shows a mask until you reveal it; the game itself (questions and answers) is played by voice, at the table or on a video call
 - A room keeps its players across a page reload or a short loss of connection
-- English and Russian, chosen from the browser's language
+- English and Russian: the browser's language at first, switchable on the page
 - Installable PWA; it needs a connection, since a room lives on the server
 - No account or payment required
 
-Note: the app is JavaScript-rendered, so fetching the HTML alone will not show
-its content — this file is the canonical plain-text description of the site.
+Note: the site's HTML is a form to join or create a room; it does not explain
+the game — this file is the canonical plain-text description of the site.
 
 ## Links
 
