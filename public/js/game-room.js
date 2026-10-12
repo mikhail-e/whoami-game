@@ -93,19 +93,17 @@ async function recreateRoomFromStorage(roomCode, savedGameState) {
             })
         });
 
-        if (!createResponse.ok) {
-            throw new Error(`Failed to recreate room: ${createResponse.status}`);
-        }
+        // A refusal comes with status 400 and the reason in its body: read the
+        // body first, so the player gets the server's reason, not the status
+        const createResult = await createResponse.json().catch(() => ({}));
 
-        const createResult = await createResponse.json();
-
-        if (createResult.success) {
+        if (createResponse.ok && createResult.success) {
             debugLog('✅ Room recreated successfully, now joining...');
 
             // Now join the recreated game (with flag to prevent recursion)
             await joinGameRoom(roomCode, true);
         } else {
-            throw new Error(createResult.error || 'Failed to recreate room');
+            throw new Error(createResult.error || `Failed to recreate room: ${createResponse.status}`);
         }
 
     } catch (error) {
