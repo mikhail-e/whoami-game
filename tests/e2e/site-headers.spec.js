@@ -1,5 +1,5 @@
 // The site's own rules: only its own code on its pages, the security headers
-const { test, expect, createRoom, waitForLanding } = require('./helpers');
+const { test, expect, text, createRoom, waitForLanding } = require('./helpers');
 
 test('the pages load nothing from other sites', async ({ newPlayer, baseURL }) => {
     const alice = await newPlayer('Alice');
@@ -16,4 +16,33 @@ test('the pages load nothing from other sites', async ({ newPlayer, baseURL }) =
     await alice.page.waitForLoadState('load');
 
     expect(foreign).toEqual([]);
+});
+
+for (const address of ['/', '/js/game.js', '/vendor/bootstrap/bootstrap.min.css', 'a room']) {
+    test(`${address} answers with the security headers`, async ({ newPlayer, request }) => {
+        let url = address;
+        if (address === 'a room') url = `/game/${await createRoom(await newPlayer('Alice'))}`;
+        const headers = (await request.get(url)).headers();
+        const policy = headers['content-security-policy'] || '';
+        for (const rule of ["default-src 'self'", "script-src 'self'", "style-src 'self'", "object-src 'none'", "frame-ancestors 'none'"]) {
+            expect(policy).toContain(rule);
+        }
+        expect(headers['x-content-type-options']).toBe('nosniff');
+        expect(headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
+        expect(headers['permissions-policy']).toContain('camera=()');
+        expect(headers['x-powered-by']).toBeUndefined();
+    });
+}
+
+test('Update now on the update banner reloads the page', async ({ newPlayer }) => {
+    const { page } = await newPlayer('Alice');
+    await page.goto('/');
+    await waitForLanding(page);
+    // A release cannot be staged in a test: show the banner the way pwa.js
+    // does when a new service worker is ready (a stand-in, like stubShare)
+    await page.evaluate(() => { window.beforeReload = true; window.pwaManager.showUpdateAvailable(); });
+
+    await page.getByRole('button', { name: text('updateNow') }).click();
+
+    await expect.poll(() => page.evaluate(() => window.beforeReload)).toBeUndefined();
 });

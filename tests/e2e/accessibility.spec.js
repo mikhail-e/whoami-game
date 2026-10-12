@@ -12,8 +12,13 @@ async function violations(page, only) {
     // on a phone the confirm button sits under the finger that opened its
     // window and turns red, and .mobile-modal-btn animates that change even
     // with reduced motion. A transition can start at any moment, so waiting
-    // for running ones is not enough: switch them off for the scan
-    await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; }' });
+    // for running ones is not enough: switch them off for the scan. An added
+    // <style> tag is inline code the Content Security Policy blocks; a rule
+    // put into the page's own stylesheet from a script is allowed
+    await page.evaluate(() => {
+        const sheet = [...document.styleSheets].find(each => each.href && each.href.endsWith('/css/style.css'));
+        sheet.insertRule('*, *::before, *::after { transition: none !important; }', sheet.cssRules.length);
+    });
     let builder = new AxeBuilder({ page }).withTags(WCAG_21_AA);
     if (only) builder = builder.include(only);
     const result = await builder.analyze();
