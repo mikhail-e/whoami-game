@@ -2,7 +2,7 @@
 // axe cannot measure contrast on the page's gradient background (it reports
 // such text as "incomplete", not as a violation): that needs a pixel check
 const { AxeBuilder } = require('@axe-core/playwright');
-const { test, expect, createRoom, joinRoom, waitForPlayers, playerCard, startedGame } = require('./helpers');
+const { test, expect, text, PAGE_STATUS_404, createRoom, joinRoom, waitForPlayers, playerCard, startedGame } = require('./helpers');
 
 const WCAG_21_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
@@ -32,6 +32,15 @@ test('the landing page', async ({ newPlayer }) => {
     await expect(page.locator('#avatarSelector .avatar-option')).toHaveCount(12);
 
     expect(await violations(page)).toEqual([]);
+});
+
+test('the page-not-found page', async ({ newPlayer }) => {
+    const alice = await newPlayer('Alice');
+    alice.allowConsoleError(PAGE_STATUS_404);
+    await alice.page.goto('/no-such/page/here');
+    await expect(alice.page.getByRole('heading', { name: text('notFoundTitle') })).toBeVisible();
+
+    expect(await violations(alice.page)).toEqual([]);
 });
 
 test('a room while players assign characters', async ({ newPlayer }) => {

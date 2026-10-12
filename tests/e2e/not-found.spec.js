@@ -1,9 +1,6 @@
 // An address nobody answers gets the game's own page, public/404.html, with
 // status 404 - at any depth, so its links all start at the site root
-const { test, expect, text, waitForLanding } = require('./helpers');
-
-// The browser reports the page's own status 404 in the console: expected here
-const PAGE_STATUS_404 = /^Failed to load resource: the server responded with a status of 404/;
+const { test, expect, text, PAGE_STATUS_404, waitForLanding } = require('./helpers');
 
 test('a missing address answers 404 with a page in the style of the game', async ({ newPlayer, baseURL }) => {
     const alice = await newPlayer('Alice');

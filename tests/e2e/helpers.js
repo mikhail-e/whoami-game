@@ -37,6 +37,10 @@ function text(key, lang = 'en', placeholders = {}) {
 // fetches a blob: address: this violation is the test tool's own
 const TRACE_RECORDER_VIOLATION = /^Connecting to 'blob:[^']*' violates the following Content Security Policy directive: "connect-src|^Content Security Policy: connect-src blocked blob$/;
 
+// A page the server answers with status 404 (404.html): the browser reports
+// that status in the console, and a test that opens such a page expects it
+const PAGE_STATUS_404 = /^Failed to load resource: the server responded with a status of 404/;
+
 // Collect what must never happen on a player's page unless the test said so:
 // a JavaScript error, a console.error, an alert/confirm dialog
 function watchForProblems(player) {
@@ -307,6 +311,7 @@ module.exports = {
     test,
     expect,
     text,
+    PAGE_STATUS_404,
     pngFile,
     seedStorage,
     playerCard,
