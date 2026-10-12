@@ -4,7 +4,7 @@
 Web application to play the "Who am I?" guessing game remotely with friends and family. Players join a room by a 6-character code, assign secret characters to each other, then guess who they are. Adaptive UI works on desktop and mobile browsers; installable as a PWA.
 
 - **Production:** https://whoami-game.onrender.com/ (Render.com, free plan)
-- **Stack:** Node.js + Express + Socket.IO backend; vanilla JavaScript (ES6+) + Bootstrap 5 frontend; Jest for tests. No build step, no frontend framework.
+- **Stack:** Node.js + Express + Socket.IO backend; vanilla JavaScript (ES6+) + Bootstrap 5 frontend (a local copy); Jest and Playwright for tests. No build step, no frontend framework.
 
 ## About Me (project owner)
 - Beginner web developer; limited experience with Python, HTML, JavaScript
@@ -29,16 +29,19 @@ npx playwright install chromium    # Once per machine: the browser for the tests
 
 ## Architecture
 ```
-server.js                  # Express + Socket.IO wiring: HTTP API, socket events, disk persistence, keep-alive.
-                           # Listens only when run as `node server.js`; exports `app` for tests
+server.js                  # Express + Socket.IO wiring: security headers, HTTP API, 404 page, socket events,
+                           # disk persistence, keep-alive. Listens only when run as `node server.js`; exports `app` for tests
 game-logic.js              # Pure game logic + input validation + connection tracker — no Express/Socket.IO, unit-testable
 public/
 ├── index.html             # Landing page (create/join room, name + avatar selection)
 ├── game.html              # Game room page
+├── 404.html               # Page for an address nothing answers (server.js sends it with status 404; links start at /)
 ├── manifest.json          # PWA manifest
 ├── sw.js                  # Service worker: caches icons only; everything else goes straight to the network
 ├── favicon.ico, icons/    # Branding (SVG icons, 48x48–512x512)
 ├── css/style.css          # Custom styles (gradients, sticker colors, responsive layout)
+├── img/                   # Images that are not icons (the Buy Me a Coffee button); the service worker does not cache them
+├── vendor/bootstrap/      # Bootstrap 5, the same files as the owner's other apps (exact version: the files' headers)
 └── js/
     ├── utils.js           # SHARED code: debugLog, notifications, AppStorage, player ID, validation, app version — reusable code goes HERE
     ├── game.js            # Landing page logic (avatar pool + refresh, create/join buttons)
@@ -59,7 +62,8 @@ games/                     # Runtime game state backups (*.json, gitignored)
 
 ### How it works
 - Games live in an in-memory `Map` in server.js, keyed by 6-character room code (e.g. `ABC123`)
-- **HTTP API:** `POST /api/create-game`, `POST /api/join-game`, `POST /api/recreate-game`; `GET /api/version` (the version from package.json, shown in the footer of both pages by `showAppVersion()` in utils.js); `GET /game/:roomCode` serves game.html (restoring from disk if needed) or redirects to `/?error=room-not-found`
+- **HTTP API:** `POST /api/create-game`, `POST /api/join-game`, `POST /api/recreate-game`; `GET /api/version` (the version from package.json, shown in the footer of both pages by `showAppVersion()` in utils.js); `GET /game/:roomCode` checks the code format first (the code becomes part of a file path), then serves game.html (restoring from disk if needed) or redirects to `/?error=room-not-found`. Any address nothing else answers gets `public/404.html` with status 404
+- **Security headers:** `SECURITY_HEADERS` in server.js goes on every answer of Express (pages, files, API, 404, redirects; Socket.IO answers its own `/socket.io/` requests before Express): the Content Security Policy, Referrer-Policy, Permissions-Policy, nosniff — the list of the owner's Flying Solo. `X-Powered-By` is switched off. Render adds `render.yaml` headers only to static sites, so the server sends them itself
 - **Socket.IO events:** `join-room`, `assign-character`, `start-game`, `reveal-character`, `restart-game`, `leave-game`; server broadcasts with `io.to(room)` (includes the sender — intentional, don't switch to `socket.to()`). Every handler is wrapped in `safeHandler()` so a malformed payload can never crash the process
 - **Leaving:** `leave-game` is accepted only from the socket registered to that player (no kicking others). `removePlayerFromGame` drops the player, their character and reveal status; the last player leaving deletes the game and its disk backup (`deleteGameBackup`, so the old link cannot bring it back). The `player-left` broadcast carries the full state; the leaver redirects to `/?join=CODE` (prefilled rejoin) and the landing page remembers the last used name and avatar (`whoami-player-name` / `whoami-player-avatar` in localStorage, saved on create/join; the saved avatar is placed first in the grid so it gets auto-selected, and is ignored if it's neither in `avatarPool` nor a valid custom data URL)
 - **Returning to a started game:** leaving a started round snapshots the player into `game.recentlyLeft` (character, reveal status, sticker color, join time). Joining with the same `playerId` restores everything and consumes the snapshot; strangers are still rejected with "Game has already started". Restart clears the snapshots. The `player-joined`/`player-reconnected` broadcasts carry `characters`/`revealedPlayers` so other clients see the restored character reappear
@@ -77,6 +81,7 @@ games/                     # Runtime game state backups (*.json, gitignored)
 5. **Never build DOM from user data with `innerHTML`** — player names and characters go through `textContent` (see `createAlertElement()` in utils.js and `updatePlayersList()` in game-room.js)
 6. **Debug output goes through `debugLog()`** (utils.js), never `console.log` in `public/js` (ESLint fails on it). It prints only after `localStorage.setItem('whoami-debug', 'on')` and a reload. `console.warn`/`console.error` are for real problems. The server keeps `console.log`: that is what Render's log shows
 7. **The pages share names through plain `<script>` files** — a top-level name in utils.js or translations.js is visible to the scripts loaded after it. ESLint checks each file on its own, so a file lists what it takes from the others in `/* global ... */` and what it gives in `/* exported ... */`
+8. **Only the game's own code runs on its pages** (Content Security Policy, server.js) — no `style="..."` or `on...="..."` attributes, neither in the markup nor in HTML a script builds: looks go through classes in style.css, handlers through `addEventListener`; a script may still set `element.style`. `tests/code-structure.test.js` checks the attributes, the browser tests' guard any other blocked code. Third-party code goes to `public/vendor/`, never a CDN. A new source in the CSP (another site, `data:`, `blob:`) is a deliberate decision with a comment in `SECURITY_HEADERS`
 
 ## Gotchas
 - **Sticker colors are picked by the server** (`stickerColors` in game-logic.js); the browser only renders `player.stickerColor` as the `color-<name>` class, so every color needs a `.character-sticker.color-<name>` rule in style.css (`tests/improved-sticker-colors.test.js` checks). The avatar pool lives **only** in `public/js/game.js`; the server does not need it
@@ -91,7 +96,8 @@ games/                     # Runtime game state backups (*.json, gitignored)
 - Character assignment: players cannot assign a character to themselves; submitting empty/whitespace text removes the assignment (sticker returns to the "+" state). Escape restores the original character
 - Sticker colors are assigned once when a player joins and never change; unique for up to 7 players, then cycled. Exception: your own hidden character renders as `.character-sticker.mystery` (light dashed style, 🎭 glyph, deliberately NO player color) until revealed
 - **Share button** (`#shareButton` in game.html): `navigator.share` must be called with no `await` before it in the click handler (iOS rejects otherwise); `AbortError` (user closed the share sheet) is intentionally silent; unsupported browsers fall back to `copyRoomLink()`. Tests use `stubShare()` (`tests/e2e/helpers.js`) — a real click opens the OS share sheet, which blocks automation
-- **Browser tests run with `reducedMotion: 'reduce'`** (Bootstrap modals open without their fade), and axe scans with CSS transitions switched off: `.mobile-modal-btn` animates its own color change, which reduced motion does not stop, and a color measured half-way fails contrast. A check that "nothing happened" reads the page once at a known moment — a flash like "✅ Copied!" disappears by itself (`docs/testing.md`, rule 4)
+- **Browser tests run with `reducedMotion: 'reduce'`** (Bootstrap modals open without their fade), and axe scans with CSS transitions switched off: `.mobile-modal-btn` animates its own color change, which reduced motion does not stop, and a color measured half-way fails contrast. The rule goes into the page's own stylesheet with `insertRule`: an added `<style>` tag is inline code the CSP blocks. A check that "nothing happened" reads the page once at a known moment — a flash like "✅ Copied!" disappears by itself (`docs/testing.md`, rule 4)
+- **The Content Security Policy allows images as `data:` and `blob:`** besides the game's own files: Bootstrap draws its icons as `data:` images, photo avatars are `data:image` URLs, and an uploaded photo is opened at a `blob:` address before it is shrunk (game.js `loadImageFromFile`). Everything else — scripts, styles, connections (Socket.IO included), fonts — only from the game's own site. Buy Me a Coffee is therefore a plain link with an image (`.bmc-button` in the landing page footer), not the service's widget script. The browser tests' guard fails on any violation; the one it ignores is the test tool's own: the trace Playwright records for a failed test fetches a `blob:` image of the page
 - Button feedback flashes ("✅ Copied!") set `textContent`, which flattens the inner `data-i18n` span — after the first flash that button's label stops reacting to language switches until reload (long-standing quirk of Copy Link, shared by Share via `copyRoomLink()`)
 - **PWA link capturing is a platform matter, not a bug.** iOS cannot open links in an installed web app at all (Apple limitation — links always open the browser/webview; no web-side fix exists). Android (installed via Chrome) captures in-scope links because `scope: "/"` covers `/game/*`; messenger in-app browsers bypass this. `launch_handler: navigate-existing` in manifest.json makes a captured link reuse the open app window (Android/desktop). `tests/manifest.test.js` guards these fields
 - **The service worker caches icons and nothing else.** The game requires a live server (a room lives in server memory), so offline support is pointless, and caching HTML/JS only ever produced "player stuck on an old version" bugs. The worker exists for installability plus free icon caching. `tests/service-worker.test.js` fails if HTML/CSS/JS is added back to the cache. Icon matching is by **exact pathname** — an earlier substring check matched every URL because `'/'` was in the list. **Any change to sw.js, even a comment, is a new worker**: browsers install it and pwa.js shows every open page the "Update available — Reload" banner, so edit sw.js only for a real reason
@@ -112,7 +118,8 @@ The owner's decisions, with the reason.
 - **The version is written only in package.json**: the server reads it (`/api/version`), the pages ask the server — no copy to keep in sync
 - **Online only, no offline mode**: a room lives in server memory (see the service worker gotcha above)
 - **Browser tests in Chromium only** — a phone (Pixel 7) and a desktop, like the owner's other apps; WebKit (Safari) is not covered
-- **Tests use the real code**: no test reads the source as text or keeps its own copy of the game's code (the exceptions are the deliberate copies listed in the gotchas). Tests act like players: through pages and buttons, never through server memory, so the same suite runs against production
+- **Behaviour is tested through the pages, never by searching the code**: a test that looks for `navigator.share` in a file stays green while the button is broken. Tests act like players — through pages, buttons and the server's answers, never through server memory — so the same suite runs against production, and no test keeps its own copy of the game's code. A rule about how the code is written may be checked by reading the files (`tests/code-structure.test.js`), like the checks of the deliberate copies listed in the gotchas
+- **Bootstrap is local, not on a CDN**: the Content Security Policy allows only the game's own site, and the owner's apps share one Bootstrap (`public/vendor/bootstrap/`)
 - **Docs hold principles, not history**: CLAUDE.md, `docs/` and the skills say how things work and why; no development history, dates or measured numbers (sizes, counts, timings) — those live in the code and in git. A design spec or plan of a feature leaves the repository once the feature is merged; what stays true goes here
 
 ## Ideas for later
