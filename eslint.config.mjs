@@ -74,10 +74,10 @@ export default [
         rules: sharedRules,
     },
 
-    // Browser tests (Playwright, CommonJS): callbacks passed to page.evaluate()
-    // run in the page, where browser names exist
+    // Browser tests and the developer's scripts (Playwright, CommonJS):
+    // callbacks passed to page.evaluate() run in the page, where browser names exist
     {
-        files: ["tests/e2e/**/*.js", "playwright.config.js"],
+        files: ["tests/e2e/**/*.js", "playwright.config.js", "scripts/*.js"],
         languageOptions: {
             sourceType: "commonjs",
             globals: {
