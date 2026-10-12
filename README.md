@@ -34,6 +34,7 @@ npm run test:e2e   # browser tests only: a phone and a desktop, several players 
 - `CLAUDE.md` — architecture, rules, git flow
 - `docs/testing.md` — how the tests are organized and written
 - `docs/release.md` — releases, hotfixes and the check of production
+- `docs/publishing.md` — link previews, robots, where the site's address is written
 
 ## Technologies
 

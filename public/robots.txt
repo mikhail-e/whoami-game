@@ -1,0 +1,8 @@
+# Who am I? - robots.txt
+#
+# Nothing is disallowed on purpose. Room pages (/game/...) stay out of search
+# results by their own noindex tag: a Disallow here would also stop X from
+# showing the card of a shared room link (docs/publishing.md).
+
+User-agent: *
+Allow: /
