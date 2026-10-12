@@ -7,9 +7,12 @@ const { test, expect, createRoom } = require('./helpers');
 // WhatsApp is known to drop a preview picture bigger than this
 const MAX_PICTURE_BYTES = 300 * 1024;
 
-// The page's head as a bot reads it: the server's answer, parsed, no scripts run
+// The page's head as a bot reads it: the server's answer, parsed, no scripts run.
+// Redirects are not followed: the card must be the one of this very address
 async function headOf(page, request, url) {
-    const html = await (await request.get(url)).text();
+    const answer = await request.get(url, { maxRedirects: 0 });
+    expect(answer.status(), url).toBe(200);
+    const html = await answer.text();
     return page.evaluate(source => {
         const doc = new DOMParser().parseFromString(source, 'text/html');
         const tags = {};
@@ -19,7 +22,7 @@ async function headOf(page, request, url) {
         const ldJson = doc.querySelector('script[type="application/ld+json"]');
         return {
             tags,
-            // Facebook reads only property="og:...", X only name="twitter:..."
+            // The services document property="og:..." and name="twitter:..."
             misplaced: [...doc.querySelectorAll('meta[name^="og:"], meta[property^="twitter:"]')].map(meta => meta.outerHTML),
             canonical: doc.querySelector('link[rel="canonical"]')?.getAttribute('href') ?? null,
             ldJson: ldJson ? ldJson.textContent : null,
@@ -39,6 +42,7 @@ for (const [name, address] of Object.entries(pages)) {
         const { tags, misplaced } = await headOf(page, request, url);
 
         expect(tags['og:type']).toBe('website');
+        expect(tags['og:locale']).toBe('en_US');
         expect(tags['og:site_name']).toBe('Who am I?');
         expect(tags['og:title']).toMatch(/^Who am I\?/);
         expect(tags['og:description']).toBeTruthy();
@@ -64,6 +68,7 @@ test('the picture of a card is a 1200×630 JPEG of this site, small enough for W
     const answer = await request.get(picture.pathname);
     expect(answer.status()).toBe(200);
     expect(answer.headers()['content-type']).toBe('image/jpeg');
+    expect(tags['og:image:type']).toBe('image/jpeg');
     expect((await answer.body()).length).toBeLessThan(MAX_PICTURE_BYTES);
 
     // Measured inside a page of the game: Chrome's own viewer of a bare image
@@ -93,6 +98,18 @@ test('the landing page names its own address, and Google gets a description of t
     expect(description.url).toBe(canonical);
 });
 
+test('a link to a room that has ended leads to the landing page and its card', async ({ newPlayer, request }) => {
+    const answer = await request.get('/game/ZZZZZZ', { maxRedirects: 0 });
+    expect(answer.status()).toBe(302);
+    const target = answer.headers().location;
+    expect(new URL(target, 'http://site').pathname).toBe('/');
+
+    const { page } = await newPlayer('Reader');
+    const { tags } = await headOf(page, request, target);
+    expect(tags['og:title']).toMatch(/^Who am I\?/);
+    expect(tags['og:image']).toBeTruthy();
+});
+
 test('a room link keeps its card but stays out of search results', async ({ newPlayer, request }) => {
     const url = `/game/${await createRoom(await newPlayer('Alice'))}`;
     const { page } = await newPlayer('Reader');
@@ -111,16 +128,25 @@ test('a room link keeps its card but stays out of search results', async ({ newP
     }
 });
 
-test('robots.txt lets every robot in, rooms included', async ({ request }) => {
+// A Disallow rule as robots read it (RFC 9309): a path prefix, * for any
+// characters, $ for the end of the address
+function closes(rule, address) {
+    const pattern = rule.replace(/[.+?^{}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+    return new RegExp(`^${pattern}`).test(address);
+}
+
+test('robots.txt lets every robot in: the pages, the rooms and the picture of the card', async ({ newPlayer, request }) => {
     const answer = await request.get('/robots.txt');
     expect(answer.status()).toBe(200);
     expect(answer.headers()['content-type']).toMatch(/^text\/plain/);
     const rules = await answer.text();
     expect(rules).toMatch(/^User-agent: \*$/m);
 
-    // X shows no card for a page robots.txt closes
-    const closed = [...rules.matchAll(/^Disallow:[ \t]*(\S+)/gm)].map(([, prefix]) => prefix)
-        .filter(prefix => ['/', '/game/ABC123'].some(address => address.startsWith(prefix)));
+    // X shows no card for a page or a picture robots.txt closes
+    const { page } = await newPlayer('Reader');
+    const picture = new URL((await headOf(page, request, '/')).tags['og:image']).pathname;
+    const closed = [...rules.matchAll(/^disallow:[ \t]*(\S+)/gim)].map(([, rule]) => rule)
+        .filter(rule => ['/', '/game/ABC123', picture].some(address => closes(rule, address)));
     expect(closed).toEqual([]);
 });
 
