@@ -116,9 +116,10 @@ async function recreateRoomFromStorage(roomCode, savedGameState) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Get room code from URL
+    // Get room code from URL. Codes are upper case; a link typed or passed on
+    // in lower case still opens the room (the server reads it the same way)
     const urlPath = window.location.pathname;
-    const roomCode = urlPath.split('/').pop();
+    const roomCode = urlPath.split('/').pop().toUpperCase();
     
     if (!roomCode || roomCode.length !== 6) {
         alert(getText('invalidRoomCode', 'Invalid room code'));
