@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Link preview picture (source)</title>
+<!-- The source of public/img/og-image.jpg: `node scripts/og-image.js` takes
+     the picture (docs/publishing.md). It lies outside public/, so the site
+     never serves it, and it uses the game's own styles and classes: the card
+     shows what the link opens, and a style change reaches it with a new shot -->
+<link rel="stylesheet" href="../public/vendor/bootstrap/bootstrap.min.css">
+<link rel="stylesheet" href="../public/css/style.css">
+<style>
+  /* Only the frame of the picture: 1200×630, the title left, the players right */
+  body {
+    width: 1200px;
+    height: 630px;
+    min-height: 0;
+    padding: 0 60px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 48px;
+  }
+  .title { flex: 0 0 440px; color: white; }
+  .title h1 { font-size: 84px; font-weight: 700; line-height: 1.1; margin: 0 0 28px; white-space: nowrap; }
+  .title .mask { font-size: 110px; }
+  .title p { font-size: 36px; line-height: 1.25; margin: 0; opacity: 0.95; }
+  .game-card { flex: 1; margin: 0; padding: 26px; }
+  .player-list { grid-template-columns: repeat(3, 1fr); margin: 0; }
+  .character-sticker { left: 0; right: 0; margin: 10px 0 0; min-height: 96px; }
+</style>
+</head>
+<body>
+  <div class="title">
+    <h1><span class="mask">🎭</span><br>Who am I?</h1>
+    <p>Guess your secret character with friends</p>
+  </div>
+  <div class="game-card">
+    <div class="player-list">
+      <div class="player-card">
+        <div class="player-avatar">🐱</div>
+        <div class="player-name">Anna</div>
+        <div class="character-sticker color-red">Sherlock Holmes</div>
+      </div>
+      <div class="player-card">
+        <div class="player-avatar">🐧</div>
+        <div class="player-name">Max</div>
+        <div class="character-sticker color-blue">Cleopatra</div>
+      </div>
+      <div class="player-card">
+        <div class="player-avatar">🦄</div>
+        <div class="player-name">Kate (<strong>You</strong>)</div>
+        <div class="character-sticker mystery">🎭</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
