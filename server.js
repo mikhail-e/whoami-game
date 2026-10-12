@@ -47,7 +47,9 @@ const SECURITY_HEADERS = {
     // requests and its WebSocket. No plugins, no <base>, and no other site
     // may show the game in a frame.
     'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
-    // A link to another site (Buy Me a Coffee) tells it only the site, not the page
+    // A link to another site tells it only the game's address, never the page:
+    // a room's address holds its code. The coffee link sends nothing at all
+    // (rel="noreferrer"); this covers any link without it
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     // Browser features the game never uses (Web Share and the photo picker
     // are not among them)
