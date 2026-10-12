@@ -1,6 +1,6 @@
 // Who am I? Game Room - Frontend JavaScript
 // Names from utils.js (loaded before this file; see the note at the top of utils.js)
-/* global debugLog, MAX_CHARACTER_LENGTH, isCustomAvatar, getText, showNotification, AppStorage, handleApiError, PLAYER_ID */
+/* global debugLog, MAX_CHARACTER_LENGTH, isCustomAvatar, getText, serverErrorText, showNotification, AppStorage, handleApiError, PLAYER_ID */
 
 let socket;
 let currentGame = null;
@@ -110,7 +110,7 @@ async function recreateRoomFromStorage(roomCode, savedGameState) {
 
     } catch (error) {
         console.error('❌ Error recreating room:', error);
-        alert(`${getText('failedRecoverGame', 'Failed to recover game')}: ${error.message}. ${getText('pleaseCreateNewRoom', 'Please create a new room.')}`);
+        alert(`${getText('failedRecoverGame', 'Failed to recover game')}: ${serverErrorText(error.message)}. ${getText('pleaseCreateNewRoom', 'Please create a new room.')}`);
         window.location.href = '/';
     }
 }
@@ -347,7 +347,7 @@ function initializeSocket(roomCode) {
         // then rebuild the players list from the last known state
         cancelActiveEdits();
         updatePlayersList();
-        alert(error);
+        alert(serverErrorText(error));
     });
     
     socket.on('disconnect', () => {
@@ -427,7 +427,7 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
                 }
             }
 
-            alert(result.error || getText('failedJoinGame', 'Failed to join game'));
+            alert(serverErrorText(result.error) || getText('failedJoinGame', 'Failed to join game'));
             window.location.href = '/';
         }
     } catch (error) {

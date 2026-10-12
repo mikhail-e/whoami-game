@@ -1,7 +1,8 @@
 // English and Russian: the browser's language, the saved choice, the switch,
 // and texts the game builds itself (status, cards, notifications)
 const {
-    test, expect, text, seedStorage, createRoom, joinRoom, playerCard, waitForPlayers, startedGame, revealOwnCharacter,
+    test, expect, text, serverErrorText, seedStorage, createRoom, joinRoom, playerCard, waitForPlayers, waitForLanding,
+    startedGame, revealOwnCharacter,
 } = require('./helpers');
 
 // i18n: the page's Localization from translations.js, used inside page.evaluate()
@@ -83,6 +84,21 @@ test("the reveal notification reads in each player's language", async ({ newPlay
         text('playerRevealedNotification', 'ru', { playerName: 'Alice', character: characters.Alice }));
     await expect(alice.page.locator('.alert.position-fixed')).toContainText(
         text('playerRevealedNotification', 'en', { playerName: 'Alice', character: characters.Alice }));
+});
+
+test("a server error reads in the player's language", async ({ newPlayer }) => {
+    const { code } = await startedGame(newPlayer, ['Alice', 'Bob']);
+    const dasha = await newPlayer('Даша', { locale: 'ru-RU' });
+    dasha.expectDialog(serverErrorText('Game has already started', 'ru'));
+    // The server answers 400; the browser logs that response itself
+    dasha.allowConsoleError(/status of 400/);
+
+    await dasha.page.goto(`/?join=${code}`);
+    await waitForLanding(dasha.page);
+    await dasha.page.fill('#playerName', 'Даша');
+    await dasha.page.click('#joinBtn');
+
+    await expect.poll(() => dasha.expectedDialogs.length).toBe(0);
 });
 
 test('an unknown text key shows the key itself', async ({ newPlayer }) => {

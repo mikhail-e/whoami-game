@@ -28,7 +28,16 @@ global.CustomEvent = class CustomEvent {
     }
 };
 
-const { translations, Localization } = require('../public/js/translations');
+const fs = require('fs');
+const path = require('path');
+const { translations, serverErrors, Localization } = require('../public/js/translations');
+
+// Every error text the server can send: game-logic.js and server.js answer in
+// English, as `error: '...'` or socket.emit('error', '...')
+const SERVER_ERROR_TEXTS = [...new Set(['game-logic.js', 'server.js'].flatMap(file => {
+    const source = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
+    return [...source.matchAll(/error: '([^']+)'|emit\('error', '([^']+)'\)/g)].map(match => match[1] || match[2]);
+}))];
 
 describe('Real translations.js', () => {
     let i18n;
@@ -99,6 +108,36 @@ describe('Real translations.js', () => {
 
         test('returns the key itself when it does not exist anywhere', () => {
             expect(i18n.getText('definitelyNotAKey')).toBe('definitelyNotAKey');
+        });
+    });
+
+    // The server's English texts have a copy in serverErrors (translations.js):
+    // a player reads a server error in the page's language
+    describe('server errors', () => {
+        test('the server texts are found', () => {
+            expect(SERVER_ERROR_TEXTS).toEqual(expect.arrayContaining(['Game has already started', 'Something went wrong, please try again']));
+        });
+
+        test('every error the server sends has a Russian text', () => {
+            const missing = SERVER_ERROR_TEXTS.filter(text => !Object.hasOwn(serverErrors.ru, text));
+            expect(missing).toEqual([]);
+        });
+
+        test('every translated error is one the server sends', () => {
+            const stale = Object.keys(serverErrors.ru).filter(text => !SERVER_ERROR_TEXTS.includes(text));
+            expect(stale).toEqual([]);
+        });
+
+        test('reads in the current language', () => {
+            expect(i18n.serverErrorText('Game has already started')).toBe('Game has already started');
+            i18n.currentLanguage = 'ru';
+            expect(i18n.serverErrorText('Game has already started')).toBe(serverErrors.ru['Game has already started']);
+        });
+
+        test('a text the list does not know is shown as it came', () => {
+            i18n.currentLanguage = 'ru';
+            expect(i18n.serverErrorText('Failed to fetch')).toBe('Failed to fetch');
+            expect(i18n.serverErrorText('constructor')).toBe('constructor');
         });
     });
 

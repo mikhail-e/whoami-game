@@ -13,10 +13,10 @@ function loadTranslations() {
     const source = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'js', 'translations.js'), 'utf8');
     const sandbox = { module: { exports: {} }, document: { addEventListener() {} } };
     vm.runInNewContext(source, sandbox);
-    return sandbox.module.exports.translations;
+    return sandbox.module.exports;
 }
 
-const translations = loadTranslations();
+const { translations, serverErrors } = loadTranslations();
 
 // A text from translations.js, with {placeholders} filled the way
 // Localization.getText fills them: tests never type the game's texts by hand
@@ -29,6 +29,15 @@ function text(key, lang = 'en', placeholders = {}) {
         value = value.split(`{${placeholder}}`).join(String(replacement));
     }
     return value;
+}
+
+// A server error (it answers in English) as the page shows it in this language
+function serverErrorText(error, lang = 'en') {
+    if (lang === 'en') return error;
+    if (!Object.hasOwn(serverErrors[lang] || {}, error)) {
+        throw new Error(`No ${lang} text for the server error "${error}"`);
+    }
+    return serverErrors[lang][error];
 }
 
 // The trace Playwright records for a failed test (trace: 'retain-on-failure')
@@ -311,6 +320,7 @@ module.exports = {
     test,
     expect,
     text,
+    serverErrorText,
     PAGE_STATUS_404,
     pngFile,
     seedStorage,
