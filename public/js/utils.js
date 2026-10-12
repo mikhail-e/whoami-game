@@ -73,6 +73,8 @@ function createAlertElement(message, className) {
     closeButton.type = 'button';
     closeButton.className = 'btn-close';
     closeButton.setAttribute('data-bs-dismiss', 'alert');
+    closeButton.setAttribute('data-i18n-aria-label', 'close');
+    closeButton.setAttribute('aria-label', getText('close', 'Close'));
 
     alertDiv.appendChild(messageSpan);
     alertDiv.appendChild(closeButton);

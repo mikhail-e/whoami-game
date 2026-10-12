@@ -34,6 +34,15 @@ test('the landing page', async ({ newPlayer }) => {
     expect(await violations(page)).toEqual([]);
 });
 
+// A room link opens the landing page with a notification ("Ready to join")
+test('the landing page from a room link', async ({ newPlayer }) => {
+    const { page } = await newPlayer('Alice');
+    await page.goto('/?join=ZZZZZZ');
+    await expect(page.locator('.alert-info')).toContainText(text('readyToJoin'));
+
+    expect(await violations(page)).toEqual([]);
+});
+
 test('the page-not-found page', async ({ newPlayer }) => {
     const alice = await newPlayer('Alice');
     alice.allowConsoleError(PAGE_STATUS_404);
