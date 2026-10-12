@@ -4,7 +4,7 @@
 // is visible to the scripts loaded after it. ESLint checks each file on its own:
 // "exported" lists what other files use from here, "global" what this file uses
 // from translations.js.
-/* exported debugLog, MAX_NAME_LENGTH, MAX_CHARACTER_LENGTH, isCustomAvatar, getText, showError, showInfo,
+/* exported debugLog, MAX_NAME_LENGTH, MAX_CHARACTER_LENGTH, isCustomAvatar, getText, serverErrorText, showError, showInfo,
    showNotification, AppStorage, handleApiError, PLAYER_ID */
 /* global i18n */
 
@@ -52,6 +52,14 @@ function getText(key, fallback, placeholders = {}) {
     return fallback;
 }
 
+// An error the server sent (in English), in the page's language
+function serverErrorText(error) {
+    if (typeof i18n !== 'undefined' && i18n) {
+        return i18n.serverErrorText(error);
+    }
+    return error;
+}
+
 // Build a dismissible Bootstrap alert. The message is inserted as plain text
 // (never as HTML) so user-controlled content like player names cannot inject markup.
 function createAlertElement(message, className) {
@@ -65,6 +73,8 @@ function createAlertElement(message, className) {
     closeButton.type = 'button';
     closeButton.className = 'btn-close';
     closeButton.setAttribute('data-bs-dismiss', 'alert');
+    closeButton.setAttribute('data-i18n-aria-label', 'close');
+    closeButton.setAttribute('aria-label', getText('close', 'Close'));
 
     alertDiv.appendChild(messageSpan);
     alertDiv.appendChild(closeButton);

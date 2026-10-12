@@ -34,6 +34,15 @@ test('the landing page', async ({ newPlayer }) => {
     expect(await violations(page)).toEqual([]);
 });
 
+// A room link opens the landing page with a notification ("Ready to join")
+test('the landing page from a room link', async ({ newPlayer }) => {
+    const { page } = await newPlayer('Alice');
+    await page.goto('/?join=ZZZZZZ');
+    await expect(page.locator('.alert-info')).toContainText(text('readyToJoin'));
+
+    expect(await violations(page)).toEqual([]);
+});
+
 test('the page-not-found page', async ({ newPlayer }) => {
     const alice = await newPlayer('Alice');
     alice.allowConsoleError(PAGE_STATUS_404);
@@ -57,6 +66,18 @@ test('a started game', async ({ newPlayer }) => {
     const { players: { Alice: alice } } = await startedGame(newPlayer, ['Alice', 'Bob']);
 
     expect(await violations(alice.page)).toEqual([]);
+});
+
+test('the update banner', async ({ newPlayer }) => {
+    const { page } = await newPlayer('Alice');
+    await page.goto('/');
+    await expect(page.locator('#avatarSelector .avatar-option')).toHaveCount(12);
+    // A release cannot be staged in a test: show the banner the way pwa.js
+    // does when a new service worker is ready (site-headers.spec.js)
+    await page.evaluate(() => window.pwaManager.showUpdateAvailable());
+    await expect(page.getByRole('button', { name: text('updateNow') })).toBeVisible();
+
+    expect(await violations(page, '.alert-warning')).toEqual([]);
 });
 
 const windows = [

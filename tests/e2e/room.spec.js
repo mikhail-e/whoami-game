@@ -196,6 +196,19 @@ test('a lower-case room link opens the room', async ({ newPlayer }) => {
     await waitForPlayers(bob.page, 2);
 });
 
+test('a lower-case link in a tab that is already in the room keeps the player there', async ({ newPlayer }) => {
+    const alice = await newPlayer('Alice');
+    const bob = await newPlayer('Bob');
+    const code = await createRoom(alice);
+    await joinRoom(bob, code);
+
+    await bob.page.goto(`/game/${code.toLowerCase()}`);
+
+    await expect(bob.page.locator('#roomCode')).toHaveText(code);
+    await waitForPlayers(bob.page, 2);
+    await expect(bob.page.locator('#shareLink')).toHaveValue(new RegExp(`/game/${code}$`));
+});
+
 test('a player who joins during an edit appears once the edit ends', async ({ newPlayer }) => {
     const { players: [alice], code } = await roomWith(newPlayer, ['Alice', 'Bob']);
     const carol = await newPlayer('Carol');

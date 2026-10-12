@@ -1,6 +1,6 @@
 // Who am I? Game Room - Frontend JavaScript
 // Names from utils.js (loaded before this file; see the note at the top of utils.js)
-/* global debugLog, MAX_CHARACTER_LENGTH, isCustomAvatar, getText, showNotification, AppStorage, handleApiError, PLAYER_ID */
+/* global debugLog, MAX_CHARACTER_LENGTH, isCustomAvatar, getText, serverErrorText, showNotification, AppStorage, handleApiError, PLAYER_ID */
 
 let socket;
 let currentGame = null;
@@ -93,32 +93,31 @@ async function recreateRoomFromStorage(roomCode, savedGameState) {
             })
         });
 
-        if (!createResponse.ok) {
-            throw new Error(`Failed to recreate room: ${createResponse.status}`);
-        }
+        // A refusal comes with status 400 and the reason in its body: read the
+        // body first, so the player gets the server's reason, not the status
+        const createResult = await createResponse.json().catch(() => ({}));
 
-        const createResult = await createResponse.json();
-
-        if (createResult.success) {
+        if (createResponse.ok && createResult.success) {
             debugLog('✅ Room recreated successfully, now joining...');
 
             // Now join the recreated game (with flag to prevent recursion)
             await joinGameRoom(roomCode, true);
         } else {
-            throw new Error(createResult.error || 'Failed to recreate room');
+            throw new Error(createResult.error || `Failed to recreate room: ${createResponse.status}`);
         }
 
     } catch (error) {
         console.error('❌ Error recreating room:', error);
-        alert(`${getText('failedRecoverGame', 'Failed to recover game')}: ${error.message}. ${getText('pleaseCreateNewRoom', 'Please create a new room.')}`);
+        alert(`${getText('failedRecoverGame', 'Failed to recover game')}: ${serverErrorText(error.message)}. ${getText('pleaseCreateNewRoom', 'Please create a new room.')}`);
         window.location.href = '/';
     }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Get room code from URL
+    // Get room code from URL. Codes are upper case; a link typed or passed on
+    // in lower case still opens the room (the server reads it the same way)
     const urlPath = window.location.pathname;
-    const roomCode = urlPath.split('/').pop();
+    const roomCode = urlPath.split('/').pop().toUpperCase();
     
     if (!roomCode || roomCode.length !== 6) {
         alert(getText('invalidRoomCode', 'Invalid room code'));
@@ -346,7 +345,7 @@ function initializeSocket(roomCode) {
         // then rebuild the players list from the last known state
         cancelActiveEdits();
         updatePlayersList();
-        alert(error);
+        alert(serverErrorText(error));
     });
     
     socket.on('disconnect', () => {
@@ -426,7 +425,7 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
                 }
             }
 
-            alert(result.error || getText('failedJoinGame', 'Failed to join game'));
+            alert(serverErrorText(result.error) || getText('failedJoinGame', 'Failed to join game'));
             window.location.href = '/';
         }
     } catch (error) {
