@@ -26,8 +26,10 @@
   .title .mask { font-size: 110px; }
   .title p { font-size: 36px; line-height: 1.25; margin: 0; opacity: 0.95; }
   .game-card { flex: 1; margin: 0; padding: 26px; }
-  .player-list { grid-template-columns: repeat(3, 1fr); margin: 0; }
-  .character-sticker { left: 0; right: 0; margin: 10px 0 0; min-height: 96px; }
+  /* Equal cards, as in the room: minmax(0, ...) so a long word cannot widen its column */
+  .player-list { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }
+  .player-card { padding: 15px 10px; }
+  .character-sticker { left: 0; right: 0; margin: 10px 0 0; min-height: 96px; padding: 12px 8px; }
 </style>
 </head>
 <body>
