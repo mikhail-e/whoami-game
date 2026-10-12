@@ -297,6 +297,23 @@ body {
   width: 200px !important;
 }
 
+/* game-room.js shows it once the game starts (element.style) */
+#restartGame {
+  display: none;
+}
+
+/* The room code: typed on the landing page, shown in the room's header */
+input#roomCode {
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 1.2rem;
+}
+
+span#roomCode {
+  font-family: monospace;
+  font-weight: bold;
+}
+
 /* Language switcher styles */
 .language-switcher {
   position: relative;
