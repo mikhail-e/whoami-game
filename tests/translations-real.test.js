@@ -33,10 +33,11 @@ const path = require('path');
 const { translations, serverErrors, Localization } = require('../public/js/translations');
 
 // Every error text the server can send: game-logic.js and server.js answer in
-// English, as `error: '...'` or socket.emit('error', '...')
+// English, as `error: '...'` or socket.emit('error', '...'), in either quotes
 const SERVER_ERROR_TEXTS = [...new Set(['game-logic.js', 'server.js'].flatMap(file => {
     const source = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
-    return [...source.matchAll(/error: '([^']+)'|emit\('error', '([^']+)'\)/g)].map(match => match[1] || match[2]);
+    return [...source.matchAll(/error:\s*(['"])(.+?)\1|emit\(\s*(['"])error\3\s*,\s*(['"])(.+?)\4/g)]
+        .map(match => match[2] || match[5]);
 }))];
 
 describe('Real translations.js', () => {

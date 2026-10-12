@@ -9,10 +9,13 @@ async function readAppRules(page) {
         const rules = [];
         const walk = (ruleList, media) => {
             for (const rule of ruleList) {
-                if (rule instanceof CSSMediaRule) {
-                    walk(rule.cssRules, [...media, rule.conditionText]);
-                } else if (rule instanceof CSSStyleRule) {
+                if (rule instanceof CSSStyleRule) {
                     rules.push({ selector: rule.selectorText, media });
+                }
+                // Rules inside @supports, @layer or a nested rule count too;
+                // only @media adds a condition
+                if (rule.cssRules) {
+                    walk(rule.cssRules, rule instanceof CSSMediaRule ? [...media, rule.conditionText] : media);
                 }
             }
         };
