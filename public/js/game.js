@@ -1,6 +1,6 @@
 // Who am I? Game - Frontend JavaScript
 // Names from utils.js (loaded before this file; see the note at the top of utils.js)
-/* global debugLog, MAX_NAME_LENGTH, isCustomAvatar, getText, showError, showInfo, AppStorage, handleApiError, PLAYER_ID */
+/* global debugLog, MAX_NAME_LENGTH, isCustomAvatar, getText, serverErrorText, showError, showInfo, AppStorage, handleApiError, PLAYER_ID */
 
 // Avatar pool - 60 emojis total (12 original + 48 new)
 const avatarPool = [
@@ -471,7 +471,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 AppStorage.session.set('playerData', playerData);
                 window.location.href = `/game/${playerData.roomCode}`;
             } else {
-                alert(result.error || getText('failedJoinGame', 'Failed to join game'));
+                alert(serverErrorText(result.error) || getText('failedJoinGame', 'Failed to join game'));
             }
         } catch (error) {
             handleApiError(error, 'joining game');

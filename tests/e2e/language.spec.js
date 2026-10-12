@@ -1,11 +1,13 @@
 // English and Russian: the browser's language, the saved choice, the switch,
 // and texts the game builds itself (status, cards, notifications)
 const {
-    test, expect, text, seedStorage, createRoom, joinRoom, playerCard, waitForPlayers, startedGame, revealOwnCharacter,
+    test, expect, text, serverErrorText, seedStorage, createRoom, joinRoom, playerCard, waitForPlayers, waitForLanding,
+    startedGame, revealOwnCharacter,
 } = require('./helpers');
 
-// i18n: the page's Localization from translations.js, used inside page.evaluate()
-/* global i18n */
+// Page names used inside page.evaluate(): i18n is the page's Localization
+// (translations.js), recreateRoomFromStorage rebuilds a lost room (game-room.js)
+/* global i18n, recreateRoomFromStorage */
 
 const heading = page => page.locator('h1');
 
@@ -58,6 +60,19 @@ test('the switch changes texts, placeholders, titles and aria-labels and is reme
     await expect(heading(page)).toHaveText(text('title', 'ru'));
 });
 
+// A screen reader picks its voice by the page's lang, a browser decides by it
+// whether to offer a translation
+test('the page says which language it is in', async ({ newPlayer }) => {
+    const { page } = await newPlayer('Алиса', { locale: 'ru-RU' });
+    await page.goto('/');
+    await expect(heading(page)).toHaveText(text('title', 'ru'));
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
+
+    await page.locator('.lang-toggle-btn').click();
+
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+});
+
 test('in a room the switch re-renders the status and the cards', async ({ newPlayer }) => {
     const alice = await newPlayer('Alice');
     const bob = await newPlayer('Bob', { locale: 'ru-RU' });
@@ -83,6 +98,55 @@ test("the reveal notification reads in each player's language", async ({ newPlay
         text('playerRevealedNotification', 'ru', { playerName: 'Alice', character: characters.Alice }));
     await expect(alice.page.locator('.alert.position-fixed')).toContainText(
         text('playerRevealedNotification', 'en', { playerName: 'Alice', character: characters.Alice }));
+});
+
+test("a server error reads in the player's language", async ({ newPlayer }) => {
+    const { code } = await startedGame(newPlayer, ['Alice', 'Bob']);
+    const dasha = await newPlayer('Даша', { locale: 'ru-RU' });
+    dasha.expectDialog(serverErrorText('Game has already started', 'ru'));
+    // The server answers 400; the browser logs that response itself
+    dasha.allowConsoleError(/status of 400/);
+
+    await dasha.page.goto(`/?join=${code}`);
+    await waitForLanding(dasha.page);
+    await dasha.page.fill('#playerName', 'Даша');
+    await dasha.page.click('#joinBtn');
+
+    await expect.poll(() => dasha.expectedDialogs.length).toBe(0);
+});
+
+test("the close buttons are named in the player's language", async ({ newPlayer }) => {
+    const { players: { Alice: alice } } = await startedGame(newPlayer, ['Alice', 'Bob']);
+    const { page } = alice;
+    await page.locator('.lang-toggle-btn').click();
+    await expect(heading(page)).toHaveText(text('title', 'ru'));
+
+    await page.click('#leaveGame');
+    await expect(page.locator('#leaveModal')).toHaveClass(/\bshow\b/);
+    await expect(page.locator('#leaveModal').getByRole('button', { name: text('close', 'ru'), exact: true })).toBeVisible();
+    await page.locator('#leaveModal').getByRole('button', { name: text('close', 'ru'), exact: true }).click();
+    await expect(page.locator('#leaveModal')).not.toHaveClass(/\bshow\b/);
+
+    // A release cannot be staged in a test: show the banner the way pwa.js does
+    await page.evaluate(() => window.pwaManager.showUpdateAvailable());
+    await page.locator('.alert-warning').getByRole('button', { name: text('close', 'ru'), exact: true }).click();
+    await expect(page.locator('.alert-warning')).toHaveCount(0);
+});
+
+// A room the server lost (a restart) is rebuilt from the copy the page keeps.
+// A server cannot be restarted in a test: the page is asked to rebuild a room
+// from a broken copy, and the server refuses it
+test("a failed room recovery reads in the player's language", async ({ newPlayer }) => {
+    const alice = await newPlayer('Алиса', { locale: 'ru-RU' });
+    await createRoom(alice);
+    alice.expectDialog(`${text('failedRecoverGame', 'ru')}: ${serverErrorText('Invalid saved game state: missing players', 'ru')}. ${text('pleaseCreateNewRoom', 'ru')}`);
+    // The server answers 400; the browser logs that response, the page its error
+    alice.allowConsoleError(/status of 400/);
+    alice.allowConsoleError(/Error recreating room/);
+
+    await alice.page.evaluate(() => { recreateRoomFromStorage('QQQQQQ', {}); });
+
+    await expect.poll(() => alice.expectedDialogs.length).toBe(0);
 });
 
 test('an unknown text key shows the key itself', async ({ newPlayer }) => {

@@ -48,9 +48,12 @@ body {
   aspect-ratio: 1;
 }
 
-.avatar-option:hover {
-  border-color: #667eea;
-  transform: scale(1.1);
+/* Hover effects only for a mouse: on a phone a hover state sticks after the tap */
+@media (hover: hover) and (pointer: fine) {
+  .avatar-option:hover {
+    border-color: #667eea;
+    transform: scale(1.1);
+  }
 }
 
 .avatar-option.selected {
@@ -101,9 +104,11 @@ body {
   transition: all 0.3s ease;
 }
 
-.player-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+@media (hover: hover) and (pointer: fine) {
+  .player-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
 }
 
 .player-avatar {
@@ -150,8 +155,10 @@ body {
   justify-content: center;
 }
 
-.character-sticker:hover {
-  transform: scale(1.05);
+@media (hover: hover) and (pointer: fine) {
+  .character-sticker:hover {
+    transform: scale(1.05);
+  }
 }
 
 /* Long characters (up to 128 chars) would otherwise produce a huge sticker */
@@ -279,9 +286,11 @@ body {
   box-shadow: 0 3px 8px rgba(102, 126, 234, 0.3);
 }
 
-.add-character-btn:hover {
-  transform: scale(1.1);
-  background: linear-gradient(45deg, #5a67d8, #6b73ff);
+@media (hover: hover) and (pointer: fine) {
+  .add-character-btn:hover {
+    transform: scale(1.1);
+    background: linear-gradient(45deg, #5a67d8, #6b73ff);
+  }
 }
 
 .player-card.cannot-assign {
@@ -332,11 +341,13 @@ span#roomCode {
   font-weight: 500;
 }
 
-.language-switcher .lang-toggle-btn:hover {
-  transform: translateY(-1px);
-  background-color: #f8f9fa !important;
-  border-color: #ccc !important;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+@media (hover: hover) and (pointer: fine) {
+  .language-switcher .lang-toggle-btn:hover {
+    transform: translateY(-1px);
+    background-color: #f8f9fa !important;
+    border-color: #ccc !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
 }
 
 .language-switcher .lang-toggle-btn:active {
@@ -477,8 +488,13 @@ span#roomCode {
     opacity: 0.6;
   }
 
-  .mobile-friendly-modal .btn-close:hover,
   .mobile-friendly-modal .btn-close:focus {
+    opacity: 0.8;
+  }
+}
+
+@media (max-width: 768px) and (hover: hover) and (pointer: fine) {
+  .mobile-friendly-modal .btn-close:hover {
     opacity: 0.8;
   }
 }

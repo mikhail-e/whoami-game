@@ -18,11 +18,25 @@ test('the pages load nothing from other sites', async ({ newPlayer, baseURL }) =
     expect(foreign).toEqual([]);
 });
 
-for (const address of ['/', '/js/game.js', '/vendor/bootstrap/bootstrap.min.css', '/no-such/page', 'a room']) {
+// Each address with the status of its answer. /game/ZZZZZZ is a room that
+// does not exist: its answer is a redirect home, checked itself rather than
+// the page it leads to
+const ADDRESSES = {
+    '/': 200,
+    '/js/game.js': 200,
+    '/vendor/bootstrap/bootstrap.min.css': 200,
+    '/no-such/page': 404,
+    '/game/ZZZZZZ': 302,
+    'a room': 200,
+};
+
+for (const [address, status] of Object.entries(ADDRESSES)) {
     test(`${address} answers with the security headers`, async ({ newPlayer, request }) => {
         let url = address;
         if (address === 'a room') url = `/game/${await createRoom(await newPlayer('Alice'))}`;
-        const headers = (await request.get(url)).headers();
+        const response = await request.get(url, { maxRedirects: 0 });
+        expect(response.status()).toBe(status);
+        const headers = response.headers();
         const policy = headers['content-security-policy'] || '';
         for (const rule of ["default-src 'self'", "script-src 'self'", "style-src 'self'", "object-src 'none'", "frame-ancestors 'none'"]) {
             expect(policy).toContain(rule);

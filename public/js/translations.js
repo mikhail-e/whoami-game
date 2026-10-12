@@ -141,6 +141,7 @@ const translations = {
         characterClickToEdit: "Character: {character} (click to edit)",
         someoneNeedsToAssign: "Someone needs to assign you a character!",
         copiedSuccess: "✅ Copied!",
+        close: "Close",
 
         // Error messages
         invalidRoomCode: "Invalid room code",
@@ -311,6 +312,7 @@ const translations = {
         characterClickToEdit: "Персонаж: {character} (нажмите, чтобы изменить)",
         someoneNeedsToAssign: "Кто-то должен назначить вам персонажа!",
         copiedSuccess: "✅ Скопировано!",
+        close: "Закрыть",
 
         // Error messages
         invalidRoomCode: "Неверный код комнаты",
@@ -341,6 +343,33 @@ const translations = {
         notFoundTitle: "Страница не найдена",
         notFoundText: "По этому адресу ничего нет. Игра — на главной странице.",
         openGame: "Открыть игру"
+    }
+};
+
+// The server answers in English (game-logic.js, server.js), and its error texts
+// are the keys here: the page shows a server error in its own language.
+// tests/translations-real.test.js fails if a text the server sends is missing
+const serverErrors = {
+    ru: {
+        'Game not found': "Комната не найдена",
+        'Invalid player name': "Недопустимое имя игрока",
+        'Invalid avatar': "Недопустимый аватар",
+        'Game has already started': "Игра уже началась",
+        'Game is full': "В комнате нет свободных мест",
+        'Player not found in game': "Игрок не найден в комнате",
+        'Assigner not found in game': "Игрок, назначающий персонажа, не найден в комнате",
+        'Cannot assign character to yourself': "Нельзя назначить персонажа самому себе",
+        'Cannot change characters after the game has started': "После начала игры персонажей менять нельзя",
+        'Invalid character': "Недопустимый персонаж",
+        'Need at least 2 players to start': "Нужно минимум 2 игрока для начала",
+        'Game has not started yet': "Игра ещё не началась",
+        'No character assigned to this player': "Этому игроку не назначен персонаж",
+        'Invalid saved game state: missing players': "Сохранённая игра повреждена: в ней нет игроков",
+        'Failed to recreate game from saved state': "Не удалось восстановить игру из сохранения",
+        'Missing required fields': "Не заполнены обязательные поля",
+        'Invalid room code format': "Неверный формат кода комнаты",
+        'Something went wrong, please try again': "Что-то пошло не так, попробуйте ещё раз",
+        'You can only leave the game yourself': "Выйти из игры можно только самому"
     }
 };
 
@@ -396,8 +425,19 @@ class Localization {
 
         return text;
     }
-    
+
+    // A server error in the current language (serverErrors above); a text the
+    // list does not know, like a network error, is shown as it came
+    serverErrorText(error) {
+        const texts = serverErrors[this.currentLanguage];
+        return texts && Object.prototype.hasOwnProperty.call(texts, error) ? texts[error] : error;
+    }
+
     updateTexts() {
+        // The page's language: a screen reader picks its voice by it, a browser
+        // decides by it whether to offer a translation
+        document.documentElement.lang = this.currentLanguage;
+
         // Update all elements with data-i18n attribute
         document.querySelectorAll('[data-i18n]').forEach(element => {
             const key = element.getAttribute('data-i18n');
@@ -485,5 +525,5 @@ document.addEventListener('DOMContentLoaded', () => {
 // browser there is no `module`
 /* global module */
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { translations, Localization };
+    module.exports = { translations, serverErrors, Localization };
 }
