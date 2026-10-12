@@ -38,6 +38,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/game/:roomCode', (req, res) => {
     const roomCode = req.params.roomCode.toUpperCase();
 
+    // The code becomes part of a file path below: only a real room code goes on
+    if (!gameLogic.isValidRoomCode(roomCode)) {
+        return res.redirect('/?error=room-not-found');
+    }
+
     // Check if game exists in memory
     if (games.has(roomCode)) {
         res.sendFile(path.join(__dirname, 'public', 'game.html'));
