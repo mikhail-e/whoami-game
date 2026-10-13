@@ -10,18 +10,20 @@
 // copy is only used when the network fails, so players never get stuck on
 // a stale version of the app.
 
-const CACHE_NAME = 'whoami-game-v1.5.0';
+const CACHE_NAME = 'whoami-game-v1.6.0';
 
 // The only assets worth caching: they are immutable and identified by name.
 // Do NOT add HTML, CSS or JS here - those must always come from the network.
+// The icons the pages and the manifest name (node scripts/icons.js takes them)
 const iconAssets = [
     '/favicon.ico',
-    '/icons/icon-48x48.svg',
-    '/icons/icon-72x72.svg',
-    '/icons/icon-96x96.svg',
-    '/icons/icon-144x144.svg',
-    '/icons/icon-192x192.svg',
-    '/icons/icon-512x512.svg'
+    '/icons/apple-touch-icon.png',
+    '/icons/icon-48x48.png',
+    '/icons/icon-72x72.png',
+    '/icons/icon-96x96.png',
+    '/icons/icon-144x144.png',
+    '/icons/icon-192x192.png',
+    '/icons/icon-512x512.png'
 ];
 
 // Install event - pre-cache the icons

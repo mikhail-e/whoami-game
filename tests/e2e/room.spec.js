@@ -37,13 +37,37 @@ test('no + on your own card', async ({ newPlayer }) => {
     await expect(playerCard(alice.page, 'Bob').locator('.add-character-btn')).toHaveCount(1);
 });
 
+test('"Assign character" is a button the keyboard reaches', async ({ newPlayer }) => {
+    const { players: [alice] } = await roomWith(newPlayer, ['Alice', 'Bob']);
+
+    await playerCard(alice.page, 'Bob').getByRole('button', { name: text('assignCharacter') }).focus();
+    await alice.page.keyboard.press('Enter');
+
+    await expect(playerCard(alice.page, 'Bob').locator('.character-input')).toBeFocused();
+});
+
+// Tags lean a little; a long name must still wrap inside the card on a phone
+test('a long character stays inside its card', async ({ newPlayer }) => {
+    const { players: [alice] } = await roomWith(newPlayer, ['Alice', 'Bob']);
+
+    await assignCharacter(alice, 'Bob', 'W'.repeat(128));
+
+    const tag = playerCard(alice.page, 'Bob').locator('.character-sticker');
+    const card = await playerCard(alice.page, 'Bob').boundingBox();
+    const box = await tag.boundingBox();
+    expect(box.x).toBeGreaterThanOrEqual(card.x);
+    expect(box.x + box.width).toBeLessThanOrEqual(card.x + card.width);
+    // The text wraps inside the tag instead of running out of it
+    expect(await tag.evaluate(sticker => sticker.scrollWidth - sticker.clientWidth)).toBeLessThanOrEqual(0);
+});
+
 test('Enter saves a character; the target does not see it, the others do', async ({ newPlayer }) => {
     const { players: [alice, bob, carol] } = await roomWith(newPlayer, ['Alice', 'Bob', 'Carol']);
 
     await assignCharacter(alice, 'Bob', 'Napoleon');
 
     await expect(playerCard(carol.page, 'Bob').locator('.character-sticker')).toHaveText('Napoleon');
-    await expect(playerCard(bob.page, 'Bob').locator('.character-sticker.mystery')).toHaveText('🎭');
+    await expect(playerCard(bob.page, 'Bob').locator('.character-sticker.mystery .seal')).toBeVisible();
     expect(await bob.page.content()).not.toContain('Napoleon');
 });
 

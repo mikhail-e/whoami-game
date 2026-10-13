@@ -7,8 +7,8 @@
 Key facts:
 
 - One player creates a room and shares its code or link; the others join from any phone or computer
-- Each player writes a secret character on another player's colored sticker; everyone sees the stickers except their own
-- Your own sticker shows a mask until you reveal it; the game itself (questions and answers) is played by voice, at the table or on a video call
+- Each player writes a secret character on a tag pinned to another player's card; everyone sees the tags except their own
+- Your own character stays in a sealed envelope until you reveal it; the game itself (questions and answers) is played by voice, at the table or on a video call
 - A room keeps its players across a page reload or a short loss of connection
 - English and Russian: the browser's language at first, switchable on the page
 - Installable PWA; it needs a connection, since a room lives on the server

@@ -20,9 +20,11 @@ describe('Service Worker caching policy', () => {
     test('only icons and the favicon are pre-cached', () => {
         const assets = readIconAssets();
 
+        // The six icons of the manifest and the iPhone's home-screen icon
         expect(assets).toContain('/favicon.ico');
-        expect(assets.filter(a => a.startsWith('/icons/'))).toHaveLength(6);
-        expect(assets).toHaveLength(7);
+        expect(assets).toContain('/icons/apple-touch-icon.png');
+        expect(assets.filter(a => a.startsWith('/icons/'))).toHaveLength(7);
+        expect(assets).toHaveLength(8);
     });
 
     test('no HTML, CSS or JS is pre-cached', () => {

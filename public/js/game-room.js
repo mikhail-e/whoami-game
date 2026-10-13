@@ -444,14 +444,14 @@ function updateGameDisplay() {
     
     // Show/hide elements based on game state
     const shareCard = document.querySelector('.game-card.mb-3'); // Target the share room card specifically
-    const roomCodeBadge = document.querySelector('.badge.bg-light');
+    const roomTicket = document.querySelector('.room-ticket'); // the room code in the header
     const assignmentInstructions = document.getElementById('assignmentInstructions');
     const gameState = currentGame.state || 'waiting';
     
     if (gameState === 'started') {
         // Hide room sharing functionality and assignment instructions when game has started
         if (shareCard) shareCard.style.display = 'none';
-        if (roomCodeBadge) roomCodeBadge.style.display = 'none';
+        if (roomTicket) roomTicket.style.display = 'none';
         if (assignmentInstructions) assignmentInstructions.style.display = 'none';
         
         // Update status and buttons
@@ -459,7 +459,7 @@ function updateGameDisplay() {
         const startButton = document.getElementById('startGame');
         const restartButton = document.getElementById('restartGame');
 
-        const statusText = getText('gameInProgress', 'Game in progress - Click your mystery sticker to reveal!');
+        const statusText = getText('gameInProgress', 'Game in progress - Click your envelope to reveal your character!');
         if (gameStatus) gameStatus.textContent = statusText;
         
         if (startButton) startButton.style.display = 'none';
@@ -467,7 +467,7 @@ function updateGameDisplay() {
     } else {
         // Show room sharing functionality and assignment instructions when waiting
         if (shareCard) shareCard.style.display = 'block';
-        if (roomCodeBadge) roomCodeBadge.style.display = 'inline-block';
+        if (roomTicket) roomTicket.style.display = ''; // back to the stylesheet's inline-flex
         if (assignmentInstructions) assignmentInstructions.style.display = 'block';
         
         // Update game status and buttons
@@ -568,7 +568,7 @@ function updatePlayersList() {
 
         // Add visual classes
         if (isCurrentPlayer) playerCard.classList.add('cannot-assign');
-        if (isRevealed) playerCard.classList.add('bg-warning', 'bg-opacity-25');
+        if (isRevealed) playerCard.classList.add('revealed');
 
         // Basic player info - built with textContent so player-controlled
         // values (name, avatar) can never inject HTML (XSS protection)
@@ -600,10 +600,14 @@ function updatePlayersList() {
 
         // Add character sticker, mystery sticker, or add button
         if (characterData && isCurrentPlayer && !isRevealed) {
-            // Current player with character - show mystery sticker
+            // Current player with character - a sealed envelope with a wax seal "?"
             const mysterySticker = document.createElement('div');
             mysterySticker.className = 'character-sticker mystery';
-            mysterySticker.textContent = '🎭';
+            const seal = document.createElement('span');
+            seal.className = 'seal';
+            seal.setAttribute('aria-hidden', 'true');
+            seal.textContent = '?';
+            mysterySticker.appendChild(seal);
             if (gameState === 'started') {
                 mysterySticker.title = getText('yourCharacterClickReveal', 'Your character - click to reveal!');
                 mysterySticker.style.cursor = 'pointer';
@@ -648,11 +652,11 @@ function updatePlayersList() {
             playerCard.appendChild(characterSticker);
 
         } else if (!isCurrentPlayer) {
-            // No character for other player - show add button
-            const addButton = document.createElement('div');
-            addButton.className = 'add-character-btn';
-            addButton.innerHTML = '+';
-            addButton.title = getText('assignCharacter', 'Assign character');
+            // No character for other player - a real button: Tab reaches it, Enter presses it
+            const addButton = document.createElement('button');
+            addButton.type = 'button';
+            addButton.className = 'btn btn-outline-primary add-character-btn';
+            addButton.textContent = `+ ${getText('assignCharacter', 'Assign character')}`;
             addButton.addEventListener('click', (e) => {
                 e.stopPropagation();
                 addCharacter(player.id, addButton);
@@ -901,7 +905,7 @@ function setupEventListeners() {
         if (navigator.share) {
             try {
                 await navigator.share({
-                    title: getText('title', '🎭 Who am I?'),
+                    title: getText('title', 'Who am I?'),
                     text: getText('shareText', 'Join my "Who am I?" game!'),
                     url: url
                 });

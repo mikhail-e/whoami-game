@@ -186,7 +186,7 @@ async function joinRoom(player, code) {
     await expect(playerCard(page, player.name).first()).toBeVisible();
 }
 
-// Give the player named toName a character: "+" on their card, type, Enter
+// Give the player named toName a character: "+ Assign character" on their card, type, Enter
 async function assignCharacter(player, toName, character) {
     const card = playerCard(player.page, toName);
     await card.locator('.add-character-btn').click();
@@ -195,14 +195,14 @@ async function assignCharacter(player, toName, character) {
     await expect(card.locator('.character-sticker')).toHaveText(character);
 }
 
-// Press Start Game and wait until the room is in a started game (the own 🎭
+// Press Start Game and wait until the room is in a started game (the own envelope
 // shows before the start too; the Restart button appears only after it)
 async function startGame(player) {
     await player.page.click('#startGame');
     await expect(player.page.locator('#restartGame')).toBeVisible();
 }
 
-// Click your own 🎭, confirm in the window, wait for your character to show
+// Click your own envelope, confirm in the window, wait for your character to show
 async function revealOwnCharacter(player) {
     const { page } = player;
     await playerCard(page, player.name).locator('.character-sticker.mystery').click();

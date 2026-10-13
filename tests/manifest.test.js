@@ -45,4 +45,15 @@ describe('PWA manifest', () => {
             expect(fs.existsSync(iconPath)).toBe(true);
         }
     });
+
+    // The app's color (the top of the curtain) is written in four places: the
+    // three pages' theme-color and the manifest
+    test('the pages and the manifest name the same app color', () => {
+        expect(manifest.theme_color).toBe('#7e1a13');
+        expect(manifest.background_color).toBe(manifest.theme_color);
+        for (const page of ['index.html', 'game.html', '404.html']) {
+            const html = fs.readFileSync(path.join(__dirname, '..', 'public', page), 'utf8');
+            expect(html.match(/<meta name="theme-color" content="([^"]+)">/)[1]).toBe(manifest.theme_color);
+        }
+    });
 });

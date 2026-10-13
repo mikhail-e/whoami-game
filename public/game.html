@@ -8,14 +8,14 @@
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#16213e">
-    <meta name="background-color" content="#1a1a2e">
+    <meta name="theme-color" content="#7e1a13">
+    <meta name="background-color" content="#7e1a13">
 
     <!-- iOS PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Who am I?">
-    <link rel="apple-touch-icon" href="/icons/icon-192x192.svg">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 
     <!-- Android PWA Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -37,17 +37,19 @@
     <meta property="og:locale" content="en_US">
     <meta property="og:title" content="Who am I? · guess your secret character with friends">
     <meta property="og:description" content="Play the classic party game remotely: friends pick a secret character for you, and you guess who you are. Free, on a phone or a computer, no account.">
-    <meta property="og:image" content="https://whoami-game.onrender.com/img/og-image.jpg">
+    <meta property="og:image" content="https://whoami-game.onrender.com/img/og-image-2.jpg">
     <meta property="og:image:type" content="image/jpeg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Who am I? Player cards with character stickers: Sherlock Holmes, Cleopatra, and your own hidden behind a mask.">
+    <meta property="og:image:alt" content="Who am I? sign on a theatre curtain, and player cards with pinned character tags: Sherlock Holmes, Cleopatra, and your own sealed in an envelope.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Who am I? · guess your secret character with friends">
     <meta name="twitter:description" content="Play the classic party game remotely: friends pick a secret character for you, and you guess who you are. Free, on a phone or a computer, no account.">
-    <meta name="twitter:image" content="https://whoami-game.onrender.com/img/og-image.jpg">
-    <meta name="twitter:image:alt" content="Who am I? Player cards with character stickers: Sherlock Holmes, Cleopatra, and your own hidden behind a mask.">
+    <meta name="twitter:image" content="https://whoami-game.onrender.com/img/og-image-2.jpg">
+    <meta name="twitter:image:alt" content="Who am I? sign on a theatre curtain, and player cards with pinned character tags: Sherlock Holmes, Cleopatra, and your own sealed in an envelope.">
 
+    <!-- The sign's font, fetched before the stylesheet asks for it -->
+    <link rel="preload" href="/fonts/ultra-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
     <script src="/js/translations.js"></script>
@@ -57,26 +59,42 @@
     <div class="container">
         <!-- Header -->
         <div class="text-center mb-4">
-            <h1 class="text-white mb-2" data-i18n="title">🎭 Who am I?</h1>
-            <div class="badge bg-light text-dark fs-6 px-3 py-2">
-                <span data-i18n="roomCode">Room Code</span>: <span id="roomCode"></span>
+            <!-- The sign: the same drawing as in index.html (see the note there) -->
+            <h1 class="brand brand--room">
+                <svg class="brand-sign" viewBox="0 0 600 232" role="img" aria-label="Who am I?" focusable="false">
+                    <rect x="2" y="2" width="596" height="228" fill="#efe2c4" stroke="#2a1d17" stroke-width="4"/>
+                    <rect x="12" y="12" width="576" height="208" fill="none" stroke="#2a1d17" stroke-width="1.5"/>
+                    <polygon transform="translate(113 39)" fill="#2a1d17" points="0,-7.5 1.76,-2.43 7.13,-2.32 2.85,0.93 4.41,6.07 0,3 -4.41,6.07 -2.85,0.93 -7.13,-2.32 -1.76,-2.43"/>
+                    <text class="brand-sign__small" x="302.5" y="45" text-anchor="middle" font-size="17" letter-spacing="5" fill="#2a1d17">THE PARLOUR GUESSING GAME</text>
+                    <polygon transform="translate(487 39)" fill="#2a1d17" points="0,-7.5 1.76,-2.43 7.13,-2.32 2.85,0.93 4.41,6.07 0,3 -4.41,6.07 -2.85,0.93 -7.13,-2.32 -1.76,-2.43"/>
+                    <line x1="60" y1="58" x2="540" y2="58" stroke="#2a1d17" stroke-width="1.5"/>
+                    <text class="brand-sign__name" x="300" y="146" text-anchor="middle" font-size="80" textLength="500" lengthAdjust="spacingAndGlyphs" fill="#b3261e">WHO AM I?</text>
+                    <line x1="60" y1="174" x2="540" y2="174" stroke="#2a1d17" stroke-width="1.5"/>
+                    <text class="brand-sign__small" x="302" y="203" text-anchor="middle" font-size="16" letter-spacing="4" fill="#2a1d17">FOR FRIENDS &amp; FAMILY · PLAYED ONLINE</text>
+                </svg>
+            </h1>
+            <!-- The room code as a ticket stub; game-room.js hides it once the game
+                 has started (nobody can join then) -->
+            <div class="room-ticket">
+                <span data-i18n="roomCode">Room Code</span>
+                <span id="roomCode"></span>
             </div>
         </div>
 
         <!-- Share Room Card -->
         <div class="game-card mb-3">
-            <div class="row align-items-end">
+            <h6 class="sheet-title" data-i18n="inviteFriends">Invite Friends</h6>
+            <div class="row g-2 align-items-center">
                 <div class="col-md-6">
-                    <h6 class="mb-1" data-i18n="inviteFriends">Invite Friends</h6>
                     <input type="text" class="form-control" id="shareLink" readonly data-i18n-aria-label="shareLinkLabel" aria-label="Room link">
                 </div>
                 <div class="col-md-3">
-                    <button type="button" class="btn btn-outline-primary w-100 mt-2 mt-md-0" id="copyLink">
+                    <button type="button" class="btn btn-outline-primary w-100" id="copyLink">
                         📋 <span data-i18n="copyLink">Copy Link</span>
                     </button>
                 </div>
                 <div class="col-md-3">
-                    <button type="button" class="btn btn-outline-primary w-100 mt-2 mt-md-0" id="shareButton">
+                    <button type="button" class="btn btn-outline-primary w-100" id="shareButton">
                         📤 <span data-i18n="share">Share</span>
                     </button>
                 </div>
@@ -87,7 +105,7 @@
         <div class="game-card">
             <div class="row">
                 <div class="col-12">
-                    <h5><span data-i18n="players">Players</span> (<span id="playerCount">0</span>/12)</h5>
+                    <h5 class="sheet-title"><span data-i18n="players">Players</span> (<span id="playerCount">0</span>/12)</h5>
                     <div id="gameStatus" class="text-muted mb-3">
                         <span data-i18n="waiting">Waiting for players to join...</span>
                     </div>
@@ -104,7 +122,7 @@
         <div class="game-card">
             <div class="row">
                 <div class="col-12">
-                    <h6><span data-i18n="gameControls">Game Controls</span></h6>
+                    <h6 class="sheet-title"><span data-i18n="gameControls">Game Controls</span></h6>
                 </div>
             </div>
             <div class="row">
@@ -127,27 +145,27 @@
 
         <!-- Character Assignment Instructions -->
         <div class="game-card" id="assignmentInstructions">
-            <h6 data-i18n="characterAssignment">Character Assignment</h6>
+            <h6 class="sheet-title" data-i18n="characterAssignment">Character Assignment</h6>
             <p class="small text-muted mb-0">
-                <strong>🎯 <span data-i18n="clickPlus">Click the + button</span></strong> <span data-i18n="assignInstructions">on other players to assign them characters.</span> 
-                <strong>✏️ <span data-i18n="clickStickers">Click character stickers</span></strong> <span data-i18n="editInstructions">to edit them.</span>
+                <strong>🎯 <span data-i18n="clickPlus">Press “Assign character”</span></strong> <span data-i18n="assignInstructions">on other players' cards to give them characters.</span> 
+                <strong>✏️ <span data-i18n="clickStickers">Click character tags</span></strong> <span data-i18n="editInstructions">to edit them.</span>
             </p>
         </div>
 
         <!-- Game Instructions -->
         <div class="game-card" id="gameInstructions">
-            <h6 data-i18n="gameInstructions">Game Instructions</h6>
+            <h6 class="sheet-title" data-i18n="gameInstructions">Game Instructions</h6>
             <ol class="small" id="gameSteps">
                 <li data-i18n="step1">Wait for at least 2 players to join</li>
                 <li data-i18n="step2">Each player assigns characters to other players</li>
                 <li data-i18n="step3">Click "Start Game" when ready</li>
-                <li data-i18n="step4">Click your mystery sticker (🎭) to reveal your character</li>
+                <li data-i18n="step4">Click your envelope to reveal your character</li>
                 <li data-i18n="step5">Try to guess what other players are!</li>
             </ol>
         </div>
     </div>
 
-    <footer class="text-center text-white small pb-3">
+    <footer class="page-foot text-center small pb-3">
         <span data-app-version></span>
     </footer>
 
