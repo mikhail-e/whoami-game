@@ -14,7 +14,11 @@ const utilsSource = fs.readFileSync(path.join(__dirname, '..', 'public/js/utils.
 // Run utils.js the way a page does, with a stored localStorage and a console
 // that records what is printed
 function loadUtils(stored = {}) {
-    const values = { playerId: '123e4567-e89b-42d3-a456-426614174000', ...stored };
+    const values = {
+        playerId: '123e4567-e89b-42d3-a456-426614174000',
+        'whoami-player-secret': '00000000-0000-4000-8000-000000000001',
+        ...stored
+    };
     const printed = [];
     const page = {
         localStorage: {

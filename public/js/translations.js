@@ -54,7 +54,6 @@ const translations = {
         refresh: "Refresh Page",
         
         // Character assignment
-        assignmentInstructions: "Click the + button next to other players to assign them characters",
         assignCharacter: "Assign character",
         characterName: "Character name...",
         you: "You",
@@ -224,7 +223,6 @@ const translations = {
         refresh: "Обновить страницу",
         
         // Character assignment
-        assignmentInstructions: "Нажмите кнопку + рядом с другими игроками, чтобы назначить им персонажей",
         assignCharacter: "Задать персонажа",
         characterName: "Имя персонажа...",
         you: "Вы",
@@ -360,6 +358,7 @@ const serverErrors = {
         'Cannot change characters after the game has started': "После начала игры персонажей менять нельзя",
         'Invalid character': "Недопустимый персонаж",
         'Need at least 2 players to start': "Нужно минимум 2 игрока для начала",
+        'Every player needs a character to start': "Чтобы начать, назначьте персонажей всем игрокам",
         'Game has not started yet': "Игра ещё не началась",
         'No character assigned to this player': "Этому игроку не назначен персонаж",
         'Invalid saved game state: missing players': "Сохранённая игра повреждена: в ней нет игроков",
@@ -367,7 +366,8 @@ const serverErrors = {
         'Missing required fields': "Не заполнены обязательные поля",
         'Invalid room code format': "Неверный формат кода комнаты",
         'Something went wrong, please try again': "Что-то пошло не так, попробуйте ещё раз",
-        'You can only leave the game yourself': "Выйти из игры можно только самому"
+        'You are not in this game': "Вы не участвуете в этой игре",
+        'This player is playing in another browser': "Этот игрок играет в другом браузере"
     }
 };
 
@@ -505,9 +505,9 @@ class Localization {
             // If current language is English, show "🇷🇺 Русский" button
             // If current language is Russian, show "🇬🇧 English" button
             if (this.currentLanguage === 'en') {
-                toggleText.innerHTML = '🇷🇺 Русский';
+                toggleText.textContent = '🇷🇺 Русский';
             } else {
-                toggleText.innerHTML = '🇬🇧 English';
+                toggleText.textContent = '🇬🇧 English';
             }
         }
     }

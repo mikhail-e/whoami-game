@@ -270,6 +270,10 @@ describe('Returning player keeps their place in the list', () => {
             player.joinedAt = new Date(base - (players.length - index) * 1000);
         });
 
+        // The game starts only when every player has a character
+        assignCharacter(games, gameId, alice.id, 'Batman', bob.id);
+        assignCharacter(games, gameId, bob.id, 'Superman', charlie.id);
+        assignCharacter(games, gameId, charlie.id, 'Joker', alice.id);
         startGame(games, gameId, alice.id);
     });
 

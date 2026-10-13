@@ -118,6 +118,19 @@ test('Escape restores the previous character', async ({ newPlayer }) => {
     await expect(bobOnAlice.locator('.character-sticker')).toHaveText('Napoleon');
 });
 
+test('Escape on a new character gives the Assign button back', async ({ newPlayer }) => {
+    const { players: [alice, bob] } = await roomWith(newPlayer, ['Alice', 'Bob']);
+    const bobOnAlice = playerCard(alice.page, 'Bob');
+
+    await bobOnAlice.locator('.add-character-btn').click();
+    await bobOnAlice.locator('.character-input').fill('Caesar');
+    await bobOnAlice.locator('.character-input').press('Escape');
+
+    await expect(bobOnAlice.locator('.character-input')).toHaveCount(0);
+    await expect(bobOnAlice.locator('.add-character-btn')).toBeVisible();
+    await expect(playerCard(bob.page, 'Bob').locator('.character-sticker')).toHaveCount(0);
+});
+
 test('an empty or blank character removes it', async ({ newPlayer }) => {
     const { players: [alice, bob] } = await roomWith(newPlayer, ['Alice', 'Bob']);
     await assignCharacter(alice, 'Bob', 'Napoleon');

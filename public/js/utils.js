@@ -5,7 +5,7 @@
 // "exported" lists what other files use from here, "global" what this file uses
 // from translations.js.
 /* exported debugLog, MAX_NAME_LENGTH, MAX_CHARACTER_LENGTH, isCustomAvatar, getText, serverErrorText, showError, showInfo,
-   showNotification, AppStorage, handleApiError, PLAYER_ID */
+   showNotification, AppStorage, handleApiError, PLAYER_ID, PLAYER_SECRET */
 /* global i18n */
 
 // Debug output: printed only while debugging is on, so players' consoles stay
@@ -108,9 +108,8 @@ function showInfo(message) {
 function showNotification(message, type = 'info', duration = 4000) {
     const notification = createAlertElement(
         message,
-        `alert alert-${type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed`
+        `alert alert-${type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed notification`
     );
-    notification.style.cssText = 'top: 20px; right: 20px; z-index: 1055; min-width: 300px;';
 
     document.body.appendChild(notification);
 
@@ -149,7 +148,11 @@ const AppStorage = {
 
     // Remove item
     remove(key) {
-        localStorage.removeItem(key);
+        try {
+            localStorage.removeItem(key);
+        } catch (error) {
+            console.warn(`Failed to remove localStorage item "${key}":`, error);
+        }
     },
 
     // Session storage helpers
@@ -175,7 +178,11 @@ const AppStorage = {
         },
 
         remove(key) {
-            sessionStorage.removeItem(key);
+            try {
+                sessionStorage.removeItem(key);
+            } catch (error) {
+                console.warn(`Failed to remove sessionStorage item "${key}":`, error);
+            }
         }
     }
 };
@@ -187,19 +194,24 @@ function handleApiError(error, context = '') {
     alert(message);
 }
 
-// Player ID System - Shared unique player ID generation
+// Player ID System - Shared unique player ID generation. The random digits
+// come from the cryptographic generator, like the server's: Math.random's
+// numbers can be predicted. (crypto.randomUUID() would be shorter, but a
+// browser offers it only on https and localhost, not on a phone that opens
+// the game at the computer's plain-http address)
 function generatePlayerId() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0;
+        const r = crypto.getRandomValues(new Uint8Array(1))[0] % 16;
         const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
 }
 
 // The server accepts a player ID only in UUID format (same pattern as
-// game-logic.js) and silently generates a fresh one otherwise - so a stored
-// ID in any other format (e.g. the pre-2025 "player_..." format) would make
-// the server create a NEW player on every page load: instant duplicates.
+// game-logic.js, tests/input-limits.test.js keeps them equal) and silently
+// generates a fresh one otherwise - so a stored ID in any other format (e.g.
+// the pre-2025 "player_..." format) would make the server create a NEW player
+// on every page load: instant duplicates. A player's secret has the same shape.
 const PLAYER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Get or create unique player ID for this browser (ONE per browser).
@@ -218,6 +230,21 @@ function getUniquePlayerId() {
 
 // Initialize player ID immediately when this script loads
 const PLAYER_ID = getUniquePlayerId();
+
+// The player's secret, one per browser like the ID. The ID is public - every
+// page in a room sees the players list - while the secret goes only to the
+// server, which never sends it to anybody: it proves that this browser IS
+// the player with PLAYER_ID, so nobody else can act in their name
+function getPlayerSecret() {
+    let secret = localStorage.getItem('whoami-player-secret');
+    if (!secret || !PLAYER_ID_PATTERN.test(secret)) {
+        secret = generatePlayerId();
+        localStorage.setItem('whoami-player-secret', secret);
+    }
+    return secret;
+}
+
+const PLAYER_SECRET = getPlayerSecret();
 
 // Show the running version (package.json on the server) in every
 // [data-app-version] element, so anyone can see which release is live

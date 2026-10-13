@@ -46,6 +46,19 @@ test('the last player to leave deletes the room', async ({ newPlayer }) => {
     await expect(alice.page).toHaveURL(/\/\?error=room-not-found$/);
 });
 
+test('Leave in one tab takes the player out of the room in every tab', async ({ newPlayer }) => {
+    const { players: [alice, bob], code } = await roomWith(newPlayer, ['Alice', 'Bob']);
+    // A second tab of the same browser is the same player
+    const secondTab = { name: 'Alice', page: await alice.context.newPage() };
+    await joinRoom(secondTab, code);
+    await waitForPlayers(bob.page, 2);
+
+    await leaveGame(alice);
+
+    await expect(secondTab.page).toHaveURL(new RegExp(`/\\?join=${code}$`));
+    await waitForPlayers(bob.page, 1);
+});
+
 test('a room its last player left does not come back from its backup', async ({ newPlayer }) => {
     test.skip(!!process.env.BASE_URL, 'writes a backup into the folder of the local test server');
     const { players: [alice, bob], code } = await roomWith(newPlayer, ['Alice', 'Bob']);

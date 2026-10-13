@@ -1,13 +1,11 @@
 // Who am I? Game - Frontend JavaScript
 // Names from utils.js (loaded before this file; see the note at the top of utils.js)
-/* global debugLog, MAX_NAME_LENGTH, isCustomAvatar, getText, serverErrorText, showError, showInfo, AppStorage, handleApiError, PLAYER_ID */
+/* global debugLog, MAX_NAME_LENGTH, isCustomAvatar, getText, serverErrorText, showError, showInfo, AppStorage, handleApiError, PLAYER_ID, PLAYER_SECRET */
 
-// Avatar pool - 60 emojis total (12 original + 48 new)
+// Avatar pool: the landing page deals 12 of them at a time (the server does
+// not need the list - it checks only that an avatar is short)
 const avatarPool = [
-    // Original 12 avatars
     '🐌', '🐧', '🤖', '🐱', '🐣', '🐝', '🐺', '🐴', '🍕', '🦄', '🐢', '🦋',
-
-    // 48 new avatars - diverse, fun, and appropriate selection
     '🐰', '🐮', '🐽', '🐷', '🐻', '🐦‍⬛', '🦖', '🦕', '🐳', '🦧', '🦣', '🐉',
     '👻', '🎃', '🤡', '👾', '🐲', '🥷', '👸', '🧙', '🧚', '🦸', '🧛', '👑',
     '🐶', '🐭', '🐹', '🐗', '🦊', '🐼', '🐨', '🐯', '🦁', '🐸', '🐵', '🦉',
@@ -135,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const createNewGameBtn = document.getElementById('createNewGame');
     const roomCodeInput = document.getElementById('roomCode');
 
-    // Player ID is already initialized by player-id.js
+    // The player ID comes from utils.js (PLAYER_ID)
 
     // Enforce the shared name limit (kept in utils.js, not in the HTML)
     const playerNameInput = document.getElementById('playerName');
@@ -216,10 +214,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (joinRoomCode && roomCodeInput) {
         roomCodeInput.value = joinRoomCode.toUpperCase();
-        roomCodeInput.style.backgroundColor = '#fff3cd';
+        roomCodeInput.classList.add('prefilled');
         document.getElementById('playerName').focus();
-
-        // Avatars are already randomly populated for this player
 
         // Update the form text to indicate joining
         const formLabel = document.querySelector('label[for="roomCode"]');
@@ -229,15 +225,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // The Join button follows the pre-filled code: updateJoinButtonState() below
 
-        // Show helpful message - will be localized after i18n is loaded
-        setTimeout(() => {
-            const message = `${getText('readyToJoin', 'Ready to join')} ${joinRoomCode.toUpperCase()}. ${getText('enterNameAvatar', 'Enter your name and choose an avatar.')}`;
-            showInfo(message);
-        }, 100);
+        // translations.js set up i18n on this same DOMContentLoaded, before this
+        // script (it loads first), so the message is already in the page's language
+        showInfo(`${getText('readyToJoin', 'Ready to join')} ${joinRoomCode.toUpperCase()}. ${getText('enterNameAvatar', 'Enter your name and choose an avatar.')}`);
     }
-    
-
-    // Avatar selection is now handled by populateAvatars function
 
     // Avatar selection
     if (avatarSelector) {
@@ -421,31 +412,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Function to reset create button state
+    // After a failed create: the button's own text back, its state from the room code
     function resetCreateButton() {
-        const createBtn = document.getElementById('createNewGame');
-        const roomInput = document.getElementById('roomCode');
-        if (createBtn) {
-            createBtn.disabled = false;
-            createBtn.textContent = getText('createNewGame', 'Create New Game');
-            
-            // Also update button states based on current room code
-            if (roomInput) {
-                const roomCode = roomInput.value.trim();
-                const hasValidRoomCode = roomCode.length === 6;
-                
-                if (hasValidRoomCode) {
-                    createBtn.disabled = true;
-                    createBtn.classList.add('btn-secondary');
-                    createBtn.classList.remove('btn-primary');
-                    createBtn.title = getText('clearRoomCodeToCreate', 'Clear room code to create a new game');
-                } else {
-                    createBtn.classList.remove('btn-secondary');
-                    createBtn.classList.add('btn-primary');
-                    createBtn.title = '';
-                }
-            }
-        }
+        createNewGameBtn.textContent = getText('createNewGame', 'Create New Game');
+        updateCreateButtonState();
     }
 
     // Function to join existing game
@@ -460,7 +430,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     gameId: playerData.roomCode,
                     playerName: playerData.name,
                     avatar: playerData.avatar,
-                    playerId: PLAYER_ID
+                    playerId: PLAYER_ID,
+                    playerSecret: PLAYER_SECRET
                 })
             });
             

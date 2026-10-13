@@ -138,7 +138,6 @@ describe('Stale Disconnected Player Cleanup (ghosts)', () => {
     }
 
     function disconnect(player, msAgo) {
-        player.connected = false;
         player.isConnected = false;
         player.disconnectedAt = Date.now() - msAgo;
     }
@@ -187,7 +186,6 @@ describe('Stale Disconnected Player Cleanup (ghosts)', () => {
         // starts the clock, giving them the full timeout to come back
         const { gameId, p1 } = createGameWithPlayers();
         const player = games.get(gameId).players.find(p => p.id === p1.id);
-        player.connected = false;
         player.isConnected = false;
         delete player.disconnectedAt;
 
@@ -260,7 +258,6 @@ describe('Stale Disconnected Player Cleanup (ghosts)', () => {
 
         for (const player of games.get('GHOST1').players) {
             expect(player.isConnected).toBe(false);
-            expect(player.connected).toBe(false);
             expect(typeof player.disconnectedAt).toBe('number');
         }
     });

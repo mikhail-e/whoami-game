@@ -1,10 +1,20 @@
 // Who am I? Game - Core Logic Functions
 // These functions are extracted for testing
 
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 
 // Color palette for character stickers (must match frontend)
 const stickerColors = ['red', 'blue', 'purple', 'orange', 'green', 'pink', 'indigo'];
+
+const MAX_PLAYERS = 12;
+// The states a game moves between (restartGame goes back to waiting)
+const GAME_STATES = ['waiting', 'started'];
+
+// A player ID is a UUID, and so is a player's secret. The frontend copy lives
+// in public/js/utils.js (a stored value in another format is replaced there);
+// tests/input-limits.test.js keeps the two equal. Keep it on a single line
+// for that test.
+const PLAYER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Input limits. The frontend copy lives in public/js/utils.js (a browser
 // script cannot require() this file); tests/input-limits.test.js fails if
@@ -19,6 +29,18 @@ const MAX_CHARACTER_LENGTH = 128;
 // fails if they drift apart. Keep each on a single line for the sync tests.
 const MAX_CUSTOM_AVATAR_LENGTH = 32768; // ~24 KB of image data as base64
 const CUSTOM_AVATAR_PATTERN = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
+
+function isValidPlayerId(value) {
+    return typeof value === 'string' && PLAYER_ID_PATTERN.test(value);
+}
+
+// The server keeps a hash of a player's secret, never the secret itself: a
+// browser uses one secret in every room, and backups lie on the disk
+const SECRET_HASH_PATTERN = /^[0-9a-f]{64}$/;
+
+function hashSecret(secret) {
+    return crypto.createHash('sha256').update(secret).digest('hex');
+}
 
 // Count characters the way a person would: an emoji is one character,
 // not the two UTF-16 code units JavaScript's .length reports.
@@ -94,12 +116,14 @@ function sortPlayersByJoinTime(players) {
     players.sort((a, b) => new Date(a.joinedAt || 0) - new Date(b.joinedAt || 0));
 }
 
-// Generate short room code (6 characters)
+// Generate short room code (6 characters). The code is all that lets a
+// stranger into a room, so it comes from the cryptographic generator:
+// Math.random's next numbers can be worked out from the ones it gave before
 function generateRoomCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
     for (let i = 0; i < 6; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
+        code += chars[crypto.randomInt(chars.length)];
     }
     return code;
 }
@@ -119,6 +143,7 @@ function createGame(games) {
         state: 'waiting', // waiting, started, ended
         revealedPlayers: new Set(), // Track who has revealed their character
         recentlyLeft: new Map(), // playerId -> snapshot, lets leavers return to a started game
+        secrets: new Map(), // playerId -> hash of the player's secret (checkPlayerSecret); never sent to a page
         created: new Date()
     };
     touchGame(game);
@@ -127,8 +152,15 @@ function createGame(games) {
     return { gameId, success: true };
 }
 
-// Add or reconnect a player to a game
-function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
+// Add or reconnect a player to a game.
+//
+// A player ID is public: every page sees the players list. What proves that a
+// browser IS a player is the secret it sends along (PLAYER_SECRET in utils.js),
+// which the server never gives to anybody. The first join with a secret
+// records it (also for a player of a restored room, who has none yet); after
+// that, joining as this player needs the same secret. server.js sends one with
+// every join; a call without one checks nothing that is not recorded
+function addPlayerToGame(games, gameId, playerName, avatar, playerId = null, playerSecret = null) {
     if (!games.has(gameId)) {
         return { success: false, error: 'Game not found' };
     }
@@ -153,9 +185,7 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
 
     // A player who left THIS started round may come back (their character,
     // reveal status and color were snapshotted on the way out)
-    const returningSnapshot = (playerId && game.recentlyLeft)
-        ? game.recentlyLeft.get(playerId)
-        : undefined;
+    const returningSnapshot = playerId ? game.recentlyLeft.get(playerId) : undefined;
 
     // Check if game has already started (only allow existing players to
     // reconnect and recent leavers to return)
@@ -163,8 +193,15 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
         return { success: false, error: 'Game has already started' };
     }
 
-    // Check if game is full (max 12 players, but allow existing players)
-    if (game.players.length >= 12 && !existingPlayer) {
+    // Somebody else's browser cannot take this player's place
+    const secretHash = playerSecret ? hashSecret(playerSecret) : null;
+    const recordedHash = existingPlayer ? game.secrets.get(playerId) : returningSnapshot?.secretHash;
+    if (recordedHash && secretHash !== recordedHash) {
+        return { success: false, error: 'This player is playing in another browser' };
+    }
+
+    // Check if game is full (allow existing players)
+    if (game.players.length >= MAX_PLAYERS && !existingPlayer) {
         return { success: false, error: 'Game is full' };
     }
 
@@ -172,12 +209,10 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
     let isNewPlayer = false;
 
     if (existingPlayer) {
-        // Player reconnecting - update their connection status
-        existingPlayer.connected = true;
-        existingPlayer.isConnected = true;
-        existingPlayer.connectedAt = Date.now();
+        // Player coming back (a reload, a reconnect): their page is about
+        // to connect. One who is offline gets a fresh ghost clock meanwhile
         existingPlayer.avatar = cleanAvatar; // Allow avatar update
-        delete existingPlayer.disconnectedAt; // Clear disconnect timestamp
+        if (!existingPlayer.isConnected) existingPlayer.disconnectedAt = Date.now();
         player = existingPlayer;
     } else {
         // Prefer the returning player's old color if nobody took it meanwhile
@@ -187,17 +222,18 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
             : assignUniqueColor(game.players);
 
         // New player joining - use provided playerId if valid, otherwise generate one
-        const isValidUUID = playerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(playerId);
         player = {
-            id: isValidUUID ? playerId : uuidv4(),
+            id: isValidPlayerId(playerId) ? playerId : crypto.randomUUID(),
             name: cleanName,
             avatar: cleanAvatar,
-            connected: true,
-            isConnected: true,
+            // Online only once their page connects (markPlayerConnected). A
+            // player whose page never opens the room - a closed tab, a lost
+            // network - is removed as a ghost instead of staying forever
+            isConnected: false,
+            disconnectedAt: Date.now(),
             // A returning leaver keeps their original join time, which puts
             // them back at their old position in the list (see sort below)
             joinedAt: (returningSnapshot && returningSnapshot.joinedAt) || new Date(),
-            connectedAt: Date.now(),
             stickerColor: stickerColor
         };
 
@@ -217,6 +253,7 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
             game.recentlyLeft.delete(player.id);
         }
     }
+    if (secretHash) game.secrets.set(player.id, secretHash);
     touchGame(game);
 
     return {
@@ -315,7 +352,13 @@ function startGame(games, gameId, playerId) {
     if (game.players.length < 2) {
         return { success: false, error: 'Need at least 2 players to start' };
     }
-    
+
+    // Every player needs a character. The Start button waits for that too,
+    // but a player can join at the very moment it is pressed
+    if (game.players.some(p => !game.characters.has(p.id))) {
+        return { success: false, error: 'Every player needs a character to start' };
+    }
+
     // Start the game
     game.state = 'started';
     game.startedAt = new Date();
@@ -390,7 +433,7 @@ function restartGame(games, gameId, playerId) {
     game.state = 'waiting';
     game.revealedPlayers.clear();
     game.characters.clear(); // Clear all character assignments
-    if (game.recentlyLeft) game.recentlyLeft.clear(); // the old round's leavers get no special treatment
+    game.recentlyLeft.clear(); // the old round's leavers get no special treatment
     game.restartedAt = new Date();
     touchGame(game);
 
@@ -429,8 +472,8 @@ function removePlayerFromGame(games, gameId, playerId) {
     // they can return to the SAME round with their character and status.
     // (Waiting-lobby leaves need no snapshot - anyone can join a lobby.)
     if (game.state === 'started') {
-        if (!game.recentlyLeft) game.recentlyLeft = new Map(); // restored games may lack it
         game.recentlyLeft.set(playerId, {
+            secretHash: game.secrets.get(playerId), // only the same browser may come back
             stickerColor: removedPlayer.stickerColor,
             character: game.characters.get(playerId) || null,
             revealed: game.revealedPlayers.has(playerId),
@@ -442,6 +485,7 @@ function removePlayerFromGame(games, gameId, playerId) {
     game.players.splice(playerIndex, 1);
     game.characters.delete(playerId);      // the leaver's own character disappears
     game.revealedPlayers.delete(playerId);
+    game.secrets.delete(playerId);
     touchGame(game);
 
     // A game with zero players ceases to exist (server.js deletes its disk
@@ -462,6 +506,14 @@ function removePlayerFromGame(games, gameId, playerId) {
     };
 }
 
+// Is this the secret of a player of this game? join-room asks before a
+// socket may act for the player
+function checkPlayerSecret(game, playerId, playerSecret) {
+    return isValidPlayerId(playerSecret)
+        && game.players.some(p => p.id === playerId)
+        && game.secrets.get(playerId) === hashSecret(playerSecret);
+}
+
 // Validate room code format
 function isValidRoomCode(code) {
     if (!code || typeof code !== 'string') {
@@ -472,115 +524,214 @@ function isValidRoomCode(code) {
     return /^[A-Z0-9]{6}$/.test(code);
 }
 
-// Recreate a game from saved state
-function recreateGameFromState(games, roomCode, savedGameState) {
-    try {
-        // Validate the saved state has required fields
-        if (!savedGameState.players || !Array.isArray(savedGameState.players)) {
-            return { success: false, error: 'Invalid saved game state: missing players' };
-        }
-
-        // Create the game structure
-        const game = {
-            id: roomCode,
-            players: savedGameState.players || [],
-            characters: new Map(),
-            state: savedGameState.gameState || 'waiting',
-            revealedPlayers: new Set(),
-            created: new Date(),
-            recreatedAt: new Date()
-        };
-
-        // Safely handle characters data
-        if (savedGameState.characters && typeof savedGameState.characters === 'object' && !Array.isArray(savedGameState.characters)) {
-            try {
-                game.characters = new Map(Object.entries(savedGameState.characters));
-            } catch (error) {
-                console.warn('Invalid characters data, using empty Map');
-                game.characters = new Map();
-            }
-        }
-
-        // Safely handle revealedPlayers data
-        if (savedGameState.revealedPlayers && Array.isArray(savedGameState.revealedPlayers)) {
-            try {
-                game.revealedPlayers = new Set(savedGameState.revealedPlayers);
-            } catch (error) {
-                console.warn('Invalid revealedPlayers data, using empty Set');
-                game.revealedPlayers = new Set();
-            }
-        }
-
-        // Avatar rotation is now per-player, no need to store room-specific avatars
-
-        // Nobody is actually connected right after a recreation - players are
-        // marked connected again when they rejoin. A stale isConnected: true
-        // from the client's localStorage backup would otherwise make the
-        // player look online forever, dodging every cleanup.
-        game.players.forEach(player => {
-            player.connected = false;
-            player.isConnected = false;
-            player.disconnectedAt = Date.now();
-        });
-
-        touchGame(game);
-
-        // Store the recreated game
-        games.set(roomCode, game);
-
-        console.log(`Game ${roomCode} recreated with ${game.players.length} players in state: ${game.state}`);
-
-        return {
-            success: true,
-            gameId: roomCode,
-            playersRestored: game.players.length,
-            charactersRestored: game.characters.size,
-            gameState: game.state
-        };
-
-    } catch (error) {
-        console.error('Error recreating game from state:', error);
-        return { success: false, error: 'Failed to recreate game from saved state' };
-    }
+// A game as plain data, ready for JSON: what a player gets on joining the
+// room, and what a disk backup holds (Maps and Sets become objects and
+// arrays). The hashes of the players' secrets go only into a backup, never
+// to a page
+function serializeGame(game, { withSecrets = false } = {}) {
+    const data = {
+        id: game.id,
+        players: game.players,
+        characters: Object.fromEntries(game.characters),
+        state: game.state,
+        revealedPlayers: Array.from(game.revealedPlayers),
+        created: game.created
+    };
+    if (withSecrets) data.secrets = Object.fromEntries(game.secrets);
+    return data;
 }
 
-// Tracks which socket belongs to which player.
+// A Date from a saved value (a Date, or an ISO string after JSON), or null
+function toDate(value) {
+    const date = new Date(value);
+    return (value && !Number.isNaN(date.getTime())) ? date : null;
+}
+
+// Rebuild a game from saved data: a disk backup (state), or a browser's copy
+// sent to /api/recreate-game. The data comes from outside, so it passes the
+// same checks a live game does, and whatever fails them is left out: a
+// player without a valid ID, name or avatar, a character of nobody in the
+// list, an unknown state. Returns null when there is no players list.
 //
-// The tricky part is the page refresh: the browser opens a NEW socket before
-// the OLD one reports its disconnect. Without care, the late disconnect of the
-// old socket would mark the freshly reconnected player as offline. Every
-// disconnect is therefore checked against the player's current socket.
+// Nobody is actually connected right after a restore - players are marked
+// connected again when they rejoin. The fresh disconnectedAt gives every
+// player the full ghost timeout to come back.
+function restoreGame(roomCode, saved) {
+    if (!saved || typeof saved !== 'object' || !Array.isArray(saved.players)) {
+        return null;
+    }
+
+    const now = Date.now();
+    const players = [];
+    for (const savedPlayer of saved.players) {
+        if (players.length === MAX_PLAYERS) break;
+        if (!savedPlayer || typeof savedPlayer !== 'object') continue;
+
+        const name = sanitizePlayerName(savedPlayer.name);
+        const avatar = sanitizeAvatar(savedPlayer.avatar);
+        if (!isValidPlayerId(savedPlayer.id) || !name || !avatar) continue;
+        if (players.some(p => p.id === savedPlayer.id)) continue;
+
+        players.push({
+            id: savedPlayer.id,
+            name,
+            avatar,
+            stickerColor: stickerColors.includes(savedPlayer.stickerColor)
+                ? savedPlayer.stickerColor
+                : assignUniqueColor(players),
+            joinedAt: toDate(savedPlayer.joinedAt) || new Date(now),
+            isConnected: false,
+            disconnectedAt: now
+        });
+    }
+    sortPlayersByJoinTime(players);
+
+    const listed = new Set(players.map(p => p.id));
+    const characters = new Map();
+    const savedCharacters = (saved.characters && typeof saved.characters === 'object') ? saved.characters : {};
+    for (const [playerId, data] of Object.entries(savedCharacters)) {
+        if (!listed.has(playerId) || !data || typeof data !== 'object') continue;
+        const character = sanitizeCharacter(data.character);
+        if (!character) continue; // not a string, or empty
+        characters.set(playerId, {
+            character,
+            assignedBy: isValidPlayerId(data.assignedBy) ? data.assignedBy : null,
+            assignedAt: toDate(data.assignedAt) || new Date(now)
+        });
+    }
+
+    // Only a player with a character can have revealed it
+    const savedRevealed = Array.isArray(saved.revealedPlayers) ? saved.revealedPlayers : [];
+    const revealedPlayers = new Set(savedRevealed.filter(playerId => characters.has(playerId)));
+
+    // A player without a saved secret gets one recorded by their next join
+    const secrets = new Map();
+    const savedSecrets = (saved.secrets && typeof saved.secrets === 'object') ? saved.secrets : {};
+    for (const [playerId, secretHash] of Object.entries(savedSecrets)) {
+        if (listed.has(playerId) && typeof secretHash === 'string' && SECRET_HASH_PATTERN.test(secretHash)) {
+            secrets.set(playerId, secretHash);
+        }
+    }
+
+    const game = {
+        id: roomCode,
+        players,
+        characters,
+        state: GAME_STATES.includes(saved.state) ? saved.state : 'waiting',
+        revealedPlayers,
+        recentlyLeft: new Map(),
+        secrets,
+        created: toDate(saved.created) || new Date(now)
+    };
+    touchGame(game);
+    return game;
+}
+
+// Recreate a game from a browser's copy of it (saveGameStateToStorage in
+// game-room.js), after the server lost the room
+function recreateGameFromState(games, roomCode, savedGameState) {
+    if (!savedGameState || typeof savedGameState !== 'object') {
+        return { success: false, error: 'Failed to recreate game from saved state' };
+    }
+
+    // The browser's copy calls the state gameState. It holds no secrets and
+    // must not set any: each player's next join records their own
+    const game = restoreGame(roomCode, { ...savedGameState, state: savedGameState.gameState, secrets: undefined });
+    if (!game) {
+        return { success: false, error: 'Invalid saved game state: missing players' };
+    }
+
+    games.set(roomCode, game);
+    return {
+        success: true,
+        gameId: roomCode,
+        playersRestored: game.players.length,
+        charactersRestored: game.characters.size,
+        gameState: game.state
+    };
+}
+
+// A page of this player has connected to the room: they are online.
+// Returns the player, or null when they are not in the game
+function markPlayerConnected(game, playerId) {
+    const player = game.players.find(p => p.id === playerId);
+    if (!player) return null;
+    player.isConnected = true;
+    delete player.disconnectedAt;
+    touchGame(game);
+    return player;
+}
+
+// The player's last page went away: they stay in the room, offline, and may
+// come back (removeStaleDisconnectedPlayers removes a ghost later).
+// Returns the player, or null when they are not in the game
+function markPlayerDisconnected(game, playerId) {
+    const player = game.players.find(p => p.id === playerId);
+    if (!player) return null;
+    player.isConnected = false;
+    player.disconnectedAt = Date.now();
+    touchGame(game);
+    return player;
+}
+
+// Tracks which sockets belong to which player of which room. A player may
+// have several: two tabs of one browser are the same player, and on a page
+// refresh the browser opens the NEW socket before the OLD one reports its
+// disconnect. A player goes offline only when their LAST socket goes, so
+// neither a closed second tab nor a late disconnect after a refresh marks
+// a player who is still playing as offline.
 function createConnectionTracker() {
     const socketToPlayer = new Map(); // socketId -> { gameId, playerId }
-    const playerToSocket = new Map(); // playerId -> socketId
+    const playerSockets = new Map();  // "gameId playerId" -> Set of socketIds
+    const keyOf = (gameId, playerId) => `${gameId} ${playerId}`;
+
+    function forgetSocket(socketId) {
+        const playerInfo = socketToPlayer.get(socketId);
+        if (!playerInfo) return null;
+        socketToPlayer.delete(socketId);
+
+        const key = keyOf(playerInfo.gameId, playerInfo.playerId);
+        const sockets = playerSockets.get(key);
+        sockets.delete(socketId);
+        if (sockets.size > 0) return null;
+        playerSockets.delete(key);
+        return playerInfo;
+    }
 
     return {
-        // Register a socket as the player's current connection
+        // Register a socket as one of the player's connections (a socket
+        // belongs to one player: registering it again moves it)
         register(socketId, gameId, playerId) {
+            forgetSocket(socketId);
             socketToPlayer.set(socketId, { gameId, playerId });
-            playerToSocket.set(playerId, socketId);
+            const key = keyOf(gameId, playerId);
+            if (!playerSockets.has(key)) playerSockets.set(key, new Set());
+            playerSockets.get(key).add(socketId);
         },
 
         // Handle a socket disconnect.
-        // Returns { gameId, playerId } if the player really went offline,
-        // or null if the socket was stale (player already reconnected) / unknown.
+        // Returns { gameId, playerId } if it was the player's last socket (the
+        // player really went offline), or null if they still have another
+        // one, or the socket is unknown
         unregister(socketId) {
-            const playerInfo = socketToPlayer.get(socketId);
-            if (!playerInfo) return null;
-
-            socketToPlayer.delete(socketId);
-
-            // Stale disconnect: the player already has a newer socket
-            if (playerToSocket.get(playerInfo.playerId) !== socketId) {
-                return null;
-            }
-
-            playerToSocket.delete(playerInfo.playerId);
-            return playerInfo;
+            return forgetSocket(socketId);
         },
 
-        getSocketId(playerId) {
-            return playerToSocket.get(playerId);
+        // The player left the room: none of their sockets speaks for them any
+        // more. Returns those sockets' IDs (server.js takes them out of the room)
+        unregisterPlayer(gameId, playerId) {
+            const key = keyOf(gameId, playerId);
+            const socketIds = [...(playerSockets.get(key) || [])];
+            for (const socketId of socketIds) {
+                socketToPlayer.delete(socketId);
+            }
+            playerSockets.delete(key);
+            return socketIds;
+        },
+
+        // The player this socket speaks for: { gameId, playerId }, or null
+        getPlayer(socketId) {
+            return socketToPlayer.get(socketId) || null;
         },
 
         get size() {
@@ -614,9 +765,9 @@ function removeStaleDisconnectedPlayers(games, maxDisconnectedMs = MAX_DISCONNEC
             if (player.isConnected) continue;
 
             if (!player.disconnectedAt) {
-                // Games restored from disk or recreated from a client backup
-                // have no disconnect timestamp - start the clock now, so the
-                // player is removed on a LATER pass if nobody comes back
+                // Every way of going offline sets the timestamp; should one be
+                // missing anyway, start the clock now rather than remove the
+                // player at once - they go on a LATER pass if nobody comes back
                 player.disconnectedAt = now;
             } else if (now - player.disconnectedAt > maxDisconnectedMs) {
                 stalePlayerIds.push(player.id);
@@ -666,14 +817,20 @@ module.exports = {
     revealCharacter,
     restartGame,
     removePlayerFromGame,
+    checkPlayerSecret,
     isValidRoomCode,
     assignUniqueColor,
+    serializeGame,
+    restoreGame,
     recreateGameFromState,
     sanitizePlayerName,
     sanitizeAvatar,
     sanitizeCharacter,
     isCustomAvatar,
+    isValidPlayerId,
     touchGame,
+    markPlayerConnected,
+    markPlayerDisconnected,
     cleanupInactiveGames,
     removeStaleDisconnectedPlayers,
     createConnectionTracker,

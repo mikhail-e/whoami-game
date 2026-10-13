@@ -119,8 +119,7 @@ describe('Player Joining', () => {
         expect(result.isNewPlayer).toBe(true);
         expect(result.player).toMatchObject({
             name: 'Alice',
-            avatar: '😀',
-            connected: true
+            avatar: '😀'
         });
         expect(result.player.id).toBeDefined();
         expect(result.game.players).toHaveLength(1);
@@ -180,7 +179,9 @@ describe('Player Joining', () => {
     test('prevents NEW players from joining started games', () => {
         // Add players and start game
         const player1Result = addPlayerToGame(games, gameId, 'Alice', '😀');
-        addPlayerToGame(games, gameId, 'Bob', '😎');
+        const player2Result = addPlayerToGame(games, gameId, 'Bob', '😎');
+        assignCharacter(games, gameId, player1Result.player.id, 'Batman', player2Result.player.id);
+        assignCharacter(games, gameId, player2Result.player.id, 'Superman', player1Result.player.id);
         startGame(games, gameId, player1Result.player.id);
         
         // Try to add another NEW player after game started
@@ -193,7 +194,9 @@ describe('Player Joining', () => {
     test('allows EXISTING players to reconnect to started games', () => {
         // Add players and start game
         const player1Result = addPlayerToGame(games, gameId, 'Alice', '😀');
-        addPlayerToGame(games, gameId, 'Bob', '😎');
+        const player2Result = addPlayerToGame(games, gameId, 'Bob', '😎');
+        assignCharacter(games, gameId, player1Result.player.id, 'Batman', player2Result.player.id);
+        assignCharacter(games, gameId, player2Result.player.id, 'Superman', player1Result.player.id);
         startGame(games, gameId, player1Result.player.id);
         
         // Existing player reconnects with their ID
@@ -207,7 +210,9 @@ describe('Player Joining', () => {
     test('prevents new players from joining started games (no ID provided)', () => {
         // Add players and start game
         const player1Result = addPlayerToGame(games, gameId, 'Alice', '😀');
-        addPlayerToGame(games, gameId, 'Bob', '😎');
+        const player2Result = addPlayerToGame(games, gameId, 'Bob', '😎');
+        assignCharacter(games, gameId, player1Result.player.id, 'Batman', player2Result.player.id);
+        assignCharacter(games, gameId, player2Result.player.id, 'Superman', player1Result.player.id);
         startGame(games, gameId, player1Result.player.id);
 
         // Try to join as "Alice" without providing player ID - should fail since game started
@@ -224,7 +229,6 @@ describe('Player Joining', () => {
             id: expect.any(String),
             name: 'Alice',
             avatar: '😀',
-            connected: true,
             joinedAt: expect.any(Date)
         });
     });
@@ -412,6 +416,10 @@ describe('Game Starting', () => {
         
         playerId1 = player1Result.player.id;
         playerId2 = player2Result.player.id;
+
+        // The game starts only when every player has a character
+        assignCharacter(games, gameId, playerId1, 'Batman', playerId2);
+        assignCharacter(games, gameId, playerId2, 'Superman', playerId1);
     });
 
     test('starts game successfully with enough players', () => {
@@ -441,6 +449,17 @@ describe('Game Starting', () => {
         
         expect(result.success).toBe(false);
         expect(result.error).toBe('Need at least 2 players to start');
+    });
+
+    test('refuses to start while a player has no character', () => {
+        // Charlie joins at the moment Start is pressed: nobody gave him a character yet
+        addPlayerToGame(games, gameId, 'Charlie', '🤖');
+
+        const result = startGame(games, gameId, playerId1);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Every player needs a character to start');
+        expect(games.get(gameId).state).toBe('waiting');
     });
 
     test('prevents starting already started game', () => {
@@ -568,8 +587,9 @@ describe('Character Revealing', () => {
         const player3Result = addPlayerToGame(games, newGameId, 'Charlie', '🤖');
         addPlayerToGame(games, newGameId, 'David', '🚀');
         
-        // Start the game (player3 has no character assigned)
-        startGame(games, newGameId, player3Result.player.id);
+        // startGame refuses such a game, but a backup restored from disk or
+        // from a browser can still hold one: a started game, Charlie without a character
+        games.get(newGameId).state = 'started';
         
         const result = revealCharacter(games, newGameId, player3Result.player.id);
         
