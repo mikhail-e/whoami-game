@@ -1,6 +1,6 @@
 # Who am I?
 
-![The game room: player cards with their characters pinned on as tags](public/img/og-image-2.jpg)
+![The sign and the game room: player cards with their characters pinned on as tags, your own a sealed envelope](public/img/og-image-2.jpg)
 
 The classic guessing party game, played remotely. Every player gets a secret character chosen by the others and asks yes/no questions to find out who they are. Create a room, send the link to friends and family, play — no accounts, nothing to install.
 
@@ -57,7 +57,7 @@ To report a security problem, see [SECURITY.md](SECURITY.md) — please don't op
 
 The code is released under the [MIT License](LICENSE).
 
-The license does not cover the game's brand: the "WHO AM I?" sign (`svg.brand-sign` in the pages), the wax-seal app icon (`public/icons/`, `public/favicon.ico`, `scripts/icon.html`) and the link preview picture (`public/img/og-image-2.jpg`, `scripts/og-image.html`). All rights to them are reserved; a copy of the game should replace them with its own.
+The license does not cover the game's brand: the "WHO AM I?" sign (`svg.brand-sign` in the pages), the wax-seal app icon (`public/icons/`, `public/favicon.ico`, `scripts/icon.html`) and the link preview picture (`public/img/og-image-2.jpg`, `scripts/og-image.html`). All rights to them are reserved (except the emoji avatars in the picture, drawn by the system's emoji font); a copy of the game must replace them with its own.
 
 Third-party files keep their own licenses: the fonts in `public/fonts/` (SIL Open Font License; Ultra — Apache License 2.0; the license files are next to the fonts) and Bootstrap in `public/vendor/bootstrap/` (MIT). The cup in the Buy Me a Coffee button (`public/img/bmc-cup.svg`) is Buy Me a Coffee's logo.
 

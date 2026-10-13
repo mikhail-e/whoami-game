@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please report security problems privately: open the **Security** tab of this repository and click **Report a vulnerability**. Don't open a public issue for them.
+Please report security problems privately: open the **Security** tab of this repository and click **Report a vulnerability** ([direct link](https://github.com/mikhail-e/whoami-game/security/advisories/new)). Don't open a public issue for them.
 
 The scope is the code in this repository and the running game at https://whoami-game.onrender.com/. Only the latest version — the one in production — is supported.
 
