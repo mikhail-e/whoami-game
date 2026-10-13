@@ -147,9 +147,30 @@ test('a tampered saved avatar is ignored', async ({ newPlayer }) => {
 test('the coffee button opens Buy Me a Coffee in a new tab', async ({ newPlayer }) => {
     const { page } = await newPlayer('Alice');
     await page.goto('/');
-    const link = page.getByRole('link', { name: text('buyCoffee') });
+    const link = page.getByRole('link', { name: 'Buy me a coffee', exact: true });
 
     await expect(link).toHaveAttribute('href', 'https://www.buymeacoffee.com/mikhail.e');
     await expect(link).toHaveAttribute('target', '_blank');
     await expect(link).toHaveAttribute('rel', /\bnoopener\b/);
+});
+
+// Like the sign, the coffee button is English on a Russian page too; its name
+// is the words it shows, so a voice command "Buy me a coffee" finds it
+test('the coffee button is English in both languages', async ({ newPlayer }) => {
+    const { page } = await newPlayer('Алиса', { locale: 'ru-RU' });
+    await page.goto('/');
+    const link = page.getByRole('link', { name: 'Buy me a coffee', exact: true });
+
+    await expect(link).toHaveAttribute('lang', 'en');
+    await expect(link).toHaveAttribute('href', 'https://www.buymeacoffee.com/mikhail.e');
+});
+
+// A finger aimed at the language button must not land on the coffee link
+test('the coffee button stands apart from the language button', async ({ newPlayer }) => {
+    const { page } = await newPlayer('Alice');
+    await page.goto('/');
+    const language = await page.locator('.lang-toggle-btn').boundingBox();
+    const coffee = await page.getByRole('link', { name: 'Buy me a coffee', exact: true }).boundingBox();
+
+    expect(coffee.y - (language.y + language.height)).toBeGreaterThanOrEqual(32);
 });
