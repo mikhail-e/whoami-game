@@ -1,4 +1,4 @@
-// Takes the link preview picture: scripts/og-image.html → public/img/og-image.jpg
+// Takes the link preview picture: scripts/og-image.html → public/img/og-image-2.jpg
 // (docs/publishing.md). Run it after a change to the source or to the game's
 // look: node scripts/og-image.js
 const fs = require('fs');
@@ -7,7 +7,8 @@ const { pathToFileURL } = require('url');
 const { chromium } = require('@playwright/test');
 
 const SOURCE = path.join(__dirname, 'og-image.html');
-const PICTURE = path.join(__dirname, '..', 'public', 'img', 'og-image.jpg');
+// A new look gets a new file name: messengers keep a picture by its address
+const PICTURE = path.join(__dirname, '..', 'public', 'img', 'og-image-2.jpg');
 // The sign is taken from the landing page, not copied into the source: a copy
 // would drift from the drawing players see
 const LANDING = path.join(__dirname, '..', 'public', 'index.html');
