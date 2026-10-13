@@ -50,6 +50,8 @@ node scripts/og-image.js    # снимок 1200×630 → public/img/og-image-2.j
 
 Поменяли размер картинки — поправьте `og:image:width` и `og:image:height` в обеих страницах.
 
+Если картинка загружена в GitHub как Social preview репозитория (Settings → Social preview), после пересъёмки загрузите её и туда: GitHub хранит свою копию.
+
 Facebook и мессенджеры хранят картинку у себя по её адресу, а адрес у всех ссылок один. После пересъёмки старая картинка может показываться ещё долго, даже для ссылок на новые комнаты. Если новая нужна сразу, сохраните её под новым именем (`og-image-2.jpg`): имя файла записано в `scripts/og-image.js` и в тегах страниц (таблица ниже).
 
 ## Где записан адрес сайта
@@ -61,10 +63,10 @@ Facebook и мессенджеры хранят картинку у себя п�
 | `public/index.html` | `canonical`, `og:url`, `og:image`, `twitter:image`, `url` и `screenshot` в JSON-LD |
 | `public/game.html` | `og:image`, `twitter:image` |
 | `public/llms.txt` | ссылка в разделе Links |
-| `package.json` | `test:e2e:prod` |
-| `README.md`, `CLAUDE.md`, `docs/release.md`, `docs/testing.md` | адрес прода в тексте |
+| `package.json` | `test:e2e:prod`, `homepage` |
+| `README.md`, `CLAUDE.md`, `SECURITY.md`, `docs/release.md`, `docs/testing.md` | адрес прода в тексте |
 
-Переход на свой домен: `git grep -n "whoami-game.onrender.com"` и замена во всех найденных местах.
+Переход на свой домен: `git grep -n "whoami-game.onrender.com"` и замена во всех найденных местах. Вне git адрес записан ещё в поле Website репозитория на GitHub (`gh repo edit --homepage`) — его поменять тоже.
 
 ## Проверка после выкладки
 
