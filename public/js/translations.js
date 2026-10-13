@@ -5,7 +5,7 @@
 const translations = {
     en: {
         // Main page
-        title: "🎭 Who am I?",
+        title: "Who am I?",
         subtitle: "Play the classic guessing game with friends and family!",
         joinCreateGame: "Join or Create a Game",
         yourName: "Your Name",
@@ -176,7 +176,7 @@ const translations = {
     
     ru: {
         // Main page
-        title: "🎭 Кто я?",
+        title: "Кто я?",
         subtitle: "Играйте в классическую игру-угадайку с друзьями и семьёй!",
         joinCreateGame: "Присоединиться или создать игру",
         yourName: "Ваше имя",

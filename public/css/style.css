@@ -77,6 +77,46 @@ body {
   margin: 0 auto;
 }
 
+/* The sign: the h1 of the landing page and the room, a picture on 404 */
+.brand {
+  margin: 0 0 10px;
+}
+
+.brand-sign {
+  display: block;
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  margin-inline: auto;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .45));
+}
+
+/* Smaller in the room: the players should fit the first screen of a phone */
+.brand--room .brand-sign {
+  max-width: 300px;
+}
+
+@media (min-width: 768px) {
+  .brand--room .brand-sign {
+    max-width: 360px;
+  }
+}
+
+/* Font sizes inside the SVG are viewBox units: the sign scales as a whole */
+.brand-sign__name {
+  font-family: 'Abril Fatface', serif;
+}
+
+.brand-sign__small {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600;
+}
+
+.tagline {
+  margin: 4px 0 0;
+  letter-spacing: .02em;
+}
+
 .game-card {
   background: white;
   border-radius: 15px;

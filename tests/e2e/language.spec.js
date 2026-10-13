@@ -9,14 +9,16 @@ const {
 // (translations.js), recreateRoomFromStorage rebuilds a lost room (game-room.js)
 /* global i18n, recreateRoomFromStorage */
 
-const heading = page => page.locator('h1');
+// The h1 is the sign, a logo that stays English: the page's language shows in
+// the subtitle under it, and in the tab title of a room
+const subtitle = page => page.locator('[data-i18n="subtitle"]');
 
 test('a Russian browser gets Russian', async ({ newPlayer }) => {
     const { page } = await newPlayer('Алиса', { locale: 'ru-RU' });
 
     await page.goto('/');
 
-    await expect(heading(page)).toHaveText(text('title', 'ru'));
+    await expect(subtitle(page)).toHaveText(text('subtitle', 'ru'));
 });
 
 test('an unknown language falls back to English', async ({ newPlayer }) => {
@@ -24,7 +26,7 @@ test('an unknown language falls back to English', async ({ newPlayer }) => {
 
     await page.goto('/');
 
-    await expect(heading(page)).toHaveText(text('title', 'en'));
+    await expect(subtitle(page)).toHaveText(text('subtitle', 'en'));
 });
 
 test('the saved choice beats the browser language', async ({ newPlayer }) => {
@@ -33,7 +35,7 @@ test('the saved choice beats the browser language', async ({ newPlayer }) => {
 
     await alice.page.reload();
 
-    await expect(heading(alice.page)).toHaveText(text('title', 'ru'));
+    await expect(subtitle(alice.page)).toHaveText(text('subtitle', 'ru'));
 });
 
 test('an invalid saved language is ignored', async ({ newPlayer }) => {
@@ -42,7 +44,7 @@ test('an invalid saved language is ignored', async ({ newPlayer }) => {
 
     await alice.page.reload();
 
-    await expect(heading(alice.page)).toHaveText(text('title', 'en'));
+    await expect(subtitle(alice.page)).toHaveText(text('subtitle', 'en'));
 });
 
 test('the switch changes texts, placeholders, titles and aria-labels and is remembered', async ({ newPlayer }) => {
@@ -51,13 +53,21 @@ test('the switch changes texts, placeholders, titles and aria-labels and is reme
 
     await page.locator('.lang-toggle-btn').click();
 
-    await expect(heading(page)).toHaveText(text('title', 'ru'));
+    await expect(subtitle(page)).toHaveText(text('subtitle', 'ru'));
     await expect(page.locator('#playerName')).toHaveAttribute('placeholder', text('enterName', 'ru'));
     await expect(page.locator('#shuffleAvatars')).toHaveAttribute('title', text('shuffleAvatars', 'ru'));
     await expect(page.locator('#shuffleAvatars')).toHaveAttribute('aria-label', text('shuffleAvatars', 'ru'));
 
     await page.reload();
-    await expect(heading(page)).toHaveText(text('title', 'ru'));
+    await expect(subtitle(page)).toHaveText(text('subtitle', 'ru'));
+});
+
+test('the sign stays English in Russian: it is the logo', async ({ newPlayer }) => {
+    const { page } = await newPlayer('Алиса', { locale: 'ru-RU' });
+    await page.goto('/');
+
+    await expect(subtitle(page)).toHaveText(text('subtitle', 'ru'));
+    await expect(page.getByRole('heading', { level: 1 })).toHaveAccessibleName('Who am I?');
 });
 
 // A screen reader picks its voice by the page's lang, a browser decides by it
@@ -65,7 +75,7 @@ test('the switch changes texts, placeholders, titles and aria-labels and is reme
 test('the page says which language it is in', async ({ newPlayer }) => {
     const { page } = await newPlayer('Алиса', { locale: 'ru-RU' });
     await page.goto('/');
-    await expect(heading(page)).toHaveText(text('title', 'ru'));
+    await expect(subtitle(page)).toHaveText(text('subtitle', 'ru'));
     await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
 
     await page.locator('.lang-toggle-btn').click();
@@ -90,7 +100,7 @@ test('in a room the switch re-renders the status and the cards', async ({ newPla
 test("the reveal notification reads in each player's language", async ({ newPlayer }) => {
     const { players: { Alice: alice, Bob: bob }, characters } = await startedGame(newPlayer, ['Alice', 'Bob']);
     await bob.page.locator('.lang-toggle-btn').click();
-    await expect(heading(bob.page)).toHaveText(text('title', 'ru'));
+    await expect(bob.page).toHaveTitle(text('gameRoom', 'ru'));
 
     await revealOwnCharacter(alice);
 
@@ -119,7 +129,7 @@ test("the close buttons are named in the player's language", async ({ newPlayer 
     const { players: { Alice: alice } } = await startedGame(newPlayer, ['Alice', 'Bob']);
     const { page } = alice;
     await page.locator('.lang-toggle-btn').click();
-    await expect(heading(page)).toHaveText(text('title', 'ru'));
+    await expect(page).toHaveTitle(text('gameRoom', 'ru'));
 
     await page.click('#leaveGame');
     await expect(page.locator('#leaveModal')).toHaveClass(/\bshow\b/);
