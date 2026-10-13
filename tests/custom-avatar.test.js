@@ -76,8 +76,8 @@ describe('Custom avatars flow through the game logic', () => {
     test('recreate-game keeps data URL avatars intact', () => {
         const savedState = {
             players: [
-                { id: 'player-1', name: 'Alice', avatar: DATA_URL, stickerColor: 'red' },
-                { id: 'player-2', name: 'Bob', avatar: '😎', stickerColor: 'blue' }
+                { id: '00000000-0000-4000-8000-000000000001', name: 'Alice', avatar: DATA_URL, stickerColor: 'red' },
+                { id: '00000000-0000-4000-8000-000000000002', name: 'Bob', avatar: '😎', stickerColor: 'blue' }
             ],
             gameState: 'waiting'
         };

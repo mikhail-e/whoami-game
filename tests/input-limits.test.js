@@ -1,6 +1,6 @@
-// The input limits exist twice: once on the server (game-logic.js) and once
-// on the frontend (public/js/utils.js), because a browser script cannot
-// require() a Node module. This test fails if the two copies ever drift apart,
+// The input limits (and the shapes of a custom avatar and a player ID) exist
+// twice: once on the server (game-logic.js) and once on the frontend
+// (public/js/utils.js), because a browser script cannot require() a Node module. This test fails if the two copies ever drift apart,
 // which would let the UI accept text the server silently truncates or rejects.
 
 const fs = require('fs');
@@ -31,11 +31,11 @@ describe('Input limits stay in sync between server and frontend', () => {
             .toBe(gameLogic.MAX_CUSTOM_AVATAR_LENGTH);
     });
 
-    test('CUSTOM_AVATAR_PATTERN is character-for-character identical', () => {
+    test.each(['CUSTOM_AVATAR_PATTERN', 'PLAYER_ID_PATTERN'])('%s is character-for-character identical', (name) => {
         const readPattern = (filePath) => {
             const source = fs.readFileSync(path.join(__dirname, '..', filePath), 'utf8');
-            const match = source.match(/const\s+CUSTOM_AVATAR_PATTERN\s*=\s*(\/[^\n]+\/)/);
-            if (!match) throw new Error(`CUSTOM_AVATAR_PATTERN not found in ${filePath}`);
+            const match = source.match(new RegExp(`const\\s+${name}\\s*=\\s*(\\/[^\\n]+\\/[a-z]*);`));
+            if (!match) throw new Error(`${name} not found in ${filePath}`);
             return match[1];
         };
 
