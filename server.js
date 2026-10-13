@@ -258,6 +258,13 @@ io.on('connection', (socket) => {
         const { playerId, playerSecret } = data;
         const gameId = typeof data.gameId === 'string' ? data.gameId.toUpperCase() : '';
         const game = games.get(gameId);
+        // The page drew the room from its HTTP join, but its player has left
+        // since (in another tab, say) or the room is gone: tell this page it is
+        // out, as a leaver's own page is told, or it stays in a room it never hears
+        if (gameLogic.isValidPlayerId(playerId) && !(game && game.players.some(p => p.id === playerId))) {
+            socket.emit('player-left', { playerId, gameDeleted: !game });
+            return;
+        }
         if (!game || !gameLogic.checkPlayerSecret(game, playerId, playerSecret)) {
             return;
         }

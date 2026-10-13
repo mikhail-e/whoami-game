@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const {
     test, expect, text, seedStorage, createRoom, joinRoom, playerCard, waitForPlayers, startedGame, leaveGame,
-    waitForLanding,
+    waitForLanding, holdRoomJoin, releaseRoomJoin,
 } = require('./helpers');
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -57,6 +57,34 @@ test('Leave in one tab takes the player out of the room in every tab', async ({ 
 
     await expect(secondTab.page).toHaveURL(new RegExp(`/\\?join=${code}$`));
     await waitForPlayers(bob.page, 1);
+});
+
+test('a tab whose connection joins just after its player left goes home too', async ({ newPlayer }) => {
+    const { players: [alice, bob], code } = await roomWith(newPlayer, ['Alice', 'Bob']);
+    // A second tab on a slow connection: the room is drawn, its socket not in the room yet
+    const secondTab = { name: 'Alice', page: await alice.context.newPage() };
+    await holdRoomJoin(secondTab.page);
+    await joinRoom(secondTab, code);
+
+    await leaveGame(alice);
+    await waitForPlayers(bob.page, 1);
+    await releaseRoomJoin(secondTab.page);
+
+    await expect(secondTab.page).toHaveURL(new RegExp(`/\\?join=${code}$`));
+});
+
+test('a tab whose connection joins just after the room was deleted goes home', async ({ newPlayer }) => {
+    const alice = await newPlayer('Alice');
+    const code = await createRoom(alice);
+    const secondTab = { name: 'Alice', page: await alice.context.newPage() };
+    await holdRoomJoin(secondTab.page);
+    await joinRoom(secondTab, code);
+
+    // The last player leaves: the room is deleted
+    await leaveGame(alice);
+    await releaseRoomJoin(secondTab.page);
+
+    await expect(secondTab.page).toHaveURL(/\/$/);
 });
 
 test('a room its last player left does not come back from its backup', async ({ newPlayer }) => {
