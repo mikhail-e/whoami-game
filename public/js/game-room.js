@@ -1,6 +1,6 @@
 // Who am I? Game Room - Frontend JavaScript
 // Names from utils.js (loaded before this file; see the note at the top of utils.js)
-/* global debugLog, MAX_CHARACTER_LENGTH, isCustomAvatar, getText, serverErrorText, showNotification, AppStorage, handleApiError, PLAYER_ID */
+/* global debugLog, MAX_CHARACTER_LENGTH, isCustomAvatar, getText, serverErrorText, showNotification, AppStorage, handleApiError, PLAYER_ID, PLAYER_SECRET */
 
 let socket;
 let currentGame = null;
@@ -164,12 +164,15 @@ function initializeSocket(roomCode) {
     socket.on('connect', () => {
         debugLog('Connected to server');
 
-        // First join the game via API, then join the socket room
+        // First join the game via API, then join the socket room. The secret
+        // proves the socket is this player's: from now on the server takes
+        // everything this socket sends as this player's move, so the events
+        // below carry no player ID
         joinGameRoom(roomCode).then(() => {
-            // Join the socket room after successful API join with player ID
             socket.emit('join-room', {
                 gameId: roomCode,
-                playerId: currentPlayer.id
+                playerId: currentPlayer.id,
+                playerSecret: PLAYER_SECRET
             });
         }).catch((error) => {
             console.error('Failed to join game via API:', error);
@@ -354,9 +357,10 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
             gameId: roomCode,
             playerName: currentPlayer.name,
             avatar: currentPlayer.avatar,
-            playerId: currentPlayer.id
+            playerId: currentPlayer.id,
+            playerSecret: PLAYER_SECRET
         };
-        debugLog('Sending request body:', requestBody);
+        debugLog('Joining game:', roomCode, 'as player', currentPlayer.id);
         
         const response = await fetch('/api/join-game', {
             method: 'POST',
@@ -695,11 +699,10 @@ function openCharacterInput(playerId, stickerElement, originalCharacter) {
         if (currentGame.state !== 'waiting') return;
         sent = true;
 
+        // playerId is who gets the character; the server knows who gives it
         const assignData = {
-            gameId: currentGame.id,
             playerId: playerId,
-            character: inputElement.value.trim(),
-            assignedBy: currentPlayer.id
+            character: inputElement.value.trim()
         };
         debugLog('🔧 Sending assign-character:', assignData);
         socket.emit('assign-character', assignData);
@@ -765,10 +768,7 @@ function setupEventListeners() {
     document.getElementById('startGame').addEventListener('click', () => {
         if (!currentGame || !currentPlayer) return;
         
-        socket.emit('start-game', {
-            gameId: currentGame.id,
-            playerId: currentPlayer.id
-        });
+        socket.emit('start-game');
     });
 
     // Refresh page button
@@ -784,10 +784,7 @@ function setupEventListeners() {
     document.getElementById('confirmReveal').addEventListener('click', () => {
         if (!currentGame || !currentPlayer) return;
         
-        socket.emit('reveal-character', {
-            gameId: currentGame.id,
-            playerId: currentPlayer.id
-        });
+        socket.emit('reveal-character');
         
         revealModal.hide();
     });
@@ -825,10 +822,7 @@ function setupEventListeners() {
                 return;
             }
             
-            socket.emit('restart-game', {
-                gameId: currentGame.id,
-                playerId: currentPlayer.id
-            });
+            socket.emit('restart-game');
 
             restartModal.hide();
         });
@@ -854,10 +848,7 @@ function setupEventListeners() {
         confirmLeaveButton.addEventListener('click', () => {
             if (!currentGame || !currentPlayer) return;
 
-            socket.emit('leave-game', {
-                gameId: currentGame.id,
-                playerId: currentPlayer.id
-            });
+            socket.emit('leave-game');
             leaveModal.hide();
 
             // Fallback: if the server confirmation never arrives, leave anyway

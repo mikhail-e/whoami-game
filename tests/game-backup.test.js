@@ -28,6 +28,8 @@ const backups = createGameBackups(process.env.GAMES_DIR);
 const backupOf = code => path.join(process.env.GAMES_DIR, `${code}.json`);
 const canary = path.join(sandbox, 'CANARY.json');
 const HOUR = 60 * 60 * 1000;
+// The secret Alice's browser sends with a join
+const SECRET = '00000000-0000-4000-8000-0000000000a1';
 
 // A started game of Alice and Bob, Alice's character revealed
 function startedGame() {
@@ -164,7 +166,7 @@ describe('a room that is only on disk', () => {
         const { alice } = roomOnDisk('DISK02');
 
         const response = await request(app).post('/api/join-game').send({
-            gameId: 'DISK02', playerName: 'Alice', avatar: '😀', playerId: alice.id,
+            gameId: 'DISK02', playerName: 'Alice', avatar: '😀', playerId: alice.id, playerSecret: SECRET,
         });
 
         expect(response.status).toBe(200);
@@ -181,7 +183,7 @@ describe('a room that is only on disk', () => {
 
         await request(app).post('/api/recreate-game').send({ roomCode: 'DISK03', gameState: forged });
         const response = await request(app).post('/api/join-game').send({
-            gameId: 'DISK03', playerName: 'Alice', avatar: '😀', playerId: alice.id,
+            gameId: 'DISK03', playerName: 'Alice', avatar: '😀', playerId: alice.id, playerSecret: SECRET,
         });
 
         expect(response.body.game.players.map(p => p.name)).toEqual(['Alice', 'Bob']);

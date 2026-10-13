@@ -2,8 +2,17 @@
 // The real routes of server.js (create and join a game). Characters, reveals
 // and the rest of a game travel over Socket.IO: their rules are tested in
 // game-logic.test.js and in the browser (tests/e2e).
+const crypto = require('crypto');
 const request = require('supertest');
 const { app } = require('../server');
+
+// Every page sends its browser's secret with a join (PLAYER_SECRET in
+// utils.js). Here each player name is a browser of its own
+const secrets = new Map();
+function withSecret(body) {
+    if (!secrets.has(body.playerName)) secrets.set(body.playerName, crypto.randomUUID());
+    return { playerSecret: secrets.get(body.playerName), ...body };
+}
 
 describe('API Integration Tests', () => {
     // One listening server for the whole file: supertest would otherwise open
@@ -61,11 +70,11 @@ describe('API Integration Tests', () => {
         test('joins a game successfully', async () => {
             const response = await request(server)
                 .post('/api/join-game')
-                .send({
+                .send(withSecret({
                     gameId: gameId,
                     playerName: 'Alice',
                     avatar: '😀'
-                })
+                }))
                 .expect(200);
             
             expect(response.body).toMatchObject({
@@ -91,11 +100,11 @@ describe('API Integration Tests', () => {
             // First join
             const firstResponse = await request(server)
                 .post('/api/join-game')
-                .send({
+                .send(withSecret({
                     gameId: gameId,
                     playerName: 'Alice',
                     avatar: '😀'
-                })
+                }))
                 .expect(200);
             
             const playerId = firstResponse.body.player.id;
@@ -103,12 +112,12 @@ describe('API Integration Tests', () => {
             // Reconnect with same name but different avatar (provide player ID)
             const secondResponse = await request(server)
                 .post('/api/join-game')
-                .send({
+                .send(withSecret({
                     gameId: gameId,
                     playerName: 'Alice',
                     avatar: '😎',
                     playerId: playerId
-                })
+                }))
                 .expect(200);
             
             expect(secondResponse.body.player.id).toBe(playerId);
@@ -119,17 +128,17 @@ describe('API Integration Tests', () => {
         test('allows multiple different players to join', async () => {
             await request(server)
                 .post('/api/join-game')
-                .send({ gameId, playerName: 'Alice', avatar: '😀' })
+                .send(withSecret({ gameId, playerName: 'Alice', avatar: '😀' }))
                 .expect(200);
             
             await request(server)
                 .post('/api/join-game')
-                .send({ gameId, playerName: 'Bob', avatar: '😎' })
+                .send(withSecret({ gameId, playerName: 'Bob', avatar: '😎' }))
                 .expect(200);
             
             const response = await request(server)
                 .post('/api/join-game')
-                .send({ gameId, playerName: 'Charlie', avatar: '🤖' })
+                .send(withSecret({ gameId, playerName: 'Charlie', avatar: '🤖' }))
                 .expect(200);
             
             expect(response.body.game.players).toHaveLength(3);
@@ -140,11 +149,11 @@ describe('API Integration Tests', () => {
         test('returns error for invalid game ID', async () => {
             const response = await request(server)
                 .post('/api/join-game')
-                .send({
+                .send(withSecret({
                     gameId: 'INVALID',
                     playerName: 'Alice',
                     avatar: '😀'
-                })
+                }))
                 .expect(400);
             
             expect(response.body).toMatchObject({
@@ -158,22 +167,22 @@ describe('API Integration Tests', () => {
             for (let i = 1; i <= 12; i++) {
                 await request(server)
                     .post('/api/join-game')
-                    .send({
+                    .send(withSecret({
                         gameId,
                         playerName: `Player${i}`,
                         avatar: '😀'
-                    })
+                    }))
                     .expect(200);
             }
             
             // Try to add 13th player
             const response = await request(server)
                 .post('/api/join-game')
-                .send({
+                .send(withSecret({
                     gameId,
                     playerName: 'Player13',
                     avatar: '😀'
-                })
+                }))
                 .expect(400);
             
             expect(response.body).toMatchObject({
@@ -186,28 +195,28 @@ describe('API Integration Tests', () => {
             // Missing playerName
             await request(server)
                 .post('/api/join-game')
-                .send({
+                .send(withSecret({
                     gameId: gameId,
                     avatar: '😀'
-                })
+                }))
                 .expect(400);
             
             // Missing avatar
             await request(server)
                 .post('/api/join-game')
-                .send({
+                .send(withSecret({
                     gameId: gameId,
                     playerName: 'Alice'
-                })
+                }))
                 .expect(400);
             
             // Missing gameId
             await request(server)
                 .post('/api/join-game')
-                .send({
+                .send(withSecret({
                     playerName: 'Alice',
                     avatar: '😀'
-                })
+                }))
                 .expect(400);
         });
     });
@@ -225,24 +234,24 @@ describe('API Integration Tests', () => {
             // Add two players
             const player1Response = await request(server)
                 .post('/api/join-game')
-                .send({ gameId, playerName: 'Alice', avatar: '😀' });
+                .send(withSecret({ gameId, playerName: 'Alice', avatar: '😀' }));
             playerId1 = player1Response.body.player.id;
             
             await request(server)
                 .post('/api/join-game')
-                .send({ gameId, playerName: 'Bob', avatar: '😎' });
+                .send(withSecret({ gameId, playerName: 'Bob', avatar: '😎' }));
         });
         
         test('allows player to reconnect using their ID', async () => {
             // Player reconnects with their ID
             const response = await request(server)
                 .post('/api/join-game')
-                .send({ 
+                .send(withSecret({ 
                     gameId, 
                     playerName: 'Alice', 
                     avatar: '🎯', 
                     playerId: playerId1 
-                })
+                }))
                 .expect(200);
                 
             expect(response.body).toMatchObject({
@@ -256,15 +265,31 @@ describe('API Integration Tests', () => {
             });
         });
         
+        test("joining as a player takes that player's secret", async () => {
+            const someoneElse = { gameId, playerName: 'Mallory', avatar: '🐍', playerId: playerId1 };
+
+            const wrongSecret = await request(server)
+                .post('/api/join-game')
+                .send({ ...someoneElse, playerSecret: crypto.randomUUID() })
+                .expect(400);
+            const noSecret = await request(server)
+                .post('/api/join-game')
+                .send(someoneElse)
+                .expect(400);
+
+            expect(wrongSecret.body.error).toBe('This player is playing in another browser');
+            expect(noSecret.body.error).toBe('Missing required fields');
+        });
+
         test('creates new player if invalid ID provided', async () => {
             const response = await request(server)
                 .post('/api/join-game')
-                .send({ 
+                .send(withSecret({ 
                     gameId, 
                     playerName: 'Charlie', 
                     avatar: '🤖', 
                     playerId: 'invalid-player-id' 
-                })
+                }))
                 .expect(200);
                 
             expect(response.body).toMatchObject({
@@ -291,7 +316,7 @@ describe('API Integration Tests', () => {
         test('handles empty request body for join-game', async () => {
             await request(server)
                 .post('/api/join-game')
-                .send({})
+                .send(withSecret({}))
                 .expect(400);
         });
     });

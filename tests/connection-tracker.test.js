@@ -15,19 +15,25 @@ describe('Connection Tracker', () => {
         connections = createConnectionTracker();
     });
 
+    // Does this socket act for this player of this room?
+    function speaksFor(socketId, gameId, playerId) {
+        const player = connections.getPlayer(socketId);
+        return Boolean(player) && player.gameId === gameId && player.playerId === playerId;
+    }
+
     test('registers a socket for a player', () => {
         connections.register('socket-1', 'ABC123', 'player-1');
 
-        expect(connections.isPlayerSocket('socket-1', 'ABC123', 'player-1')).toBe(true);
+        expect(connections.getPlayer('socket-1')).toEqual({ gameId: 'ABC123', playerId: 'player-1' });
         expect(connections.size).toBe(1);
     });
 
     test('a socket speaks only for its own player in its own room', () => {
         connections.register('socket-1', 'ABC123', 'player-1');
 
-        expect(connections.isPlayerSocket('socket-1', 'ABC123', 'player-2')).toBe(false);
-        expect(connections.isPlayerSocket('socket-1', 'XYZ789', 'player-1')).toBe(false);
-        expect(connections.isPlayerSocket('socket-2', 'ABC123', 'player-1')).toBe(false);
+        expect(speaksFor('socket-1', 'ABC123', 'player-2')).toBe(false);
+        expect(speaksFor('socket-1', 'XYZ789', 'player-1')).toBe(false);
+        expect(speaksFor('socket-2', 'ABC123', 'player-1')).toBe(false);
     });
 
     test('unregister returns the player info for a normal disconnect', () => {
@@ -36,7 +42,7 @@ describe('Connection Tracker', () => {
         const result = connections.unregister('socket-1');
 
         expect(result).toEqual({ gameId: 'ABC123', playerId: 'player-1' });
-        expect(connections.isPlayerSocket('socket-1', 'ABC123', 'player-1')).toBe(false);
+        expect(speaksFor('socket-1', 'ABC123', 'player-1')).toBe(false);
         expect(connections.size).toBe(0);
     });
 
@@ -56,7 +62,7 @@ describe('Connection Tracker', () => {
         expect(connections.unregister('socket-1')).toBeNull();
 
         // The player is still tracked on the new socket
-        expect(connections.isPlayerSocket('socket-2', 'ABC123', 'player-1')).toBe(true);
+        expect(speaksFor('socket-2', 'ABC123', 'player-1')).toBe(true);
     });
 
     test('two tabs: closing one keeps the player online, closing both does not', () => {
@@ -66,7 +72,7 @@ describe('Connection Tracker', () => {
         // The tab that registered LAST closes first - the old tracker, which
         // knew one socket per player, reported the player offline here
         expect(connections.unregister('tab-2')).toBeNull();
-        expect(connections.isPlayerSocket('tab-1', 'ABC123', 'player-1')).toBe(true);
+        expect(speaksFor('tab-1', 'ABC123', 'player-1')).toBe(true);
 
         expect(connections.unregister('tab-1')).toEqual({ gameId: 'ABC123', playerId: 'player-1' });
     });
@@ -85,7 +91,7 @@ describe('Connection Tracker', () => {
         expect(connections.unregister('socket-1')).toEqual({ gameId: 'ABC123', playerId: 'player-1' });
 
         // Player 2 is untouched
-        expect(connections.isPlayerSocket('socket-2', 'ABC123', 'player-2')).toBe(true);
+        expect(speaksFor('socket-2', 'ABC123', 'player-2')).toBe(true);
         expect(connections.size).toBe(1);
     });
 
@@ -102,7 +108,7 @@ describe('Connection Tracker', () => {
         connections.register('socket-1', 'ABC123', 'player-1');
         connections.register('socket-1', 'ABC123', 'player-2');
 
-        expect(connections.isPlayerSocket('socket-1', 'ABC123', 'player-1')).toBe(false);
+        expect(speaksFor('socket-1', 'ABC123', 'player-1')).toBe(false);
         expect(connections.unregister('socket-1')).toEqual({ gameId: 'ABC123', playerId: 'player-2' });
     });
 
@@ -112,8 +118,8 @@ describe('Connection Tracker', () => {
 
         connections.unregisterPlayer('ABC123', 'player-1');
 
-        expect(connections.isPlayerSocket('tab-1', 'ABC123', 'player-1')).toBe(false);
-        expect(connections.isPlayerSocket('tab-2', 'ABC123', 'player-1')).toBe(false);
+        expect(speaksFor('tab-1', 'ABC123', 'player-1')).toBe(false);
+        expect(speaksFor('tab-2', 'ABC123', 'player-1')).toBe(false);
         // Their tabs' later disconnects are no-ops
         expect(connections.unregister('tab-1')).toBeNull();
         expect(connections.size).toBe(0);

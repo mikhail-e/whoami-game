@@ -366,7 +366,8 @@ const serverErrors = {
         'Missing required fields': "Не заполнены обязательные поля",
         'Invalid room code format': "Неверный формат кода комнаты",
         'Something went wrong, please try again': "Что-то пошло не так, попробуйте ещё раз",
-        'You can only leave the game yourself': "Выйти из игры можно только самому"
+        'You are not in this game': "Вы не участвуете в этой игре",
+        'This player is playing in another browser': "Этот игрок играет в другом браузере"
     }
 };
 
