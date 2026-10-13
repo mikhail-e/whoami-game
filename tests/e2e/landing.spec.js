@@ -153,3 +153,13 @@ test('the coffee button opens Buy Me a Coffee in a new tab', async ({ newPlayer 
     await expect(link).toHaveAttribute('target', '_blank');
     await expect(link).toHaveAttribute('rel', /\bnoopener\b/);
 });
+
+// A finger aimed at the language button must not land on the coffee link
+test('the coffee button stands apart from the language button', async ({ newPlayer }) => {
+    const { page } = await newPlayer('Alice');
+    await page.goto('/');
+    const language = await page.locator('.lang-toggle-btn').boundingBox();
+    const coffee = await page.getByRole('link', { name: text('buyCoffee') }).boundingBox();
+
+    expect(coffee.y - (language.y + language.height)).toBeGreaterThanOrEqual(32);
+});
