@@ -341,6 +341,12 @@ function initializeSocket(roomCode) {
 
     socket.on('error', (error) => {
         console.error('Socket error:', error);
+        // The server refused something. If it was our Leave, we are still in
+        // the game: the fallback must not take us home after all
+        if (leaveFallbackTimer) {
+            clearTimeout(leaveFallbackTimer);
+            leaveFallbackTimer = null;
+        }
         // Clean up any stuck editing inputs so the UI can keep updating,
         // then rebuild the players list from the last known state
         cancelActiveEdits();
