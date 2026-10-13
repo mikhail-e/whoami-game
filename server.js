@@ -3,8 +3,8 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-const fs = require('fs');
 const gameLogic = require('./game-logic');
+const { createGameBackups } = require('./game-backups');
 
 const app = express();
 // Nobody needs to know what the server runs on
@@ -24,8 +24,26 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // The release version is written only in package.json (docs/release.md)
 const { version: APP_VERSION } = require('./package.json');
 
-// Store games in memory for now (will move to files later)
+// The rooms live in memory, keyed by room code; disk backups (below) bring
+// them back after a restart
 const games = new Map();
+
+// Game backups live in games/; GAMES_DIR moves them (the browser tests keep
+// theirs out of the project). Created if missing
+const backups = createGameBackups(process.env.GAMES_DIR || path.join(__dirname, 'games'));
+
+// A room that is not in memory comes back from its disk backup, if it has
+// one. Returns whether the room is in memory now
+function ensureGameLoaded(roomCode) {
+    if (games.has(roomCode)) return true;
+
+    const game = gameLogic.restoreGame(roomCode, backups.load(roomCode));
+    if (!game) return false;
+
+    games.set(roomCode, game);
+    console.log(`🔄 Restored game ${roomCode} from disk`);
+    return true;
+}
 
 // Track socket connections for better disconnect handling
 // (handles the refresh race: new socket connects before old one disconnects)
@@ -73,52 +91,11 @@ app.get('/game/:roomCode', (req, res) => {
         return res.redirect('/?error=room-not-found');
     }
 
-    // Check if game exists in memory
-    if (games.has(roomCode)) {
+    if (ensureGameLoaded(roomCode)) {
         res.sendFile(path.join(__dirname, 'public', 'game.html'));
-        return;
+    } else {
+        res.redirect('/?error=room-not-found');
     }
-
-    // Try to restore game from disk
-    try {
-        const filePath = path.join(gamesDir, `${roomCode}.json`);
-        if (fs.existsSync(filePath)) {
-            const gameState = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-            console.log(`🔄 Restoring game ${roomCode} from disk for room access`);
-
-            // Restore game to memory
-            const restoredGame = {
-                id: gameState.id,
-                players: gameState.players || [],
-                characters: new Map(Object.entries(gameState.characters || {})),
-                state: gameState.state || 'waiting',
-                revealedPlayers: new Set(gameState.revealedPlayers || []),
-                created: new Date(gameState.created),
-                restoredAt: new Date()
-            };
-
-            // Nobody is actually connected right after a restore - players will be
-            // marked connected again when they rejoin. Without this reset the game
-            // would look "active" forever and never get cleaned up. The fresh
-            // disconnectedAt replaces any stale timestamp from the saved file,
-            // giving every player the full ghost timeout to come back.
-            restoredGame.players.forEach(player => {
-                player.connected = false;
-                player.isConnected = false;
-                player.disconnectedAt = Date.now();
-            });
-            gameLogic.touchGame(restoredGame);
-
-            games.set(roomCode, restoredGame);
-            res.sendFile(path.join(__dirname, 'public', 'game.html'));
-            return;
-        }
-    } catch (error) {
-        console.error(`❌ Failed to restore game ${roomCode} from disk:`, error);
-    }
-
-    // Game not found in memory or disk
-    res.redirect('/?error=room-not-found');
 });
 
 // Custom image avatars ride inside JSON bodies; recreate-game carries every
@@ -139,7 +116,9 @@ app.post('/api/create-game', jsonBody, (req, res) => {
 
 // API endpoint to join a game
 app.post('/api/join-game', jsonBody, (req, res) => {
-    const { gameId, playerName, avatar, playerId } = req.body || {};
+    const { playerName, avatar, playerId } = req.body || {};
+    // Codes are upper case; one typed in lower case is the same room
+    const gameId = typeof req.body?.gameId === 'string' ? req.body.gameId.toUpperCase() : '';
 
     // A photo avatar is a data URL of up to 32 KB: the log gets a mark, not the picture
     console.log('Join game request:', {
@@ -153,8 +132,11 @@ app.post('/api/join-game', jsonBody, (req, res) => {
         return res.status(400).json({ error: 'Missing required fields' });
     }
     
+ // After a restart the room may still be only on disk
+    ensureGameLoaded(gameId);
     const result = gameLogic.addPlayerToGame(games, gameId, playerName, avatar, playerId);
-    
+
+
     if (!result.success) {
         console.log('Failed to add player to game:', result.error);
         return res.status(400).json(result);
@@ -193,8 +175,10 @@ app.post('/api/recreate-game', jsonBody, (req, res) => {
         return res.status(400).json({ error: 'Invalid room code format' });
     }
 
-    // Check if room already exists
-    if (games.has(roomCode)) {
+    // Check if room already exists. Its disk backup counts too: the
+    // server's own copy wins over a browser's, so nobody can replace a
+    // saved room with a state of their own
+    if (ensureGameLoaded(roomCode)) {
         console.log('Room already exists, recreation not needed:', roomCode);
         return res.json({ success: true, message: 'Room already exists' });
     }
@@ -233,8 +217,9 @@ io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
     safeHandler(socket, 'join-room', (data) => {
-        const { gameId, playerId } = data;
-        if (typeof gameId !== 'string' || !gameLogic.isValidRoomCode(gameId.toUpperCase())) {
+        const { playerId } = data;
+        const gameId = typeof data.gameId === 'string' ? data.gameId.toUpperCase() : '';
+        if (!gameLogic.isValidRoomCode(gameId)) {
             return;
         }
         socket.join(gameId);
@@ -248,18 +233,9 @@ io.on('connection', (socket) => {
         
         // Send current game state to the user
         if (games.has(gameId)) {
-            const game = games.get(gameId);
-            // Convert Map to Object for JSON serialization
-            const gameState = {
-                ...game,
-                characters: Object.fromEntries(game.characters),
-                revealedPlayers: Array.from(game.revealedPlayers)
-            };
-            socket.emit('game-state', gameState);
+            socket.emit('game-state', gameLogic.serializeGame(games.get(gameId)));
         }
     });
-
-    // Real-time streaming removed - keeping it simple
 
     // Final character assignment (when editing completes)
     safeHandler(socket, 'assign-character', (data) => {
@@ -282,8 +258,6 @@ io.on('connection', (socket) => {
             allCharacters: result.characters
         });
     });
-
-    // Note: Old edit state synchronization removed - using real-time streaming instead
 
     safeHandler(socket, 'start-game', (data) => {
         const { gameId, playerId } = data;
@@ -377,7 +351,8 @@ io.on('connection', (socket) => {
 
         if (result.gameDeleted) {
             console.log(`🗑️ Game ${gameId} removed - last player left`);
-            deleteGameBackup(gameId);
+            // Its old link must not bring it back from the backup
+            backups.remove(gameId);
         }
     });
 
@@ -414,62 +389,8 @@ io.on('connection', (socket) => {
     });
 });
 
-// Game backups live in games/; GAMES_DIR moves them (the browser tests keep
-// theirs out of the project). Created if missing
-const gamesDir = process.env.GAMES_DIR || path.join(__dirname, 'games');
-if (!fs.existsSync(gamesDir)) {
-    fs.mkdirSync(gamesDir, { recursive: true });
-}
-
-// Remove the disk backup of a game its last player left, so its old link
-// cannot bring it back (GET /game/:roomCode restores a room from this file).
-// Only a real room code names a file: anything else is ignored, never turned
-// into a path
-function deleteGameBackup(gameId) {
-    if (typeof gameId !== 'string' || !/^[A-Z0-9]{6}$/.test(gameId)) return;
-    try {
-        fs.rmSync(path.join(gamesDir, `${gameId}.json`), { force: true });
-    } catch (error) {
-        console.error(`❌ Failed to remove the backup of game ${gameId}:`, error);
-    }
-}
-
-// Clean up old game files (older than 4 hours)
-function cleanupOldGameFiles() {
-    try {
-        const files = fs.readdirSync(gamesDir);
-        const fourHoursAgo = Date.now() - (4 * 60 * 60 * 1000); // 4 hours in milliseconds
-        let removedCount = 0;
-
-        for (const file of files) {
-            if (file.endsWith('.json')) {
-                const filePath = path.join(gamesDir, file);
-                const stats = fs.statSync(filePath);
-
-                if (stats.mtime.getTime() < fourHoursAgo) {
-                    const roomCode = file.replace('.json', '');
-
-                    // Only remove if game is not currently active in memory
-                    if (!games.has(roomCode)) {
-                        fs.unlinkSync(filePath);
-                        removedCount++;
-                        console.log(`🗑️ Removed old game file: ${file} (${Math.round((Date.now() - stats.mtime.getTime()) / (60 * 60 * 1000))} hours old)`);
-                    } else {
-                        console.log(`🔒 Keeping old game file: ${file} (game still active in memory)`);
-                    }
-                }
-            }
-        }
-
-        if (removedCount > 0) {
-            console.log(`🧹 Cleanup complete: removed ${removedCount} old game files`);
-        } else {
-            console.log(`✨ Cleanup complete: no old files to remove`);
-        }
-    } catch (error) {
-        console.error(`❌ Failed to cleanup old game files:`, error);
-    }
-}
+// Backups not written for 4 hours go (a room is saved while it has players online)
+const BACKUP_MAX_AGE = 4 * 60 * 60 * 1000;
 
 // Keep-alive functionality for active games
 function keepGamesAlive() {
@@ -500,25 +421,7 @@ function keepGamesAlive() {
 
         if (connectedPlayers > 0) {
             console.log(`🔄 Keep-alive: Game ${gameId} has ${connectedPlayers} connected players`);
-
-            // Save game state to disk as backup
-            const gameState = {
-                id: gameId,
-                players: game.players,
-                characters: Object.fromEntries(game.characters || new Map()),
-                state: game.state,
-                revealedPlayers: Array.from(game.revealedPlayers || new Set()),
-                created: game.created,
-                lastKeepAlive: new Date().toISOString()
-            };
-
-            try {
-                const filePath = path.join(gamesDir, `${gameId}.json`);
-                fs.writeFileSync(filePath, JSON.stringify(gameState, null, 2));
-                console.log(`💾 Game ${gameId} state saved to disk`);
-            } catch (error) {
-                console.error(`❌ Failed to save game ${gameId} to disk:`, error);
-            }
+            backups.save(game);
         } else {
             console.log(`⏳ Game ${gameId} has no connected players, keeping in memory`);
         }
@@ -531,8 +434,15 @@ function keepGamesAlive() {
         console.log(`🧹 Removed ${removedGames.length} inactive games from memory: ${removedGames.join(', ')}`);
     }
 
-    // Clean up old files after keep-alive
-    cleanupOldGameFiles();
+    // Clean up old backups after keep-alive
+    try {
+        const removedBackups = backups.removeOld(games, BACKUP_MAX_AGE);
+        if (removedBackups.length > 0) {
+            console.log(`🧹 Removed old backups: ${removedBackups.join(', ')}`);
+        }
+    } catch (error) {
+        console.error('❌ Failed to clean up old backups:', error);
+    }
 }
 
 const KEEP_ALIVE_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -559,4 +469,4 @@ if (require.main === module) {
     startServer();
 }
 
-module.exports = { app, deleteGameBackup };
+module.exports = { app };

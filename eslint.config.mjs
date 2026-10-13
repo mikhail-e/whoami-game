@@ -21,7 +21,7 @@ export default [
 
     // Server (Node, CommonJS)
     {
-        files: ["server.js", "game-logic.js"],
+        files: ["server.js", "game-logic.js", "game-backups.js"],
         languageOptions: {
             sourceType: "commonjs",
             globals: {

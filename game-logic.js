@@ -6,6 +6,15 @@ const crypto = require('crypto');
 // Color palette for character stickers (must match frontend)
 const stickerColors = ['red', 'blue', 'purple', 'orange', 'green', 'pink', 'indigo'];
 
+const MAX_PLAYERS = 12;
+// The states a game moves between (restartGame goes back to waiting)
+const GAME_STATES = ['waiting', 'started'];
+
+// A player ID is a UUID. The frontend copy lives in public/js/utils.js (a
+// stored ID in another format is replaced there); tests/input-limits.test.js
+// keeps the two equal. Keep it on a single line for that test.
+const PLAYER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // Input limits. The frontend copy lives in public/js/utils.js (a browser
 // script cannot require() this file); tests/input-limits.test.js fails if
 // the two ever drift apart.
@@ -19,6 +28,10 @@ const MAX_CHARACTER_LENGTH = 128;
 // fails if they drift apart. Keep each on a single line for the sync tests.
 const MAX_CUSTOM_AVATAR_LENGTH = 32768; // ~24 KB of image data as base64
 const CUSTOM_AVATAR_PATTERN = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
+
+function isValidPlayerId(value) {
+    return typeof value === 'string' && PLAYER_ID_PATTERN.test(value);
+}
 
 // Count characters the way a person would: an emoji is one character,
 // not the two UTF-16 code units JavaScript's .length reports.
@@ -165,8 +178,8 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
         return { success: false, error: 'Game has already started' };
     }
 
-    // Check if game is full (max 12 players, but allow existing players)
-    if (game.players.length >= 12 && !existingPlayer) {
+    // Check if game is full (allow existing players)
+    if (game.players.length >= MAX_PLAYERS && !existingPlayer) {
         return { success: false, error: 'Game is full' };
     }
 
@@ -189,9 +202,8 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
             : assignUniqueColor(game.players);
 
         // New player joining - use provided playerId if valid, otherwise generate one
-        const isValidUUID = playerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(playerId);
         player = {
-            id: isValidUUID ? playerId : crypto.randomUUID(),
+            id: isValidPlayerId(playerId) ? playerId : crypto.randomUUID(),
             name: cleanName,
             avatar: cleanAvatar,
             connected: true,
@@ -480,76 +492,117 @@ function isValidRoomCode(code) {
     return /^[A-Z0-9]{6}$/.test(code);
 }
 
-// Recreate a game from saved state
-function recreateGameFromState(games, roomCode, savedGameState) {
-    try {
-        // Validate the saved state has required fields
-        if (!savedGameState.players || !Array.isArray(savedGameState.players)) {
-            return { success: false, error: 'Invalid saved game state: missing players' };
-        }
+// A game as plain data, ready for JSON: what a disk backup holds and what a
+// player gets on joining the room (Maps and Sets become objects and arrays)
+function serializeGame(game) {
+    return {
+        id: game.id,
+        players: game.players,
+        characters: Object.fromEntries(game.characters),
+        state: game.state,
+        revealedPlayers: Array.from(game.revealedPlayers),
+        created: game.created
+    };
+}
 
-        // Create the game structure
-        const game = {
-            id: roomCode,
-            players: savedGameState.players || [],
-            characters: new Map(),
-            state: savedGameState.gameState || 'waiting',
-            revealedPlayers: new Set(),
-            created: new Date(),
-            recreatedAt: new Date()
-        };
+// A Date from a saved value (a Date, or an ISO string after JSON), or null
+function toDate(value) {
+    const date = new Date(value);
+    return (value && !Number.isNaN(date.getTime())) ? date : null;
+}
 
-        // Safely handle characters data
-        if (savedGameState.characters && typeof savedGameState.characters === 'object' && !Array.isArray(savedGameState.characters)) {
-            try {
-                game.characters = new Map(Object.entries(savedGameState.characters));
-            } catch (error) {
-                console.warn('Invalid characters data, using empty Map');
-                game.characters = new Map();
-            }
-        }
+// Rebuild a game from saved data: a disk backup (state), or a browser's copy
+// sent to /api/recreate-game. The data comes from outside, so it passes the
+// same checks a live game does, and whatever fails them is left out: a
+// player without a valid ID, name or avatar, a character of nobody in the
+// list, an unknown state. Returns null when there is no players list.
+//
+// Nobody is actually connected right after a restore - players are marked
+// connected again when they rejoin. The fresh disconnectedAt gives every
+// player the full ghost timeout to come back.
+function restoreGame(roomCode, saved) {
+    if (!saved || typeof saved !== 'object' || !Array.isArray(saved.players)) {
+        return null;
+    }
 
-        // Safely handle revealedPlayers data
-        if (savedGameState.revealedPlayers && Array.isArray(savedGameState.revealedPlayers)) {
-            try {
-                game.revealedPlayers = new Set(savedGameState.revealedPlayers);
-            } catch (error) {
-                console.warn('Invalid revealedPlayers data, using empty Set');
-                game.revealedPlayers = new Set();
-            }
-        }
+    const now = Date.now();
+    const players = [];
+    for (const savedPlayer of saved.players) {
+        if (players.length === MAX_PLAYERS) break;
+        if (!savedPlayer || typeof savedPlayer !== 'object') continue;
 
-        // Avatar rotation is now per-player, no need to store room-specific avatars
+        const name = sanitizePlayerName(savedPlayer.name);
+        const avatar = sanitizeAvatar(savedPlayer.avatar);
+        if (!isValidPlayerId(savedPlayer.id) || !name || !avatar) continue;
+        if (players.some(p => p.id === savedPlayer.id)) continue;
 
-        // Nobody is actually connected right after a recreation - players are
-        // marked connected again when they rejoin. A stale isConnected: true
-        // from the client's localStorage backup would otherwise make the
-        // player look online forever, dodging every cleanup.
-        game.players.forEach(player => {
-            player.connected = false;
-            player.isConnected = false;
-            player.disconnectedAt = Date.now();
+        players.push({
+            id: savedPlayer.id,
+            name,
+            avatar,
+            stickerColor: stickerColors.includes(savedPlayer.stickerColor)
+                ? savedPlayer.stickerColor
+                : assignUniqueColor(players),
+            joinedAt: toDate(savedPlayer.joinedAt) || new Date(now),
+            connected: false,
+            isConnected: false,
+            disconnectedAt: now
         });
+    }
+    sortPlayersByJoinTime(players);
 
-        touchGame(game);
+    const listed = new Set(players.map(p => p.id));
+    const characters = new Map();
+    const savedCharacters = (saved.characters && typeof saved.characters === 'object') ? saved.characters : {};
+    for (const [playerId, data] of Object.entries(savedCharacters)) {
+        if (!listed.has(playerId) || !data || typeof data !== 'object') continue;
+        const character = sanitizeCharacter(data.character);
+        if (!character) continue; // not a string, or empty
+        characters.set(playerId, {
+            character,
+            assignedBy: isValidPlayerId(data.assignedBy) ? data.assignedBy : null,
+            assignedAt: toDate(data.assignedAt) || new Date(now)
+        });
+    }
 
-        // Store the recreated game
-        games.set(roomCode, game);
+    // Only a player with a character can have revealed it
+    const savedRevealed = Array.isArray(saved.revealedPlayers) ? saved.revealedPlayers : [];
+    const revealedPlayers = new Set(savedRevealed.filter(playerId => characters.has(playerId)));
 
-        console.log(`Game ${roomCode} recreated with ${game.players.length} players in state: ${game.state}`);
+    const game = {
+        id: roomCode,
+        players,
+        characters,
+        state: GAME_STATES.includes(saved.state) ? saved.state : 'waiting',
+        revealedPlayers,
+        recentlyLeft: new Map(),
+        created: toDate(saved.created) || new Date(now)
+    };
+    touchGame(game);
+    return game;
+}
 
-        return {
-            success: true,
-            gameId: roomCode,
-            playersRestored: game.players.length,
-            charactersRestored: game.characters.size,
-            gameState: game.state
-        };
-
-    } catch (error) {
-        console.error('Error recreating game from state:', error);
+// Recreate a game from a browser's copy of it (saveGameStateToStorage in
+// game-room.js), after the server lost the room
+function recreateGameFromState(games, roomCode, savedGameState) {
+    if (!savedGameState || typeof savedGameState !== 'object') {
         return { success: false, error: 'Failed to recreate game from saved state' };
     }
+
+    // The browser's copy calls the state gameState
+    const game = restoreGame(roomCode, { ...savedGameState, state: savedGameState.gameState });
+    if (!game) {
+        return { success: false, error: 'Invalid saved game state: missing players' };
+    }
+
+    games.set(roomCode, game);
+    return {
+        success: true,
+        gameId: roomCode,
+        playersRestored: game.players.length,
+        charactersRestored: game.characters.size,
+        gameState: game.state
+    };
 }
 
 // Tracks which socket belongs to which player.
@@ -676,11 +729,14 @@ module.exports = {
     removePlayerFromGame,
     isValidRoomCode,
     assignUniqueColor,
+    serializeGame,
+    restoreGame,
     recreateGameFromState,
     sanitizePlayerName,
     sanitizeAvatar,
     sanitizeCharacter,
     isCustomAvatar,
+    isValidPlayerId,
     touchGame,
     cleanupInactiveGames,
     removeStaleDisconnectedPlayers,
