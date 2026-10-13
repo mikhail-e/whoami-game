@@ -475,7 +475,7 @@ class Localization {
         // Create single toggle button HTML
         const switcherHTML = `
             <div class="language-switcher mt-3 text-center">
-                <button class="btn btn-sm btn-outline-light lang-toggle-btn">
+                <button class="btn btn-sm lang-toggle-btn">
                     <span class="lang-toggle-text"></span>
                 </button>
             </div>

@@ -444,14 +444,14 @@ function updateGameDisplay() {
     
     // Show/hide elements based on game state
     const shareCard = document.querySelector('.game-card.mb-3'); // Target the share room card specifically
-    const roomCodeBadge = document.querySelector('.badge.bg-light');
+    const roomTicket = document.querySelector('.room-ticket'); // the room code in the header
     const assignmentInstructions = document.getElementById('assignmentInstructions');
     const gameState = currentGame.state || 'waiting';
     
     if (gameState === 'started') {
         // Hide room sharing functionality and assignment instructions when game has started
         if (shareCard) shareCard.style.display = 'none';
-        if (roomCodeBadge) roomCodeBadge.style.display = 'none';
+        if (roomTicket) roomTicket.style.display = 'none';
         if (assignmentInstructions) assignmentInstructions.style.display = 'none';
         
         // Update status and buttons
@@ -467,7 +467,7 @@ function updateGameDisplay() {
     } else {
         // Show room sharing functionality and assignment instructions when waiting
         if (shareCard) shareCard.style.display = 'block';
-        if (roomCodeBadge) roomCodeBadge.style.display = 'inline-block';
+        if (roomTicket) roomTicket.style.display = ''; // back to the stylesheet's inline-flex
         if (assignmentInstructions) assignmentInstructions.style.display = 'block';
         
         // Update game status and buttons

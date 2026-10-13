@@ -1,5 +1,7 @@
 // The started game: the mystery sticker, revealing your character, restarting
-const { test, expect, text, playerCard, startedGame, revealOwnCharacter } = require('./helpers');
+const {
+    test, expect, text, playerCard, startedGame, revealOwnCharacter, createRoom, joinRoom, assignCharacter, startGame,
+} = require('./helpers');
 
 const notifications = page => page.locator('.alert.position-fixed');
 
@@ -83,4 +85,19 @@ test('restart returns the room to assigning characters', async ({ newPlayer }) =
         await expect(page.locator('#startGame')).toBeDisabled();
         await expect(page.locator('#restartGame')).toBeHidden();
     }
+});
+
+// The ticket invites friends in; once the game has started nobody can join
+test('the room code ticket shows in the lobby and hides once the game starts', async ({ newPlayer }) => {
+    const alice = await newPlayer('Alice');
+    const bob = await newPlayer('Bob');
+    const code = await createRoom(alice);
+    await joinRoom(bob, code);
+    await expect(alice.page.locator('.room-ticket')).toContainText(code);
+
+    await assignCharacter(alice, 'Bob', 'Napoleon');
+    await assignCharacter(bob, 'Alice', 'Cleopatra');
+    await startGame(alice);
+
+    await expect(alice.page.locator('.room-ticket')).toBeHidden();
 });

@@ -74,25 +74,28 @@
                     <text class="brand-sign__small" x="302" y="203" text-anchor="middle" font-size="16" letter-spacing="4" fill="#2a1d17">FOR FRIENDS &amp; FAMILY · PLAYED ONLINE</text>
                 </svg>
             </h1>
-            <div class="badge bg-light text-dark fs-6 px-3 py-2">
-                <span data-i18n="roomCode">Room Code</span>: <span id="roomCode"></span>
+            <!-- The room code as a ticket stub; game-room.js hides it once the game
+                 has started (nobody can join then) -->
+            <div class="room-ticket">
+                <span data-i18n="roomCode">Room Code</span>
+                <span id="roomCode"></span>
             </div>
         </div>
 
         <!-- Share Room Card -->
         <div class="game-card mb-3">
-            <div class="row align-items-end">
+            <h6 class="sheet-title" data-i18n="inviteFriends">Invite Friends</h6>
+            <div class="row g-2 align-items-center">
                 <div class="col-md-6">
-                    <h6 class="mb-1" data-i18n="inviteFriends">Invite Friends</h6>
                     <input type="text" class="form-control" id="shareLink" readonly data-i18n-aria-label="shareLinkLabel" aria-label="Room link">
                 </div>
                 <div class="col-md-3">
-                    <button type="button" class="btn btn-outline-primary w-100 mt-2 mt-md-0" id="copyLink">
+                    <button type="button" class="btn btn-outline-primary w-100" id="copyLink">
                         📋 <span data-i18n="copyLink">Copy Link</span>
                     </button>
                 </div>
                 <div class="col-md-3">
-                    <button type="button" class="btn btn-outline-primary w-100 mt-2 mt-md-0" id="shareButton">
+                    <button type="button" class="btn btn-outline-primary w-100" id="shareButton">
                         📤 <span data-i18n="share">Share</span>
                     </button>
                 </div>
@@ -103,7 +106,7 @@
         <div class="game-card">
             <div class="row">
                 <div class="col-12">
-                    <h5><span data-i18n="players">Players</span> (<span id="playerCount">0</span>/12)</h5>
+                    <h5 class="sheet-title"><span data-i18n="players">Players</span> (<span id="playerCount">0</span>/12)</h5>
                     <div id="gameStatus" class="text-muted mb-3">
                         <span data-i18n="waiting">Waiting for players to join...</span>
                     </div>
@@ -120,7 +123,7 @@
         <div class="game-card">
             <div class="row">
                 <div class="col-12">
-                    <h6><span data-i18n="gameControls">Game Controls</span></h6>
+                    <h6 class="sheet-title"><span data-i18n="gameControls">Game Controls</span></h6>
                 </div>
             </div>
             <div class="row">
@@ -143,7 +146,7 @@
 
         <!-- Character Assignment Instructions -->
         <div class="game-card" id="assignmentInstructions">
-            <h6 data-i18n="characterAssignment">Character Assignment</h6>
+            <h6 class="sheet-title" data-i18n="characterAssignment">Character Assignment</h6>
             <p class="small text-muted mb-0">
                 <strong>🎯 <span data-i18n="clickPlus">Click the + button</span></strong> <span data-i18n="assignInstructions">on other players to assign them characters.</span> 
                 <strong>✏️ <span data-i18n="clickStickers">Click character stickers</span></strong> <span data-i18n="editInstructions">to edit them.</span>
@@ -152,7 +155,7 @@
 
         <!-- Game Instructions -->
         <div class="game-card" id="gameInstructions">
-            <h6 data-i18n="gameInstructions">Game Instructions</h6>
+            <h6 class="sheet-title" data-i18n="gameInstructions">Game Instructions</h6>
             <ol class="small" id="gameSteps">
                 <li data-i18n="step1">Wait for at least 2 players to join</li>
                 <li data-i18n="step2">Each player assigns characters to other players</li>
@@ -163,7 +166,7 @@
         </div>
     </div>
 
-    <footer class="text-center text-white small pb-3">
+    <footer class="page-foot text-center small pb-3">
         <span data-app-version></span>
     </footer>
 
