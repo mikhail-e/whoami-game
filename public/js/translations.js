@@ -166,7 +166,6 @@ const translations = {
         updateNow: "Update Now",
 
         // Footer of the landing page
-        buyCoffee: "Support the author: buy me a coffee",
 
         // Page for an address with nothing on it (404.html)
         notFoundTitle: "Page not found",
@@ -337,7 +336,6 @@ const translations = {
         updateNow: "Обновить сейчас",
 
         // Footer of the landing page
-        buyCoffee: "Поддержать автора: угостить кофе",
 
         // Page for an address with nothing on it (404.html)
         notFoundTitle: "Страница не найдена",
