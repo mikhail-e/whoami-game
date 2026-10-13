@@ -11,7 +11,7 @@ class PWAManager {
         // Register service worker
         this.registerServiceWorker();
 
-        // Check if already installed (for logging purposes)
+        // Say in the debug log whether the game runs as an installed app
         this.checkInstallation();
     }
 
@@ -44,8 +44,6 @@ class PWAManager {
         }
     }
 
-    // Install prompt functionality removed - no longer needed
-
     checkInstallation() {
         // Check if running in standalone mode (for logging purposes)
         if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
@@ -57,10 +55,6 @@ class PWAManager {
             debugLog('🍎 App is running in iOS standalone mode');
         }
     }
-
-    // Install banner functionality removed - no longer needed
-
-    // Install-related methods removed - no longer needed
 
     // Auto-update checking
     startUpdateChecking(registration) {
@@ -137,17 +131,12 @@ class PWAManager {
             console.error('❌ Error forcing update:', error);
         }
     }
-
-    // Install functionality removed - PWA still works, just no banner prompts
 }
 
 // Initialize PWA manager when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.pwaManager = new PWAManager();
 });
-
-// Make PWA manager available globally
-window.PWAManager = PWAManager;
 
 // Global helper function for force updates (can be called from console)
 window.forceAppUpdate = () => {
