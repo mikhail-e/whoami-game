@@ -1,7 +1,7 @@
 // Who am I? Game - Core Logic Functions
 // These functions are extracted for testing
 
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 
 // Color palette for character stickers (must match frontend)
 const stickerColors = ['red', 'blue', 'purple', 'orange', 'green', 'pink', 'indigo'];
@@ -94,12 +94,14 @@ function sortPlayersByJoinTime(players) {
     players.sort((a, b) => new Date(a.joinedAt || 0) - new Date(b.joinedAt || 0));
 }
 
-// Generate short room code (6 characters)
+// Generate short room code (6 characters). The code is all that lets a
+// stranger into a room, so it comes from the cryptographic generator:
+// Math.random's next numbers can be worked out from the ones it gave before
 function generateRoomCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
     for (let i = 0; i < 6; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
+        code += chars[crypto.randomInt(chars.length)];
     }
     return code;
 }
@@ -189,7 +191,7 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
         // New player joining - use provided playerId if valid, otherwise generate one
         const isValidUUID = playerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(playerId);
         player = {
-            id: isValidUUID ? playerId : uuidv4(),
+            id: isValidUUID ? playerId : crypto.randomUUID(),
             name: cleanName,
             avatar: cleanAvatar,
             connected: true,
