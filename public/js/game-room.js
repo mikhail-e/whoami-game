@@ -341,6 +341,12 @@ function initializeSocket(roomCode) {
 
     socket.on('error', (error) => {
         console.error('Socket error:', error);
+        // The server refused something. If it was our Leave, we are still in
+        // the game: the fallback must not take us home after all
+        if (leaveFallbackTimer) {
+            clearTimeout(leaveFallbackTimer);
+            leaveFallbackTimer = null;
+        }
         // Clean up any stuck editing inputs so the UI can keep updating,
         // then rebuild the players list from the last known state
         cancelActiveEdits();
@@ -651,8 +657,9 @@ function updatePlayersList() {
             }
             playerCard.appendChild(characterSticker);
 
-        } else if (!isCurrentPlayer) {
-            // No character for other player - a real button: Tab reaches it, Enter presses it
+        } else if (!isCurrentPlayer && gameState === 'waiting') {
+            // No character for other player - a real button: Tab reaches it, Enter presses it.
+            // Only in the lobby: once the game has started, characters are locked
             const addButton = document.createElement('button');
             addButton.type = 'button';
             addButton.className = 'btn btn-outline-primary add-character-btn';

@@ -10,14 +10,12 @@ const app = express();
 // Nobody needs to know what the server runs on
 app.disable('x-powered-by');
 const server = http.createServer(app);
+// No `cors` option: the pages that use the socket come from this same
+// server, and other sites have no business talking to it
 const io = socketIo(server, {
     pingTimeout: 120000,      // 2 minutes - how long to wait for ping response
     pingInterval: 30000,      // 30 seconds - how often to send pings
-    connectTimeout: 45000,    // 45 seconds - initial connection timeout
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+    connectTimeout: 45000     // 45 seconds - initial connection timeout
 });
 
 const PORT = process.env.PORT || 3000;
@@ -143,8 +141,13 @@ app.post('/api/create-game', jsonBody, (req, res) => {
 app.post('/api/join-game', jsonBody, (req, res) => {
     const { gameId, playerName, avatar, playerId } = req.body || {};
 
-    console.log('Join game request:', { gameId, playerName, avatar, playerId });
-    
+    // A photo avatar is a data URL of up to 32 KB: the log gets a mark, not the picture
+    console.log('Join game request:', {
+        gameId, playerName, playerId,
+        avatar: gameLogic.isCustomAvatar(avatar) ? '[photo]' : avatar
+    });
+
+
     if (!gameId || !playerName || !avatar) {
         console.log('Missing required fields:', { gameId: !!gameId, playerName: !!playerName, avatar: !!avatar });
         return res.status(400).json({ error: 'Missing required fields' });
@@ -269,18 +272,14 @@ io.on('connection', (socket) => {
             return;
         }
 
-        console.log(`✅ Character finalized: "${character}" for player ${playerId} in game ${gameId}`);
+        console.log(`✅ Character finalized for player ${playerId} in game ${gameId}`);
 
-        // Send complete character state to all players for consistency
-        const game = games.get(gameId);
-        const allCharacters = Object.fromEntries(game.characters);
-        console.log(`📡 Broadcasting character-finalized to room ${gameId} with all characters:`, allCharacters);
-
-        // Use io.to() instead of socket.to() to include the sender (for single-tab testing)
+        // Send complete character state to all players for consistency.
+        // io.to() includes the sender, so their own page updates the same way
         io.to(gameId).emit('character-finalized', {
             playerId: playerId,
-            character: character,
-            allCharacters: allCharacters
+            character: result.character,
+            allCharacters: result.characters
         });
     });
 

@@ -187,10 +187,14 @@ function handleApiError(error, context = '') {
     alert(message);
 }
 
-// Player ID System - Shared unique player ID generation
+// Player ID System - Shared unique player ID generation. The random digits
+// come from the cryptographic generator, like the server's: Math.random's
+// numbers can be predicted. (crypto.randomUUID() would be shorter, but a
+// browser offers it only on https and localhost, not on a phone that opens
+// the game at the computer's plain-http address)
 function generatePlayerId() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0;
+        const r = crypto.getRandomValues(new Uint8Array(1))[0] % 16;
         const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
