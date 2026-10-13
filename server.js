@@ -225,16 +225,18 @@ io.on('connection', (socket) => {
         socket.join(gameId);
         console.log(`User ${socket.id} joined room ${gameId}`);
 
-        // Track socket-player relationship
-        if (playerId) {
+        const game = games.get(gameId);
+        if (!game) return;
+
+        // The socket becomes one of the player's pages - only for a player of
+        // this room - and the player is online from now on
+        if (gameLogic.markPlayerConnected(game, playerId)) {
             connections.register(socket.id, gameId, playerId);
             console.log(`📍 Tracking connection: ${socket.id} → Player ${playerId} in game ${gameId}`);
         }
-        
+
         // Send current game state to the user
-        if (games.has(gameId)) {
-            socket.emit('game-state', gameLogic.serializeGame(games.get(gameId)));
-        }
+        socket.emit('game-state', gameLogic.serializeGame(game));
     });
 
     // Final character assignment (when editing completes)
@@ -320,8 +322,8 @@ io.on('connection', (socket) => {
         const { gameId, playerId } = data;
 
         // A player may only remove themselves: the request must come from
-        // the socket currently registered to that player (see join-room)
-        if (!playerId || connections.getSocketId(playerId) !== socket.id) {
+        // a socket registered to that player (see join-room)
+        if (!connections.isPlayerSocket(socket.id, gameId, playerId)) {
             socket.emit('error', 'You can only leave the game yourself');
             return;
         }
@@ -347,7 +349,9 @@ io.on('connection', (socket) => {
         });
 
         socket.leave(gameId);
-        connections.unregister(socket.id); // the later disconnect becomes a no-op
+        // None of the player's tabs speaks for them any more; their later
+        // disconnects become no-ops
+        connections.unregisterPlayer(gameId, playerId);
 
         if (result.gameDeleted) {
             console.log(`🗑️ Game ${gameId} removed - last player left`);
@@ -359,7 +363,8 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
 
-        // Returns null for stale sockets (player already reconnected via a new socket)
+        // Returns null while the player still has another socket (a second
+        // tab, or the new page after a refresh)
         const playerInfo = connections.unregister(socket.id);
         if (!playerInfo) {
             return;
@@ -369,14 +374,10 @@ io.on('connection', (socket) => {
         console.log(`🔌 Player ${playerId} disconnected from game ${gameId}`);
 
         // Mark player as disconnected but keep them in the game
-        if (games.has(gameId)) {
-            const game = games.get(gameId);
-            const player = game.players.find(p => p.id === playerId);
+        const game = games.get(gameId);
+        if (game) {
+            const player = gameLogic.markPlayerDisconnected(game, playerId);
             if (player) {
-                player.connected = false;
-                player.isConnected = false;
-                player.disconnectedAt = Date.now();
-                gameLogic.touchGame(game);
                 console.log(`⏰ Player ${playerId} marked as disconnected at ${new Date().toISOString()}`);
 
                 // Notify other players about the disconnection

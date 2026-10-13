@@ -46,26 +46,17 @@ test('the last player to leave deletes the room', async ({ newPlayer }) => {
     await expect(alice.page).toHaveURL(/\/\?error=room-not-found$/);
 });
 
-test('a Leave the server refused keeps the player in the room', async ({ newPlayer }) => {
-    const { players: [alice], code } = await roomWith(newPlayer, ['Alice', 'Bob']);
-    // A second tab of the same browser is the same player; the server now
-    // talks to that tab, so it refuses a Leave pressed in the first one
+test('Leave in one tab takes the player out of the room in every tab', async ({ newPlayer }) => {
+    const { players: [alice, bob], code } = await roomWith(newPlayer, ['Alice', 'Bob']);
+    // A second tab of the same browser is the same player
     const secondTab = { name: 'Alice', page: await alice.context.newPage() };
     await joinRoom(secondTab, code);
-    // The fallback that goes home without the server's answer waits 2 seconds:
-    // the test moves the page's clock instead of waiting
-    await alice.page.clock.install();
-    alice.expectDialog('You can only leave the game yourself');
-    alice.allowConsoleError(/^Socket error/);
+    await waitForPlayers(bob.page, 2);
 
-    await alice.page.click('#leaveGame');
-    await expect(alice.page.locator('#leaveModal')).toHaveClass(/\bshow\b/);
-    await alice.page.click('#confirmLeave');
-    await expect.poll(() => alice.expectedDialogs.length).toBe(0);
-    await alice.page.clock.runFor(5000);
+    await leaveGame(alice);
 
-    expect(await alice.page.evaluate(() => sessionStorage.getItem('playerData'))).not.toBeNull();
-    await expect(alice.page).toHaveURL(new RegExp(`/game/${code}$`));
+    await expect(secondTab.page).toHaveURL(new RegExp(`/\\?join=${code}$`));
+    await waitForPlayers(bob.page, 1);
 });
 
 test('a room its last player left does not come back from its backup', async ({ newPlayer }) => {
