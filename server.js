@@ -98,6 +98,13 @@ app.get('/game/:roomCode', (req, res) => {
     }
 });
 
+// A value from a request as the log gets it: short, whatever was sent (a
+// request may carry up to 1 MB, and Render's log is the owner's to read)
+function forLog(value) {
+    const text = typeof value === 'string' ? value : JSON.stringify(value);
+    return (text && text.length > 64) ? `${text.slice(0, 64)}…` : text;
+}
+
 // Custom image avatars ride inside JSON bodies; recreate-game carries every
 // player's avatar at once, which can exceed express.json()'s 100kb default
 const jsonBody = express.json({ limit: '1mb' });
@@ -116,34 +123,47 @@ app.post('/api/create-game', jsonBody, (req, res) => {
 
 // API endpoint to join a game
 app.post('/api/join-game', jsonBody, (req, res) => {
-    const { playerName, avatar, playerId } = req.body || {};
+    const { playerName, avatar, playerId, playerSecret } = req.body || {};
     // Codes are upper case; one typed in lower case is the same room
     const gameId = typeof req.body?.gameId === 'string' ? req.body.gameId.toUpperCase() : '';
 
-    // A photo avatar is a data URL of up to 32 KB: the log gets a mark, not the picture
+    // A photo avatar is a data URL of up to 32 KB: the log gets a mark, not
+    // the picture. The secret is never written anywhere but the backups
     console.log('Join game request:', {
-        gameId, playerName, playerId,
-        avatar: gameLogic.isCustomAvatar(avatar) ? '[photo]' : avatar
+        gameId: forLog(gameId), playerName: forLog(playerName), playerId: forLog(playerId),
+        avatar: gameLogic.isCustomAvatar(avatar) ? '[photo]' : forLog(avatar)
     });
-
 
     if (!gameId || !playerName || !avatar) {
         console.log('Missing required fields:', { gameId: !!gameId, playerName: !!playerName, avatar: !!avatar });
         return res.status(400).json({ error: 'Missing required fields' });
     }
-    
- // After a restart the room may still be only on disk
-    ensureGameLoaded(gameId);
-    const result = gameLogic.addPlayerToGame(games, gameId, playerName, avatar, playerId);
 
+    // After a restart the room may still be only on disk. A lost room is
+    // reported before the secret is checked: a page that sends no secret (an
+    // old page left open while a new version was deployed) then still brings
+    // the room back from its copy (recreate-game) before its join fails
+    ensureGameLoaded(gameId);
+    if (!games.has(gameId)) {
+        return res.status(400).json({ success: false, error: 'Game not found' });
+    }
+
+    // Every page sends the player's secret (PLAYER_SECRET in utils.js): it is
+    // what lets only this browser act as this player (addPlayerToGame)
+    if (!gameLogic.isValidPlayerId(playerSecret)) {
+        console.log('Join without a player secret refused');
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const result = gameLogic.addPlayerToGame(games, gameId, playerName, avatar, playerId, playerSecret);
 
     if (!result.success) {
         console.log('Failed to add player to game:', result.error);
         return res.status(400).json(result);
     }
-    
-    console.log(`Player ${playerName} ${result.isNewPlayer ? 'joined' : 'reconnected to'} game ${gameId}`);
-    
+
+    console.log(`Player ${forLog(result.player.name)} ${result.isNewPlayer ? 'joined' : 'reconnected to'} game ${gameId}`);
+
     // Broadcast to all players in the room. Characters and reveals are
     // included because a returning leaver gets their character restored -
     // the other clients must see it reappear on the card
@@ -154,7 +174,7 @@ app.post('/api/join-game', jsonBody, (req, res) => {
         characters: result.game.characters,
         revealedPlayers: result.game.revealedPlayers
     });
-    
+
     res.json(result);
 });
 
@@ -162,7 +182,7 @@ app.post('/api/join-game', jsonBody, (req, res) => {
 app.post('/api/recreate-game', jsonBody, (req, res) => {
     const { roomCode, gameState } = req.body || {};
 
-    console.log('Recreate game request:', { roomCode, gameStateExists: !!gameState });
+    console.log('Recreate game request:', { roomCode: forLog(roomCode), gameStateExists: !!gameState });
 
     if (!roomCode || !gameState) {
         console.log('Missing required fields for recreation:', { roomCode: !!roomCode, gameState: !!gameState });
@@ -171,7 +191,7 @@ app.post('/api/recreate-game', jsonBody, (req, res) => {
 
     // Validate room code format
     if (!gameLogic.isValidRoomCode(roomCode)) {
-        console.log('Invalid room code format:', roomCode);
+        console.log('Invalid room code format:', forLog(roomCode));
         return res.status(400).json({ error: 'Invalid room code format' });
     }
 
@@ -212,122 +232,126 @@ function safeHandler(socket, eventName, handler) {
     });
 }
 
+// Like safeHandler, for what a player does in the room. The handler gets the
+// player this socket speaks for (join-room registered it after checking the
+// player's secret): who acts is never read from the message, so a page - or
+// someone typing in the browser's console - cannot act for anybody else
+function playerHandler(socket, eventName, handler) {
+    safeHandler(socket, eventName, (data) => {
+        const me = connections.getPlayer(socket.id);
+        if (!me) {
+            socket.emit('error', 'You are not in this game');
+            return;
+        }
+        handler(data, me);
+    });
+}
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
+    // A room page connects after its HTTP join. Only a player of this room,
+    // with their secret, gets in: the room hears every move of the game, and
+    // from now on the socket acts for that player
     safeHandler(socket, 'join-room', (data) => {
-        const { playerId } = data;
+        const { playerId, playerSecret } = data;
         const gameId = typeof data.gameId === 'string' ? data.gameId.toUpperCase() : '';
-        if (!gameLogic.isValidRoomCode(gameId)) {
+        const game = games.get(gameId);
+        if (!game || !gameLogic.checkPlayerSecret(game, playerId, playerSecret)) {
             return;
         }
-        socket.join(gameId);
-        console.log(`User ${socket.id} joined room ${gameId}`);
-
-        const game = games.get(gameId);
-        if (!game) return;
-
-        // The socket becomes one of the player's pages - only for a player of
-        // this room - and the player is online from now on
-        if (gameLogic.markPlayerConnected(game, playerId)) {
-            connections.register(socket.id, gameId, playerId);
-            console.log(`📍 Tracking connection: ${socket.id} → Player ${playerId} in game ${gameId}`);
+        // A socket is one page: one player of one room
+        const registered = connections.getPlayer(socket.id);
+        if (registered && (registered.gameId !== gameId || registered.playerId !== playerId)) {
+            return;
         }
+
+        socket.join(gameId);
+        connections.register(socket.id, gameId, playerId);
+        gameLogic.markPlayerConnected(game, playerId);
+        console.log(`📍 Socket ${socket.id} → Player ${playerId} in game ${gameId}`);
 
         // Send current game state to the user
         socket.emit('game-state', gameLogic.serializeGame(game));
     });
 
-    // Final character assignment (when editing completes)
-    safeHandler(socket, 'assign-character', (data) => {
-        const { gameId, playerId, character, assignedBy } = data;
+    // Final character assignment (when editing completes): `playerId` is the
+    // player who gets the character, the one who gives it is the sender
+    playerHandler(socket, 'assign-character', (data, me) => {
+        const { playerId, character } = data;
 
-        const result = gameLogic.assignCharacter(games, gameId, playerId, character, assignedBy);
+        const result = gameLogic.assignCharacter(games, me.gameId, playerId, character, me.playerId);
 
         if (!result.success) {
             socket.emit('error', result.error);
             return;
         }
 
-        console.log(`✅ Character finalized for player ${playerId} in game ${gameId}`);
+        console.log(`✅ Character finalized for player ${playerId} in game ${me.gameId}`);
 
         // Send complete character state to all players for consistency.
         // io.to() includes the sender, so their own page updates the same way
-        io.to(gameId).emit('character-finalized', {
+        io.to(me.gameId).emit('character-finalized', {
             playerId: playerId,
             character: result.character,
             allCharacters: result.characters
         });
     });
 
-    safeHandler(socket, 'start-game', (data) => {
-        const { gameId, playerId } = data;
-        
-        const result = gameLogic.startGame(games, gameId, playerId);
-        
+    playerHandler(socket, 'start-game', (data, me) => {
+        const result = gameLogic.startGame(games, me.gameId, me.playerId);
+
         if (!result.success) {
             socket.emit('error', result.error);
             return;
         }
-        
-        console.log(`Game ${gameId} started by player ${playerId}`);
-        
+
+        console.log(`Game ${me.gameId} started by player ${me.playerId}`);
+
         // Broadcast game start to all players in the room
-        io.to(gameId).emit('game-started', result);
+        io.to(me.gameId).emit('game-started', result);
     });
-    
-    safeHandler(socket, 'reveal-character', (data) => {
-        const { gameId, playerId } = data;
-        
-        const result = gameLogic.revealCharacter(games, gameId, playerId);
-        
+
+    // A player reveals their own character, nobody else's
+    playerHandler(socket, 'reveal-character', (data, me) => {
+        const result = gameLogic.revealCharacter(games, me.gameId, me.playerId);
+
         if (!result.success) {
             socket.emit('error', result.error);
             return;
         }
-        
-        console.log(`Player ${playerId} revealed their character in game ${gameId}`);
+
+        console.log(`Player ${me.playerId} revealed their character in game ${me.gameId}`);
 
         // Broadcast character reveal to all players in the room
-        io.to(gameId).emit('character-revealed', result);
+        io.to(me.gameId).emit('character-revealed', result);
 
         // Broadcast notification about the reveal to all players
-        if (result.success && result.revealedPlayer) {
-            io.to(gameId).emit('player-revealed-notification', {
-                playerName: result.revealedPlayer.name,
-                character: result.revealedPlayer.character,
-                playerId: playerId
-            });
-        }
+        io.to(me.gameId).emit('player-revealed-notification', {
+            playerName: result.revealedPlayer.name,
+            character: result.revealedPlayer.character,
+            playerId: me.playerId
+        });
     });
-    
-    safeHandler(socket, 'restart-game', (data) => {
-        const { gameId, playerId } = data;
-        
-        const result = gameLogic.restartGame(games, gameId, playerId);
-        
+
+    playerHandler(socket, 'restart-game', (data, me) => {
+        const result = gameLogic.restartGame(games, me.gameId, me.playerId);
+
         if (!result.success) {
             socket.emit('error', result.error);
             return;
         }
-        
-        console.log(`Game ${gameId} restarted by player ${playerId}`);
+
+        console.log(`Game ${me.gameId} restarted by player ${me.playerId}`);
 
         // Broadcast game restart to all players in the room
-        io.to(gameId).emit('game-restarted', result);
+        io.to(me.gameId).emit('game-restarted', result);
     });
 
-    safeHandler(socket, 'leave-game', (data) => {
-        const { gameId, playerId } = data;
-
-        // A player may only remove themselves: the request must come from
-        // a socket registered to that player (see join-room)
-        if (!connections.isPlayerSocket(socket.id, gameId, playerId)) {
-            socket.emit('error', 'You can only leave the game yourself');
-            return;
-        }
-
+    // A player leaves the room themselves: nobody can remove anybody else
+    playerHandler(socket, 'leave-game', (data, me) => {
+        const { gameId, playerId } = me;
         const result = gameLogic.removePlayerFromGame(games, gameId, playerId);
 
         if (!result.success) {
@@ -337,8 +361,8 @@ io.on('connection', (socket) => {
 
         console.log(`👋 Player ${playerId} left game ${gameId}`);
 
-        // Emit BEFORE socket.leave() so the leaver receives the confirmation
-        // and uses it as the trigger to redirect home
+        // Emit BEFORE the sockets leave the room so the leaver receives the
+        // confirmation and uses it as the trigger to redirect home
         io.to(gameId).emit('player-left', {
             playerId: playerId,
             playerName: result.removedPlayer.name,
@@ -348,10 +372,9 @@ io.on('connection', (socket) => {
             gameDeleted: result.gameDeleted
         });
 
-        socket.leave(gameId);
-        // None of the player's tabs speaks for them any more; their later
-        // disconnects become no-ops
-        connections.unregisterPlayer(gameId, playerId);
+        // None of the player's tabs speaks for them or hears the room any
+        // more; their later disconnects become no-ops
+        io.in(connections.unregisterPlayer(gameId, playerId)).socketsLeave(gameId);
 
         if (result.gameDeleted) {
             console.log(`🗑️ Game ${gameId} removed - last player left`);

@@ -1,6 +1,6 @@
 // Who am I? Game - Frontend JavaScript
 // Names from utils.js (loaded before this file; see the note at the top of utils.js)
-/* global debugLog, MAX_NAME_LENGTH, isCustomAvatar, getText, serverErrorText, showError, showInfo, AppStorage, handleApiError, PLAYER_ID */
+/* global debugLog, MAX_NAME_LENGTH, isCustomAvatar, getText, serverErrorText, showError, showInfo, AppStorage, handleApiError, PLAYER_ID, PLAYER_SECRET */
 
 // Avatar pool: the landing page deals 12 of them at a time (the server does
 // not need the list - it checks only that an avatar is short)
@@ -430,7 +430,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     gameId: playerData.roomCode,
                     playerName: playerData.name,
                     avatar: playerData.avatar,
-                    playerId: PLAYER_ID
+                    playerId: PLAYER_ID,
+                    playerSecret: PLAYER_SECRET
                 })
             });
             

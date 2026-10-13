@@ -22,7 +22,7 @@ function createGameBackups(gamesDir) {
         save(game) {
             const file = fileOf(game.id);
             if (!file) return;
-            const backup = { ...serializeGame(game), lastKeepAlive: new Date().toISOString() };
+            const backup = { ...serializeGame(game, { withSecrets: true }), lastKeepAlive: new Date().toISOString() };
             try {
                 fs.writeFileSync(file, JSON.stringify(backup, null, 2));
             } catch (error) {
