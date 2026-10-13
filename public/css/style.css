@@ -236,6 +236,11 @@ input#roomCode {
   font-size: 1.2rem;
 }
 
+/* A code that came with the room link (/?join=CODE): game.js marks it */
+input#roomCode.prefilled {
+  background-color: #fff3cd;
+}
+
 /* Buttons: letterpress capitals. Bootstrap draws them from its --bs-btn-*
    variables, so the colors are given there */
 .btn {
@@ -755,6 +760,15 @@ input#roomCode {
 
 .alert-warning {
   border-left-color: var(--gold);
+}
+
+/* A notification in the room (showNotification in utils.js): pinned to the
+   top right corner, over the page and below the windows */
+.alert.notification {
+  top: 20px;
+  right: 20px;
+  z-index: 1055;
+  min-width: 300px;
 }
 
 /* Confirmation windows: a sheet of paper, like .game-card */

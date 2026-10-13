@@ -108,9 +108,8 @@ function showInfo(message) {
 function showNotification(message, type = 'info', duration = 4000) {
     const notification = createAlertElement(
         message,
-        `alert alert-${type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed`
+        `alert alert-${type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed notification`
     );
-    notification.style.cssText = 'top: 20px; right: 20px; z-index: 1055; min-width: 300px;';
 
     document.body.appendChild(notification);
 
@@ -149,7 +148,11 @@ const AppStorage = {
 
     // Remove item
     remove(key) {
-        localStorage.removeItem(key);
+        try {
+            localStorage.removeItem(key);
+        } catch (error) {
+            console.warn(`Failed to remove localStorage item "${key}":`, error);
+        }
     },
 
     // Session storage helpers
@@ -175,7 +178,11 @@ const AppStorage = {
         },
 
         remove(key) {
-            sessionStorage.removeItem(key);
+            try {
+                sessionStorage.removeItem(key);
+            } catch (error) {
+                console.warn(`Failed to remove sessionStorage item "${key}":`, error);
+            }
         }
     }
 };
