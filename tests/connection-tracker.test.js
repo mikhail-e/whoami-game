@@ -116,7 +116,8 @@ describe('Connection Tracker', () => {
         connections.register('tab-1', 'ABC123', 'player-1');
         connections.register('tab-2', 'ABC123', 'player-1');
 
-        connections.unregisterPlayer('ABC123', 'player-1');
+        // Their sockets, so the server can take every tab out of the room
+        expect(connections.unregisterPlayer('ABC123', 'player-1')).toEqual(['tab-1', 'tab-2']);
 
         expect(speaksFor('tab-1', 'ABC123', 'player-1')).toBe(false);
         expect(speaksFor('tab-2', 'ABC123', 'player-1')).toBe(false);

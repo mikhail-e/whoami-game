@@ -72,9 +72,13 @@ describe("A player's secret", () => {
         expect(games.get(gameId).characters.get(ALICE).character).toBe('Batman');
     });
 
-    test('a backup keeps the secrets, and the restored room still checks them', () => {
+    test('a backup keeps the secrets as hashes, and the restored room still checks them', () => {
         const saved = JSON.parse(JSON.stringify(serializeGame(games.get(gameId), { withSecrets: true })));
         games.set('BACKUP', restoreGame('BACKUP', saved));
+
+        // A browser uses one secret in every room: the disk never holds it
+        expect(JSON.stringify(saved)).not.toContain(ALICE_SECRET);
+        expect(saved.secrets[ALICE]).toMatch(/^[0-9a-f]{64}$/);
 
         expect(checkPlayerSecret(games.get('BACKUP'), ALICE, ALICE_SECRET)).toBe(true);
         expect(addPlayerToGame(games, 'BACKUP', 'Alice', '🐍', ALICE, OTHER_SECRET).success).toBe(false);

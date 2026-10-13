@@ -34,6 +34,14 @@ function isValidPlayerId(value) {
     return typeof value === 'string' && PLAYER_ID_PATTERN.test(value);
 }
 
+// The server keeps a hash of a player's secret, never the secret itself: a
+// browser uses one secret in every room, and backups lie on the disk
+const SECRET_HASH_PATTERN = /^[0-9a-f]{64}$/;
+
+function hashSecret(secret) {
+    return crypto.createHash('sha256').update(secret).digest('hex');
+}
+
 // Count characters the way a person would: an emoji is one character,
 // not the two UTF-16 code units JavaScript's .length reports.
 function countCharacters(text) {
@@ -135,7 +143,7 @@ function createGame(games) {
         state: 'waiting', // waiting, started, ended
         revealedPlayers: new Set(), // Track who has revealed their character
         recentlyLeft: new Map(), // playerId -> snapshot, lets leavers return to a started game
-        secrets: new Map(), // playerId -> the player's secret (checkPlayerSecret); never sent to a page
+        secrets: new Map(), // playerId -> hash of the player's secret (checkPlayerSecret); never sent to a page
         created: new Date()
     };
     touchGame(game);
@@ -186,8 +194,9 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null, pla
     }
 
     // Somebody else's browser cannot take this player's place
-    const recordedSecret = existingPlayer ? game.secrets.get(playerId) : returningSnapshot?.secret;
-    if (recordedSecret && playerSecret !== recordedSecret) {
+    const secretHash = playerSecret ? hashSecret(playerSecret) : null;
+    const recordedHash = existingPlayer ? game.secrets.get(playerId) : returningSnapshot?.secretHash;
+    if (recordedHash && secretHash !== recordedHash) {
         return { success: false, error: 'This player is playing in another browser' };
     }
 
@@ -244,7 +253,7 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null, pla
             game.recentlyLeft.delete(player.id);
         }
     }
-    if (playerSecret) game.secrets.set(player.id, playerSecret);
+    if (secretHash) game.secrets.set(player.id, secretHash);
     touchGame(game);
 
     return {
@@ -464,7 +473,7 @@ function removePlayerFromGame(games, gameId, playerId) {
     // (Waiting-lobby leaves need no snapshot - anyone can join a lobby.)
     if (game.state === 'started') {
         game.recentlyLeft.set(playerId, {
-            secret: game.secrets.get(playerId), // only the same browser may come back
+            secretHash: game.secrets.get(playerId), // only the same browser may come back
             stickerColor: removedPlayer.stickerColor,
             character: game.characters.get(playerId) || null,
             revealed: game.revealedPlayers.has(playerId),
@@ -502,7 +511,7 @@ function removePlayerFromGame(games, gameId, playerId) {
 function checkPlayerSecret(game, playerId, playerSecret) {
     return isValidPlayerId(playerSecret)
         && game.players.some(p => p.id === playerId)
-        && game.secrets.get(playerId) === playerSecret;
+        && game.secrets.get(playerId) === hashSecret(playerSecret);
 }
 
 // Validate room code format
@@ -517,7 +526,8 @@ function isValidRoomCode(code) {
 
 // A game as plain data, ready for JSON: what a player gets on joining the
 // room, and what a disk backup holds (Maps and Sets become objects and
-// arrays). The players' secrets go only into a backup, never to a page
+// arrays). The hashes of the players' secrets go only into a backup, never
+// to a page
 function serializeGame(game, { withSecrets = false } = {}) {
     const data = {
         id: game.id,
@@ -597,8 +607,10 @@ function restoreGame(roomCode, saved) {
     // A player without a saved secret gets one recorded by their next join
     const secrets = new Map();
     const savedSecrets = (saved.secrets && typeof saved.secrets === 'object') ? saved.secrets : {};
-    for (const [playerId, secret] of Object.entries(savedSecrets)) {
-        if (listed.has(playerId) && isValidPlayerId(secret)) secrets.set(playerId, secret);
+    for (const [playerId, secretHash] of Object.entries(savedSecrets)) {
+        if (listed.has(playerId) && typeof secretHash === 'string' && SECRET_HASH_PATTERN.test(secretHash)) {
+            secrets.set(playerId, secretHash);
+        }
     }
 
     const game = {
@@ -705,13 +717,16 @@ function createConnectionTracker() {
             return forgetSocket(socketId);
         },
 
-        // The player left the room: none of their sockets speaks for them any more
+        // The player left the room: none of their sockets speaks for them any
+        // more. Returns those sockets' IDs (server.js takes them out of the room)
         unregisterPlayer(gameId, playerId) {
             const key = keyOf(gameId, playerId);
-            for (const socketId of playerSockets.get(key) || []) {
+            const socketIds = [...(playerSockets.get(key) || [])];
+            for (const socketId of socketIds) {
                 socketToPlayer.delete(socketId);
             }
             playerSockets.delete(key);
+            return socketIds;
         },
 
         // The player this socket speaks for: { gameId, playerId }, or null
@@ -750,9 +765,9 @@ function removeStaleDisconnectedPlayers(games, maxDisconnectedMs = MAX_DISCONNEC
             if (player.isConnected) continue;
 
             if (!player.disconnectedAt) {
-                // Games restored from disk or recreated from a client backup
-                // have no disconnect timestamp - start the clock now, so the
-                // player is removed on a LATER pass if nobody comes back
+                // Every way of going offline sets the timestamp; should one be
+                // missing anyway, start the clock now rather than remove the
+                // player at once - they go on a LATER pass if nobody comes back
                 player.disconnectedAt = now;
             } else if (now - player.disconnectedAt > maxDisconnectedMs) {
                 stalePlayerIds.push(player.id);

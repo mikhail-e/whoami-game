@@ -98,6 +98,13 @@ app.get('/game/:roomCode', (req, res) => {
     }
 });
 
+// A value from a request as the log gets it: short, whatever was sent (a
+// request may carry up to 1 MB, and Render's log is the owner's to read)
+function forLog(value) {
+    const text = typeof value === 'string' ? value : JSON.stringify(value);
+    return (text && text.length > 64) ? `${text.slice(0, 64)}…` : text;
+}
+
 // Custom image avatars ride inside JSON bodies; recreate-game carries every
 // player's avatar at once, which can exceed express.json()'s 100kb default
 const jsonBody = express.json({ limit: '1mb' });
@@ -123,21 +130,31 @@ app.post('/api/join-game', jsonBody, (req, res) => {
     // A photo avatar is a data URL of up to 32 KB: the log gets a mark, not
     // the picture. The secret is never written anywhere but the backups
     console.log('Join game request:', {
-        gameId, playerName, playerId,
-        avatar: gameLogic.isCustomAvatar(avatar) ? '[photo]' : avatar
+        gameId: forLog(gameId), playerName: forLog(playerName), playerId: forLog(playerId),
+        avatar: gameLogic.isCustomAvatar(avatar) ? '[photo]' : forLog(avatar)
     });
 
-    // Every page sends the player's secret (PLAYER_SECRET in utils.js): it is
-    // what lets only this browser act as this player (addPlayerToGame)
-    if (!gameId || !playerName || !avatar || !gameLogic.isValidPlayerId(playerSecret)) {
-        console.log('Missing required fields:', {
-            gameId: !!gameId, playerName: !!playerName, avatar: !!avatar, playerSecret: !!playerSecret
-        });
+    if (!gameId || !playerName || !avatar) {
+        console.log('Missing required fields:', { gameId: !!gameId, playerName: !!playerName, avatar: !!avatar });
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // After a restart the room may still be only on disk
+    // After a restart the room may still be only on disk. A lost room is
+    // reported before the secret is checked: a page that sends no secret (an
+    // old page left open while a new version was deployed) then still brings
+    // the room back from its copy (recreate-game) before its join fails
     ensureGameLoaded(gameId);
+    if (!games.has(gameId)) {
+        return res.status(400).json({ success: false, error: 'Game not found' });
+    }
+
+    // Every page sends the player's secret (PLAYER_SECRET in utils.js): it is
+    // what lets only this browser act as this player (addPlayerToGame)
+    if (!gameLogic.isValidPlayerId(playerSecret)) {
+        console.log('Join without a player secret refused');
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
     const result = gameLogic.addPlayerToGame(games, gameId, playerName, avatar, playerId, playerSecret);
 
     if (!result.success) {
@@ -145,7 +162,7 @@ app.post('/api/join-game', jsonBody, (req, res) => {
         return res.status(400).json(result);
     }
 
-    console.log(`Player ${playerName} ${result.isNewPlayer ? 'joined' : 'reconnected to'} game ${gameId}`);
+    console.log(`Player ${forLog(result.player.name)} ${result.isNewPlayer ? 'joined' : 'reconnected to'} game ${gameId}`);
 
     // Broadcast to all players in the room. Characters and reveals are
     // included because a returning leaver gets their character restored -
@@ -165,7 +182,7 @@ app.post('/api/join-game', jsonBody, (req, res) => {
 app.post('/api/recreate-game', jsonBody, (req, res) => {
     const { roomCode, gameState } = req.body || {};
 
-    console.log('Recreate game request:', { roomCode, gameStateExists: !!gameState });
+    console.log('Recreate game request:', { roomCode: forLog(roomCode), gameStateExists: !!gameState });
 
     if (!roomCode || !gameState) {
         console.log('Missing required fields for recreation:', { roomCode: !!roomCode, gameState: !!gameState });
@@ -174,7 +191,7 @@ app.post('/api/recreate-game', jsonBody, (req, res) => {
 
     // Validate room code format
     if (!gameLogic.isValidRoomCode(roomCode)) {
-        console.log('Invalid room code format:', roomCode);
+        console.log('Invalid room code format:', forLog(roomCode));
         return res.status(400).json({ error: 'Invalid room code format' });
     }
 
@@ -242,6 +259,11 @@ io.on('connection', (socket) => {
         const gameId = typeof data.gameId === 'string' ? data.gameId.toUpperCase() : '';
         const game = games.get(gameId);
         if (!game || !gameLogic.checkPlayerSecret(game, playerId, playerSecret)) {
+            return;
+        }
+        // A socket is one page: one player of one room
+        const registered = connections.getPlayer(socket.id);
+        if (registered && (registered.gameId !== gameId || registered.playerId !== playerId)) {
             return;
         }
 
@@ -339,8 +361,8 @@ io.on('connection', (socket) => {
 
         console.log(`👋 Player ${playerId} left game ${gameId}`);
 
-        // Emit BEFORE socket.leave() so the leaver receives the confirmation
-        // and uses it as the trigger to redirect home
+        // Emit BEFORE the sockets leave the room so the leaver receives the
+        // confirmation and uses it as the trigger to redirect home
         io.to(gameId).emit('player-left', {
             playerId: playerId,
             playerName: result.removedPlayer.name,
@@ -350,10 +372,9 @@ io.on('connection', (socket) => {
             gameDeleted: result.gameDeleted
         });
 
-        socket.leave(gameId);
-        // None of the player's tabs speaks for them any more; their later
-        // disconnects become no-ops
-        connections.unregisterPlayer(gameId, playerId);
+        // None of the player's tabs speaks for them or hears the room any
+        // more; their later disconnects become no-ops
+        io.in(connections.unregisterPlayer(gameId, playerId)).socketsLeave(gameId);
 
         if (result.gameDeleted) {
             console.log(`🗑️ Game ${gameId} removed - last player left`);

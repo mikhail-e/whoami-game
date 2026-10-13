@@ -191,6 +191,16 @@ describe('API Integration Tests', () => {
             });
         });
 
+        test('a lost room is reported before the secret is asked for', async () => {
+            // A page that sends no secret then still recreates the room from its copy
+            const response = await request(server)
+                .post('/api/join-game')
+                .send({ gameId: 'GONE00', playerName: 'Alice', avatar: '😀' })
+                .expect(400);
+
+            expect(response.body.error).toBe('Game not found');
+        });
+
         test('validates required fields', async () => {
             // Missing playerName
             await request(server)
