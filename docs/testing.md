@@ -90,7 +90,7 @@ npm run test:e2e:prod                      # браузерные тесты п�
 
 ## Отладка
 
-- Упавший тест оставляет трассу: `npx playwright show-trace test-results/<тест>/trace.zip`; отчёт прогона — `npx playwright show-report`.
+- Трассы по умолчанию не пишутся: запись делает снимок страницы после каждого действия каждого теста, и в полном параллельном прогоне эта нагрузка изредка подвешивала страницу — тест падал при исправной игре. Разобрать падение: прогнать с трассой (`npx playwright test <файл> --trace on`, плавающий тест — вместе с `--repeat-each`) и открыть её: `npx playwright show-trace test-results/<тест>/trace.zip`. Отчёт прогона — `npx playwright show-report`.
 - `npm run test:e2e:headed` или `npm run test:e2e:ui`, чтобы видеть страницу.
 - Журнал игры в консоли: `await player.page.evaluate(() => localStorage.setItem('whoami-debug', 'on'))` и перезагрузка.
 - Плавающий тест — прогнать много раз: `npx playwright test <файл> --repeat-each=10`.

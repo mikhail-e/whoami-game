@@ -40,7 +40,7 @@ function serverErrorText(error, lang = 'en') {
     return serverErrors[lang][error];
 }
 
-// The trace Playwright records for a failed test (trace: 'retain-on-failure')
+// A trace Playwright records (a run with --trace on, docs/testing.md)
 // copies the page's images, a blob: one too, with fetch(), and the Content
 // Security Policy's connect-src 'self' blocks that. The game itself never
 // fetches a blob: address: this violation is the test tool's own
