@@ -108,10 +108,11 @@ body {
   font-size: 1.0625rem;
   line-height: 1.45;
   color: var(--on-page);
-  /* A theatre curtain: a spotlight from above, velvet folds, deep red */
+  /* A theatre curtain: a spotlight from above, velvet folds (200 px wide -
+     narrower ones ripple on a wide screen), deep red */
   background:
     radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255, 214, 170, .2), rgba(255, 214, 170, 0) 70%),
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, .24) 0, rgba(0, 0, 0, 0) 26px, rgba(255, 255, 255, .07) 42px, rgba(0, 0, 0, 0) 58px, rgba(0, 0, 0, .24) 84px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, .24) 0, rgba(0, 0, 0, 0) 62px, rgba(255, 255, 255, .07) 100px, rgba(0, 0, 0, 0) 138px, rgba(0, 0, 0, .24) 200px),
     linear-gradient(180deg, #7e1a13 0%, #5c110b 100%);
   min-height: 100vh;
   margin: 0;
