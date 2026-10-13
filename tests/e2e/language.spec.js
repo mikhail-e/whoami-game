@@ -97,6 +97,17 @@ test('in a room the switch re-renders the status and the cards', async ({ newPla
     await expect(playerCard(alice.page, 'Alice').locator('.player-name')).toHaveText(`Alice (${text('you', 'ru')})`);
 });
 
+test('in a lobby the switch re-renders "Assign character"', async ({ newPlayer }) => {
+    const alice = await newPlayer('Alice');
+    const bob = await newPlayer('Bob');
+    await joinRoom(bob, await createRoom(alice));
+    await waitForPlayers(alice.page, 2);
+
+    await alice.page.locator('.lang-toggle-btn').click();
+
+    await expect(playerCard(alice.page, 'Bob').getByRole('button', { name: text('assignCharacter', 'ru') })).toBeVisible();
+});
+
 test("the reveal notification reads in each player's language", async ({ newPlayer }) => {
     const { players: { Alice: alice, Bob: bob }, characters } = await startedGame(newPlayer, ['Alice', 'Bob']);
     await bob.page.locator('.lang-toggle-btn').click();

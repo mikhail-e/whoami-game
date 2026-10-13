@@ -68,9 +68,9 @@ npm run test:e2e:prod                      # браузерные тесты п�
 | `joinRoom(игрок, код)` | ссылка на комнату → `/?join=КОД` → имя → «Join» |
 | `playerCard(page, имя)` | карточка игрока; своя подписана «Имя (You)» |
 | `waitForPlayers(page, число)` | ждёт столько карточек |
-| `assignCharacter(игрок, кому, персонаж)` | «+», ввод, Enter |
+| `assignCharacter(игрок, кому, персонаж)` | «+ Assign character», ввод, Enter |
 | `startGame(игрок)` | «Start Game» и ожидание начатой партии |
-| `revealOwnCharacter(игрок)` | свой 🎭 → окно → подтверждение |
+| `revealOwnCharacter(игрок)` | свой конверт → окно → подтверждение |
 | `startedGame(newPlayer, имена)` | целая начатая партия: комната, вход, персонажи по кругу, старт |
 | `leaveGame(игрок)` | «Leave» → окно → подтверждение → главная |
 | `stubShare(page, 'record' / 'abort' / 'unsupported')` | подменяет системное окно «Поделиться» (настоящее остановило бы браузер); вызывать до загрузки страницы |

@@ -5,26 +5,18 @@ const {
 
 const notifications = page => page.locator('.alert.position-fixed');
 
-test('your own sticker is the light dashed 🎭 that reveals your character', async ({ newPlayer }) => {
+test('your own character is a sealed envelope that reveals it', async ({ newPlayer }) => {
     const { players: { Alice: alice } } = await startedGame(newPlayer, ['Alice', 'Bob']);
     const own = playerCard(alice.page, 'Alice').locator('.character-sticker');
 
     await expect(own).toHaveClass(/\bmystery\b/);
-    await expect(own).toHaveText('🎭');
     await expect(own).not.toHaveClass(/\bcolor-/);
+    await expect(own.locator('.seal')).toHaveText('?');
     await expect(own).toHaveAttribute('title', text('yourCharacterClickReveal'));
-    expect(await own.evaluate(sticker => getComputedStyle(sticker).borderTopStyle)).toBe('dashed');
-    // A light background: every color it is painted with is pale
-    const colors = await own.evaluate(sticker => {
-        const style = getComputedStyle(sticker);
-        return `${style.backgroundImage} ${style.backgroundColor}`.match(/rgba?\([^)]*\)/g)
-            .filter(color => !/,\s*0\)$/.test(color)); // not the transparent background-color
-    });
-    expect(colors.length).toBeGreaterThan(0);
-    for (const color of colors) {
-        for (const channel of color.match(/\d+/g).slice(0, 3).map(Number)) expect(channel).toBeGreaterThanOrEqual(200);
-    }
-    await expect(alice.page.locator('#gameSteps li').nth(3)).toContainText('🎭');
+    // A light envelope: every channel of its paper is pale
+    const paper = await own.evaluate(sticker => getComputedStyle(sticker).backgroundColor);
+    for (const channel of paper.match(/\d+/g).slice(0, 3).map(Number)) expect(channel).toBeGreaterThanOrEqual(200);
+    await expect(alice.page.locator('#gameSteps li').nth(3)).toHaveText(text('step4'));
 });
 
 test("the others' characters keep their player colors", async ({ newPlayer }) => {
@@ -70,6 +62,8 @@ test('revealing shows your character and tells everyone', async ({ newPlayer }) 
     await expect(notifications(bob.page)).toContainText(
         text('playerRevealedNotification', 'en', { playerName: 'Alice', character: characters.Alice }));
     await expect(playerCard(bob.page, 'Alice').locator('.character-sticker.revealed')).toHaveText(characters.Alice);
+    // The whole card of a revealed player turns gold, for everyone
+    await expect(playerCard(bob.page, 'Alice')).toHaveClass(/\brevealed\b/);
 });
 
 test('restart returns the room to assigning characters', async ({ newPlayer }) => {

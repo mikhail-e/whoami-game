@@ -443,168 +443,158 @@ input#roomCode {
   overflow-wrap: break-word;
 }
 
+/* Character tags: a card pinned on the guest, the way the parlour game was
+   played. The server picks each player's color (stickerColor); the browser
+   paints the pin and the "handwriting" with it */
 .character-sticker {
   position: relative;
-  left: 8px;
-  right: 8px;
-  margin: 8px 8px 0 8px;
-  color: white;
-  padding: 12px 16px;
-  border-radius: 20px;
-  font-size: 1.4rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 2px solid white;
-  word-wrap: break-word;
-  white-space: normal;
-  text-align: center;
-  min-height: 40px;
+  margin: 16px 6px 0;
+  min-height: 56px;
+  padding: 18px 16px 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
+  background: var(--tag-paper);
+  color: var(--deep, var(--ink));
+  font-size: 1.4rem;
+  line-height: 1.2;
+  /* anywhere, not break-word: in a flex box only anywhere lets a long word
+     shrink the tag's minimum width, so it wraps instead of running out */
+  overflow-wrap: anywhere;
+  border: 1px solid rgba(42, 29, 23, .3);
+  border-radius: 2px;
+  box-shadow: 0 2px 5px rgba(42, 29, 23, .28);
+  transform: rotate(-1.5deg);
+  transition: transform 0.2s ease;
+  cursor: pointer;
 }
 
+/* Every other card leans the other way. The list is in join order on every
+   screen, so each tag leans the same way for everybody */
+.player-card:nth-child(even) .character-sticker {
+  transform: rotate(1.2deg);
+}
+
+/* The pin */
+.character-sticker:not(.mystery)::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .75) 0 18%, transparent 32%), var(--deep, var(--ink));
+  box-shadow: 1px 2px 2px rgba(0, 0, 0, .35);
+}
+
+/* With a mouse a tag straightens under the pointer */
 @media (hover: hover) and (pointer: fine) {
-  .character-sticker:hover {
-    transform: scale(1.05);
+  .character-sticker:hover,
+  .player-card:nth-child(even) .character-sticker:hover {
+    transform: none;
   }
 }
 
-/* Long characters (up to 128 chars) would otherwise produce a huge sticker */
+/* Long characters (up to 128 chars) would otherwise produce a huge tag */
 .character-sticker.long-text {
-  font-size: 1rem;
-  padding: 10px 12px;
+  font-size: 1.05rem;
 }
 
-/* Color variants for character stickers */
+/* The players' colors (stickerColor) */
 .character-sticker.color-red {
-  background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
-  box-shadow: 0 3px 8px rgba(255, 107, 107, 0.3);
+  --deep: #9e2a22;
 }
-/* Removed hover color change - colors are now fixed */
 
 .character-sticker.color-blue {
-  background: linear-gradient(45deg, #4ecdc4, #44a08d);
-  box-shadow: 0 3px 8px rgba(78, 205, 196, 0.3);
+  --deep: #1d5e66;
 }
-/* Removed hover color change - colors are now fixed */
 
 .character-sticker.color-purple {
-  background: linear-gradient(45deg, #9b59b6, #8e44ad);
-  box-shadow: 0 3px 8px rgba(155, 89, 182, 0.3);
+  --deep: #5b2a6e;
 }
-/* Removed hover color change - colors are now fixed */
 
 .character-sticker.color-orange {
-  background: linear-gradient(45deg, #f39c12, #e67e22);
-  box-shadow: 0 3px 8px rgba(243, 156, 18, 0.3);
+  --deep: #94461a;
 }
-/* Removed hover color change - colors are now fixed */
 
 .character-sticker.color-green {
-  background: linear-gradient(45deg, #2ecc71, #27ae60);
-  box-shadow: 0 3px 8px rgba(46, 204, 113, 0.3);
+  --deep: #2f5d3a;
 }
-/* Removed hover color change - colors are now fixed */
 
 .character-sticker.color-pink {
-  background: linear-gradient(45deg, #e91e63, #ad1457);
-  box-shadow: 0 3px 8px rgba(233, 30, 99, 0.3);
+  --deep: #9b2d58;
 }
-/* Removed hover color change - colors are now fixed */
 
 .character-sticker.color-indigo {
-  background: linear-gradient(45deg, #3f51b5, #303f9f);
-  box-shadow: 0 3px 8px rgba(63, 81, 181, 0.3);
-}
-/* Removed hover color change - colors are now fixed */
-
-/* Mystery sticker - your own hidden character (no player color on purpose:
-   a light dashed style reads as "unknown" and the dark glyph stays visible) */
-.character-sticker.mystery {
-  background: linear-gradient(45deg, #f8f9fa, #e9ecef);
-  border: 2px dashed #adb5bd;
-  color: #495057;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  --deep: #2e3a6e;
 }
 
-.character-sticker.editing {
-  transform: scale(1.1);
-  /* Removed background - preserves player's assigned color during editing */
+/* Writing a character in: the tag straightens and lifts, the text sits on a line */
+.character-sticker.editing,
+.player-card:nth-child(even) .character-sticker.editing {
+  transform: none;
+  box-shadow: 0 8px 18px rgba(42, 29, 23, .35);
 }
 
 .character-input {
-  background: rgba(255, 255, 255, 0.95);
-  border: 2px solid #4ecdc4;
-  border-radius: 8px;
-  padding: 4px 8px;
-  font-size: 14px;
-  font-weight: bold;
-  text-align: center;
   width: 100%;
-  box-sizing: border-box;
-  outline: none;
-}
-
-
-.character-sticker.revealed {
-  border: 3px solid #f1c40f;
-  box-shadow: 0 0 15px rgba(241, 196, 15, 0.5), 0 3px 8px rgba(0,0,0,0.2);
-  animation: revealPulse 2s ease-in-out;
-}
-
-@keyframes revealPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); border-color: #f39c12; }
-  100% { transform: scale(1); }
-}
-
-
-.character-input {
   background: transparent;
   border: none;
-  color: white;
-  font-weight: bold;
-  font-size: 1.4rem;
-  width: 100%;
-  outline: none;
+  border-bottom: 1.5px solid var(--deep, var(--ink));
+  color: var(--deep, var(--ink));
+  font: inherit;
   text-align: center;
-  resize: none;
+  outline: none;
 }
 
-.character-input::placeholder {
-  color: rgba(255, 255, 255, 0.8);
+/* A revealed character: a gold ring around the tag */
+.character-sticker.revealed {
+  box-shadow: 0 0 0 3px var(--gold), 0 2px 5px rgba(42, 29, 23, .28);
 }
 
-.add-character-btn {
-  position: relative;
-  left: 8px;
-  right: 8px;
-  margin: 8px 8px 0 8px;
-  background: linear-gradient(45deg, #667eea, #764ba2);
-  color: white;
-  height: 40px;
-  border-radius: 20px;
-  border: 2px solid white;
-  font-size: 1.2rem;
-  cursor: pointer;
+/* Your own hidden character: a sealed envelope (no player color on purpose).
+   The flap is two diagonal lines drawn by gradients */
+.character-sticker.mystery,
+.player-card:nth-child(even) .character-sticker.mystery {
+  min-height: 72px;
+  transform: none;
+  background:
+    linear-gradient(to top right, transparent calc(50% - .75px), rgba(42, 29, 23, .45) 50%, transparent calc(50% + .75px)) left top / 50% 62% no-repeat,
+    linear-gradient(to top left, transparent calc(50% - .75px), rgba(42, 29, 23, .45) 50%, transparent calc(50% + .75px)) right top / 50% 62% no-repeat,
+    var(--envelope);
+  border-color: rgba(42, 29, 23, .45);
+  box-shadow: 0 1px 3px rgba(42, 29, 23, .25);
+}
+
+/* The wax seal where the flap meets, a "?" pressed into it */
+.seal {
+  position: absolute;
+  left: 50%;
+  top: 62%;
+  transform: translate(-50%, -50%);
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
-  box-shadow: 0 3px 8px rgba(102, 126, 234, 0.3);
+  border-radius: 47% 53% 50% 48% / 52% 47% 53% 48%;
+  background: radial-gradient(circle at 38% 32%, #d4483c 0, #a8231b 55%, #7e1711 100%);
+  color: #f6dcc8;
+  font-family: 'Abril Fatface', serif;
+  font-size: 1.5rem;
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .45), inset 0 0 0 3px rgba(126, 23, 17, .6);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .add-character-btn:hover {
-    transform: scale(1.1);
-    background: linear-gradient(45deg, #5a67d8, #6b73ff);
-  }
-}
-
-.player-card.cannot-assign {
-  opacity: 1;
+/* "+ Assign character" on someone else's card: an outline button (game-room.js) */
+.add-character-btn {
+  display: block;
+  width: calc(100% - 12px);
+  margin: 16px 6px 0;
+  padding-block: 10px;
 }
 
 .player-card.cannot-assign .add-character-btn {
