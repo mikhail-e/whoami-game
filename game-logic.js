@@ -317,7 +317,13 @@ function startGame(games, gameId, playerId) {
     if (game.players.length < 2) {
         return { success: false, error: 'Need at least 2 players to start' };
     }
-    
+
+    // Every player needs a character. The Start button waits for that too,
+    // but a player can join at the very moment it is pressed
+    if (game.players.some(p => !game.characters.has(p.id))) {
+        return { success: false, error: 'Every player needs a character to start' };
+    }
+
     // Start the game
     game.state = 'started';
     game.startedAt = new Date();

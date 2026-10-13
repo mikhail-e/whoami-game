@@ -360,6 +360,7 @@ const serverErrors = {
         'Cannot change characters after the game has started': "После начала игры персонажей менять нельзя",
         'Invalid character': "Недопустимый персонаж",
         'Need at least 2 players to start': "Нужно минимум 2 игрока для начала",
+        'Every player needs a character to start': "Чтобы начать, назначьте персонажей всем игрокам",
         'Game has not started yet': "Игра ещё не началась",
         'No character assigned to this player': "Этому игроку не назначен персонаж",
         'Invalid saved game state: missing players': "Сохранённая игра повреждена: в ней нет игроков",

@@ -657,8 +657,9 @@ function updatePlayersList() {
             }
             playerCard.appendChild(characterSticker);
 
-        } else if (!isCurrentPlayer) {
-            // No character for other player - a real button: Tab reaches it, Enter presses it
+        } else if (!isCurrentPlayer && gameState === 'waiting') {
+            // No character for other player - a real button: Tab reaches it, Enter presses it.
+            // Only in the lobby: once the game has started, characters are locked
             const addButton = document.createElement('button');
             addButton.type = 'button';
             addButton.className = 'btn btn-outline-primary add-character-btn';
