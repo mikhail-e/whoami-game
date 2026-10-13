@@ -14,7 +14,11 @@ let leavingGame = false;
 // Sticker colors are chosen by the server (stickerColors in game-logic.js):
 // a player arrives with player.stickerColor, rendered as the color-<name> class
 
-// LocalStorage persistence for game state backup and recovery
+// LocalStorage persistence for game state backup and recovery: one key per room
+function gameStorageKey(roomCode) {
+    return `whoami-game-${roomCode}`;
+}
+
 function saveGameStateToStorage() {
     if (!currentGame || !currentPlayer) return;
 
@@ -30,33 +34,20 @@ function saveGameStateToStorage() {
         lastSaved: new Date().toISOString()
     };
 
-    const storageKey = `whoami-game-${currentGame.id}`;
-    AppStorage.set(storageKey, gameState);
-    debugLog('💾 Game state saved to localStorage:', storageKey);
+    AppStorage.set(gameStorageKey(currentGame.id), gameState);
+    debugLog('💾 Game state saved to localStorage:', currentGame.id);
 }
 
+// The saved state of this room, or null (AppStorage.get catches a broken value)
 function loadGameStateFromStorage(roomCode) {
-    const storageKey = `whoami-game-${roomCode}`;
-    const gameState = AppStorage.get(storageKey);
-
-    if (!gameState) {
-        debugLog('📭 No saved game state found for room:', roomCode);
-        return null;
-    }
-
-    try {
-        debugLog('📂 Loaded game state from localStorage:', gameState);
-        return gameState;
-    } catch (error) {
-        console.error('❌ Error parsing saved game state:', error);
-        return null;
-    }
+    const gameState = AppStorage.get(gameStorageKey(roomCode));
+    debugLog('📂 Saved game state for room', roomCode, gameState);
+    return gameState;
 }
 
 function clearGameStateFromStorage(roomCode) {
-    const storageKey = `whoami-game-${roomCode}`;
-    AppStorage.remove(storageKey);
-    debugLog('🗑️ Cleared game state from localStorage:', storageKey);
+    AppStorage.remove(gameStorageKey(roomCode));
+    debugLog('🗑️ Cleared game state from localStorage:', roomCode);
 }
 
 // Clean up local state and return to the landing page after leaving.
@@ -172,7 +163,6 @@ function initializeSocket(roomCode) {
     
     socket.on('connect', () => {
         debugLog('Connected to server');
-        debugLog('🔧 About to set up all Socket.IO event handlers...');
 
         // First join the game via API, then join the socket room
         joinGameRoom(roomCode).then(() => {
@@ -254,10 +244,7 @@ function initializeSocket(roomCode) {
         );
     });
     
-    // Real-time updates removed - keeping it simple
-
     // Handle final character confirmation
-    debugLog('🔧 Setting up character-finalized event handler...');
     socket.on('character-finalized', (data) => {
         debugLog('📨 RECEIVED character-finalized event:', data);
         const { playerId, allCharacters } = data;
@@ -270,8 +257,8 @@ function initializeSocket(roomCode) {
             // Save updated game state to localStorage
             saveGameStateToStorage();
 
-            // SURGICAL FIX: Clean up only the specific input for this finalized character
-            // This prevents the safety check from blocking updates for other players
+            // Close only the input of the player whose character was saved:
+            // an input still open for another player keeps blocking the rebuild
             const playerListEl = document.getElementById('playerList');
             const specificPlayerCard = playerListEl.querySelector(`[data-player-id="${playerId}"]`);
             if (specificPlayerCard) {
@@ -366,15 +353,9 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
         const requestBody = {
             gameId: roomCode,
             playerName: currentPlayer.name,
-            avatar: currentPlayer.avatar
+            avatar: currentPlayer.avatar,
+            playerId: currentPlayer.id
         };
-
-        // Ensure we always have a player ID
-        if (!currentPlayer.id) {
-            debugLog('⚠️ Player ID missing, using shared ID...');
-            currentPlayer.id = PLAYER_ID;
-        }
-        requestBody.playerId = currentPlayer.id;
         debugLog('Sending request body:', requestBody);
         
         const response = await fetch('/api/join-game', {
@@ -415,7 +396,7 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
                 debugLog('🔄 Game not found - attempting room recreation...');
 
                 // Validate room code format before recreation attempt
-                if (!roomCode || roomCode.length !== 6 || !/^[A-Z0-9]{6}$/.test(roomCode)) {
+                if (!/^[A-Z0-9]{6}$/.test(roomCode)) {
                     debugLog('❌ Invalid room code format, cannot recreate');
                     alert(getText('invalidRoomCodeFormat', 'Invalid room code format'));
                     window.location.href = '/';
@@ -449,25 +430,21 @@ function updateGameDisplay() {
     if (playerCountEl) playerCountEl.textContent = currentGame.players.length;
     
     // Show/hide elements based on game state
-    const shareCard = document.querySelector('.game-card.mb-3'); // Target the share room card specifically
+    const shareCard = document.getElementById('shareCard');
     const roomTicket = document.querySelector('.room-ticket'); // the room code in the header
     const assignmentInstructions = document.getElementById('assignmentInstructions');
+    const statusEl = document.getElementById('gameStatus');
+    const startButton = document.getElementById('startGame');
+    const restartButton = document.getElementById('restartGame');
     const gameState = currentGame.state || 'waiting';
-    
+
     if (gameState === 'started') {
         // Hide room sharing functionality and assignment instructions when game has started
         if (shareCard) shareCard.style.display = 'none';
         if (roomTicket) roomTicket.style.display = 'none';
         if (assignmentInstructions) assignmentInstructions.style.display = 'none';
-        
-        // Update status and buttons
-        const gameStatus = document.getElementById('gameStatus');
-        const startButton = document.getElementById('startGame');
-        const restartButton = document.getElementById('restartGame');
 
-        const statusText = getText('gameInProgress', 'Game in progress - Click your envelope to reveal your character!');
-        if (gameStatus) gameStatus.textContent = statusText;
-        
+        if (statusEl) statusEl.textContent = getText('gameInProgress', 'Game in progress - Click your envelope to reveal your character!');
         if (startButton) startButton.style.display = 'none';
         if (restartButton) restartButton.style.display = 'inline-block';
     } else {
@@ -475,12 +452,7 @@ function updateGameDisplay() {
         if (shareCard) shareCard.style.display = 'block';
         if (roomTicket) roomTicket.style.display = ''; // back to the stylesheet's inline-flex
         if (assignmentInstructions) assignmentInstructions.style.display = 'block';
-        
-        // Update game status and buttons
-        const statusEl = document.getElementById('gameStatus');
-        const startButton = document.getElementById('startGame');
-        const restartButton = document.getElementById('restartGame');
-        
+
         // Check if all players have characters assigned
         const allPlayersHaveCharacters = currentGame.players.length >= 2 && 
             currentGame.players.every(player => {
@@ -677,211 +649,74 @@ function updatePlayersList() {
     });
 }
 
-// Function to add a new character - now uses streaming like editCharacter
+// "+ Assign character" pressed: the button becomes an empty tag with an input
 function addCharacter(playerId, buttonElement) {
-    debugLog(`🎯 addCharacter called for player ${playerId} (using streaming)`);
-
-    // Replace the + button with an input field
-    const inputElement = document.createElement('input');
-    inputElement.type = 'text';
-    inputElement.className = 'character-input';
-    inputElement.maxLength = MAX_CHARACTER_LENGTH;
-
-    // Create a wrapper that looks like a sticker with player's color
-    const stickerWrapper = document.createElement('div');
     const player = currentGame.players.find(p => p.id === playerId);
-    const stickerColor = player?.stickerColor || 'red';
-    stickerWrapper.className = `character-sticker color-${stickerColor} editing`;
-    stickerWrapper.appendChild(inputElement);
-
-    // Replace the button with the input
+    const stickerWrapper = document.createElement('div');
+    stickerWrapper.className = `character-sticker color-${player?.stickerColor || 'red'}`;
     buttonElement.parentNode.replaceChild(stickerWrapper, buttonElement);
-
-    // Focus and select the input
-    inputElement.focus();
-
-    // Prevent double execution
-    let saveInProgress = false;
-    let savedViaEnter = false;
-
-    // Handle saving
-    const saveCharacter = (triggeredBy = 'unknown') => {
-        if (saveInProgress) {
-            debugLog(`🚫 saveCharacter blocked - already in progress`);
-            return;
-        }
-
-        // If saved via Enter, ignore subsequent blur events
-        if (triggeredBy === 'blur' && savedViaEnter) {
-            debugLog(`🚫 saveCharacter blocked - already saved via Enter`);
-            return;
-        }
-
-        // Characters are locked once the game has started (e.g. a blur event
-        // can fire after another player pressed Start Game)
-        if (currentGame && currentGame.state !== 'waiting') {
-            debugLog(`🚫 saveCharacter blocked - game already started`);
-            return;
-        }
-
-        saveInProgress = true;
-        if (triggeredBy === 'enter') {
-            savedViaEnter = true;
-        }
-
-        const character = inputElement.value.trim();
-        debugLog(`🔧 saveCharacter called: playerId=${playerId}, newCharacter="${character}", triggeredBy=${triggeredBy}`);
-
-        // Send final character assignment
-        const assignData = {
-            gameId: currentGame.id,
-            playerId: playerId,
-            character: character,
-            assignedBy: currentPlayer.id
-        };
-        debugLog(`🔧 Sending assign-character:`, assignData);
-        socket.emit('assign-character', assignData);
-
-        // Input will be cleaned up when server confirms via character-finalized event
-
-        // Don't update UI immediately - wait for server confirmation via character-finalized event
-        // This ensures all players see the update at the same time and prevents desync issues
-        debugLog(`⏳ Waiting for server confirmation before updating UI`);
-
-        // Note: Empty characters are now handled by the backend
-        // The server will remove the character and trigger a 'character-finalized' event
-        // which will update the UI appropriately (show + button for removed characters)
-    };
-    
-    // Save on Enter
-    inputElement.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            e.stopPropagation();
-            saveCharacter('enter');
-        }
-    });
-
-    // Save on blur (focus loss) for better UX
-    inputElement.addEventListener('blur', () => {
-        saveCharacter('blur');
-    });
-
-    // Cancel on Escape
-    inputElement.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            e.preventDefault();
-            inputElement.value = '';
-            inputElement.blur();
-        }
-    });
+    openCharacterInput(playerId, stickerWrapper, '');
 }
 
-// Function to edit an existing character
-function editCharacter(playerId, currentCharacter, stickerElement, editState = null) {
-    debugLog(`🎯 editCharacter called for player ${playerId} with character "${currentCharacter}"`);
+// A tag clicked: its text becomes an input with the same text
+function editCharacter(playerId, currentCharacter, stickerElement) {
+    openCharacterInput(playerId, stickerElement, currentCharacter);
+}
 
-    // Create input field
+// Put an input on a tag. Enter or leaving the field sends the text; Escape
+// sends the original text back (nothing changes). The page itself changes
+// only when the server's character-finalized answer rebuilds the list, so
+// every player sees the update at the same time; an empty text removes the
+// character there
+function openCharacterInput(playerId, stickerElement, originalCharacter) {
+    debugLog(`🎯 Editing the character of player ${playerId}: "${originalCharacter}"`);
+
     const inputElement = document.createElement('input');
     inputElement.type = 'text';
     inputElement.className = 'character-input';
-    inputElement.value = editState ? editState.value : currentCharacter;
     inputElement.maxLength = MAX_CHARACTER_LENGTH;
+    inputElement.value = originalCharacter;
 
-    // Replace the text content with input
     stickerElement.textContent = '';
     stickerElement.appendChild(inputElement);
     stickerElement.classList.add('editing');
 
-    // Track when this edit started (for smart preservation)
-    stickerElement.dataset.editStartTime = Date.now().toString();
+    // Right here, inside the click: a phone opens its keyboard only for a
+    // focus that comes straight from the tap (no setTimeout)
+    inputElement.focus();
+    inputElement.select();
 
-    // Mobile browsers require immediate focus response to user gesture
-
-    const focusInput = () => {
-        inputElement.focus();
-        if (editState) {
-            // Restore cursor position and preserve original timestamp
-            inputElement.setSelectionRange(editState.cursorPosition, editState.cursorPosition);
-            if (editState.editStartTime) {
-                stickerElement.dataset.editStartTime = editState.editStartTime;
-            }
-        } else {
-            // Select all text for new edits
-            inputElement.select();
-        }
-    };
-
-    // Focus immediately on all platforms - delays break mobile gesture chain
-    focusInput();
-
-    // Prevent double execution
-    let saveInProgress = false;
-    let savedViaEnter = false;
-
-    // Handle saving
-    const saveCharacter = (triggeredBy = 'unknown') => {
-        if (saveInProgress) {
-            debugLog(`🚫 saveCharacter blocked - already in progress`);
-            return;
-        }
-
-        // If saved via Enter, ignore subsequent blur events
-        if (triggeredBy === 'blur' && savedViaEnter) {
-            debugLog(`🚫 saveCharacter blocked - already saved via Enter`);
-            return;
-        }
-
+    // Enter and the blur that follows it must send one message, not two
+    let sent = false;
+    const sendCharacter = () => {
+        if (sent) return;
         // Characters are locked once the game has started (e.g. a blur event
         // can fire after another player pressed Start Game)
-        if (currentGame && currentGame.state !== 'waiting') {
-            debugLog(`🚫 saveCharacter blocked - game already started`);
-            return;
-        }
+        if (currentGame.state !== 'waiting') return;
+        sent = true;
 
-        saveInProgress = true;
-        if (triggeredBy === 'enter') {
-            savedViaEnter = true;
-        }
-
-        const character = inputElement.value.trim();
-        debugLog(`🔧 saveCharacter called: playerId=${playerId}, newCharacter="${character}", triggeredBy=${triggeredBy}`);
-
-        // Send final character assignment
         const assignData = {
             gameId: currentGame.id,
             playerId: playerId,
-            character: character,
+            character: inputElement.value.trim(),
             assignedBy: currentPlayer.id
         };
-        debugLog(`🔧 Sending assign-character:`, assignData);
+        debugLog('🔧 Sending assign-character:', assignData);
         socket.emit('assign-character', assignData);
-
-        // Input will be cleaned up when server confirms via character-finalized event
-
-        // Don't update UI immediately - wait for server confirmation via character-finalized event
-        // This ensures all players see the update at the same time and prevents desync issues
-        debugLog(`⏳ Waiting for server confirmation before updating UI`);
     };
-    
-    // Handle keyboard events (Enter and Escape)
+
     inputElement.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             e.stopPropagation();
-            saveCharacter('enter');
+            sendCharacter();
         } else if (e.key === 'Escape') {
             e.preventDefault();
-            // Cancel editing - restore the original character (do NOT clear it)
-            inputElement.value = currentCharacter;
-            saveCharacter('escape');
+            inputElement.value = originalCharacter;
+            sendCharacter();
         }
     });
-
-    // Save on blur (focus loss) for better UX
-    inputElement.addEventListener('blur', () => {
-        saveCharacter('blur');
-    });
+    inputElement.addEventListener('blur', sendCharacter);
 }
 
 // Copy the room link and flash "Copied!" on the button that was pressed
@@ -897,7 +732,6 @@ function copyRoomLink(button) {
     }, 2000);
 }
 
-// Update only a specific character sticker (no DOM rebuild)
 function setupEventListeners() {
     // Copy link button
     document.getElementById('copyLink').addEventListener('click', () => {
@@ -927,7 +761,7 @@ function setupEventListeners() {
         }
     });
 
-    // Start game button (desktop)
+    // Start game button
     document.getElementById('startGame').addEventListener('click', () => {
         if (!currentGame || !currentPlayer) return;
         
@@ -964,7 +798,7 @@ function setupEventListeners() {
         restartModal = new bootstrap.Modal(restartModalElement);
     }
     
-    // Restart game button (desktop)
+    // Restart game button
     const restartButton = document.getElementById('restartGame');
     if (restartButton) {
         restartButton.addEventListener('click', () => {
@@ -977,8 +811,7 @@ function setupEventListeners() {
             }
         });
     }
-    
-    
+
     // Confirm restart button in modal
     const confirmRestartButton = document.getElementById('confirmRestart');
     if (confirmRestartButton) {
@@ -1039,5 +872,3 @@ function showRevealModal() {
         revealModal.show();
     }
 }
-
-// Function to show notification messages
