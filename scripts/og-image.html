@@ -3,38 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <title>Link preview picture (source)</title>
-<!-- The source of public/img/og-image.jpg: `node scripts/og-image.js` takes
+<!-- The source of public/img/og-image-2.jpg: `node scripts/og-image.js` takes
      the picture (docs/publishing.md). It lies outside public/, so the site
      never serves it, and it uses the game's own styles and classes: the card
-     shows what the link opens, and a style change reaches it with a new shot -->
+     shows what the link opens, and a style change reaches it with a new shot.
+     The sign is not copied here: og-image.js puts the one from
+     public/index.html into .sign-slot before the shot -->
 <link rel="stylesheet" href="../public/vendor/bootstrap/bootstrap.min.css">
 <link rel="stylesheet" href="../public/css/style.css">
 <style>
-  /* Only the frame of the picture: 1200×630, the title left, the players right */
+  /* Only the frame of the picture: 1200×630 of the curtain, the sign left, the players right */
   body {
     width: 1200px;
     height: 630px;
     min-height: 0;
-    padding: 0 60px;
+    padding: 0 56px;
     overflow: hidden;
     display: flex;
     align-items: center;
-    gap: 48px;
+    gap: 44px;
   }
-  .title { flex: 0 0 440px; color: white; }
-  .title h1 { font-size: 84px; font-weight: 700; line-height: 1.1; margin: 0 0 28px; white-space: nowrap; }
-  .title .mask { font-size: 110px; }
-  .title p { font-size: 36px; line-height: 1.25; margin: 0; opacity: 0.95; }
-  .game-card { flex: 1; margin: 0; padding: 26px; }
+  .title { flex: 0 0 500px; text-align: center; }
+  .title .brand-sign { max-width: 500px; }
+  .title p { font-size: 34px; font-weight: 600; letter-spacing: .02em; line-height: 1.25; margin: 30px 0 0; color: var(--on-page); text-wrap: balance; }
+  .game-card { flex: 1; margin: 0; padding: 26px 22px 30px; }
   /* Equal cards, as in the room: minmax(0, ...) so a long word cannot widen its column */
-  .player-list { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }
-  .player-card { padding: 15px 10px; }
-  .character-sticker { left: 0; right: 0; margin: 10px 0 0; min-height: 96px; padding: 12px 8px; }
+  .player-list { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; gap: 12px; }
+  .player-card { padding: 14px 8px 18px; }
+  .player-avatar { font-size: 60px; }
+  .character-sticker { margin: 16px 4px 0; min-height: 96px; padding: 18px 8px 12px; font-size: 1.35rem; }
 </style>
 </head>
 <body>
   <div class="title">
-    <h1><span class="mask">🎭</span><br>Who am I?</h1>
+    <div class="sign-slot"></div>
     <p>Guess your secret character with friends</p>
   </div>
   <div class="game-card">
@@ -52,7 +54,7 @@
       <div class="player-card">
         <div class="player-avatar">🦄</div>
         <div class="player-name">Kate (<strong>You</strong>)</div>
-        <div class="character-sticker mystery">🎭</div>
+        <div class="character-sticker mystery"><span class="seal" aria-hidden="true">?</span></div>
       </div>
     </div>
   </div>

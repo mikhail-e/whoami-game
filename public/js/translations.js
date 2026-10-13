@@ -5,7 +5,7 @@
 const translations = {
     en: {
         // Main page
-        title: "🎭 Who am I?",
+        title: "Who am I?",
         subtitle: "Play the classic guessing game with friends and family!",
         joinCreateGame: "Join or Create a Game",
         yourName: "Your Name",
@@ -45,7 +45,7 @@ const translations = {
         needPlayers: "Need at least 2 players to start",
         assignCharacters: "Assign characters to all players before starting!",
         readyToPlay: "Ready to play!",
-        gameInProgress: "Game in progress - Click your mystery sticker to reveal!",
+        gameInProgress: "Game in progress - Click your envelope to reveal your character!",
         
         // Buttons
         gameControls: "Game Controls",
@@ -92,15 +92,15 @@ const translations = {
         // Game room additional
         inviteFriends: "Invite Friends",
         characterAssignment: "Character Assignment",
-        clickPlus: "Click the + button",
-        clickStickers: "Click character stickers",
-        assignInstructions: "on other players to assign them characters.",
+        clickPlus: "Press “Assign character”",
+        clickStickers: "Click character tags",
+        assignInstructions: "on other players' cards to give them characters.",
         editInstructions: "to edit them.",
         gameInstructions: "Game Instructions",
         step1: "Wait for at least 2 players to join",
         step2: "Each player assigns characters to other players",
         step3: "Click \"Start Game\" when ready",
-        step4: "Click your mystery sticker (🎭) to reveal your character",
+        step4: "Click your envelope to reveal your character",
         step5: "Try to guess who you are!",
         
         // Modal content
@@ -176,7 +176,7 @@ const translations = {
     
     ru: {
         // Main page
-        title: "🎭 Кто я?",
+        title: "Кто я?",
         subtitle: "Играйте в классическую игру-угадайку с друзьями и семьёй!",
         joinCreateGame: "Присоединиться или создать игру",
         yourName: "Ваше имя",
@@ -216,7 +216,7 @@ const translations = {
         needPlayers: "Нужно минимум 2 игрока для начала",
         assignCharacters: "Назначьте персонажей всем игрокам перед началом!",
         readyToPlay: "Готово к игре!",
-        gameInProgress: "Игра идёт - Кликните на свой загадочный стикер для раскрытия!",
+        gameInProgress: "Игра идёт — нажмите на свой конверт, чтобы раскрыть персонажа!",
         
         // Buttons
         gameControls: "Управление игрой",
@@ -226,7 +226,7 @@ const translations = {
         
         // Character assignment
         assignmentInstructions: "Нажмите кнопку + рядом с другими игроками, чтобы назначить им персонажей",
-        assignCharacter: "Назначить персонажа",
+        assignCharacter: "Задать персонажа",
         characterName: "Имя персонажа...",
         you: "Вы",
         readOnlyDuringGame: "только чтение во время игры",
@@ -263,15 +263,15 @@ const translations = {
         // Game room additional
         inviteFriends: "Пригласить друзей",
         characterAssignment: "Назначение персонажей",
-        clickPlus: "Нажмите кнопку +",
-        clickStickers: "Нажмите на стикеры персонажей",
-        assignInstructions: "рядом с другими игроками, чтобы назначить им персонажей.",
+        clickPlus: "Нажмите «Задать персонажа»",
+        clickStickers: "Нажмите на бирки персонажей",
+        assignInstructions: "на карточках других игроков, чтобы задать им персонажей.",
         editInstructions: "чтобы их редактировать.",
         gameInstructions: "Инструкции к игре",
         step1: "Дождитесь присоединения минимум 2 игроков",
         step2: "Каждый игрок назначает персонажа другому игроку",
         step3: "Нажмите \"Начать игру\" когда готовы",
-        step4: "Нажмите на свой загадочный стикер (🎭) чтобы раскрыть персонажа",
+        step4: "Нажмите на свой конверт, чтобы раскрыть персонажа",
         step5: "Попробуйте угадать, кто вы!",
         
         // Modal content
@@ -475,7 +475,7 @@ class Localization {
         // Create single toggle button HTML
         const switcherHTML = `
             <div class="language-switcher mt-3 text-center">
-                <button class="btn btn-sm btn-outline-light lang-toggle-btn">
+                <button class="btn btn-sm lang-toggle-btn">
                     <span class="lang-toggle-text"></span>
                 </button>
             </div>

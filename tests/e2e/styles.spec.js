@@ -39,3 +39,23 @@ test('every :hover rule applies only with a mouse', async ({ newPlayer }) => {
     expect(rules.length).toBeGreaterThan(0);
     expect(touchHover).toEqual([]);
 });
+
+// The game draws with its own fonts (public/fonts/): a missing file or a CSP
+// block would silently fall back to a system font, Cyrillic first of all
+test('the pages draw with their own fonts, Cyrillic included', async ({ newPlayer }) => {
+    const { page } = await newPlayer('Алиса', { locale: 'ru-RU' });
+    await page.goto('/');
+    await waitForLanding(page);
+
+    const loaded = await page.evaluate(async () => {
+        await document.fonts.ready;
+        return [...document.fonts].filter(face => face.status === 'loaded').map(face =>
+            `${face.family.replace(/["']/g, '')} ${face.weight} ${/U\+0?400/i.test(face.unicodeRange) ? 'cyrillic' : 'latin'}`);
+    });
+
+    expect(loaded).toEqual(expect.arrayContaining([
+        'Fira Sans Condensed 400 latin', 'Fira Sans Condensed 400 cyrillic', 'Fira Sans Condensed 600 cyrillic',
+        // The sign: its name and its two small lines
+        'Ultra 400 latin', 'Oswald 600 latin',
+    ]));
+});

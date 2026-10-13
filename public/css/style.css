@@ -1,8 +1,119 @@
 /* Who am I? Game - Custom Styles */
 
+/* Fonts. The files live in public/fonts/ (Fontsource; licenses next to them),
+   not on a CDN: the Content Security Policy allows fonts only from the game's
+   own site (font-src 'self', server.js).
+   Fira Sans Condensed sets all the text: narrow like a playbill, yet easy to
+   read. Latin and Cyrillic are separate files: the browser downloads Cyrillic
+   only for a page that has it. No italic files - nothing in the game is italic.
+   The sign: Ultra draws its name (no Cyrillic - that is why the sign is English
+   in both languages), Oswald its two small lines. Abril Fatface draws only the
+   seal's "?". Ultra and Abril have font-display: block - a logo flashing in a
+   fallback serif looks worse than a short pause */
+@font-face {
+  font-family: 'Fira Sans Condensed';
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/fira-sans-condensed-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Fira Sans Condensed';
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/fira-sans-condensed-cyrillic-400-normal.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Fira Sans Condensed';
+  font-weight: 600;
+  font-display: swap;
+  src: url('../fonts/fira-sans-condensed-latin-600-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Fira Sans Condensed';
+  font-weight: 600;
+  font-display: swap;
+  src: url('../fonts/fira-sans-condensed-cyrillic-600-normal.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Fira Sans Condensed';
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/fira-sans-condensed-latin-700-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Fira Sans Condensed';
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/fira-sans-condensed-cyrillic-700-normal.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Oswald';
+  font-weight: 600;
+  font-display: swap;
+  src: url('../fonts/oswald-latin-600-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Ultra';
+  font-weight: 400;
+  font-display: block;
+  src: url('../fonts/ultra-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Abril Fatface';
+  font-weight: 400;
+  font-display: block;
+  src: url('../fonts/abril-fatface-latin-400-normal.woff2') format('woff2');
+}
+
+/* The look of a parlour-game playbill (the sign's colors): cream paper, dark
+   brown ink, red - and a theatre curtain under the paper. Red is for accents
+   and for actions that cannot be undone, never for an ordinary button */
+:root {
+  --paper: #efe2c4;          /* sheets, windows, alerts, the ticket - the sign's paper */
+  --paper-light: #f8f0dd;    /* fields, avatar tiles, player cards */
+  --tag-paper: #fffaee;      /* character tags */
+  --envelope: #f4e8cc;       /* your own hidden character */
+  --ink: #2a1d17;            /* text on paper, rules, the main button - the sign's ink */
+  --ink-hover: #4a372c;
+  --ink-soft: #5e4b3e;       /* secondary text on paper */
+  --red: #b3261e;            /* the sign's red: accents and danger */
+  --red-deep: #8e1c16;
+  --cream: #fbf3e0;          /* text on red */
+  --gold: #d4a72c;           /* a revealed character */
+  --revealed-paper: #f6e6b4; /* the card of a player whose character is revealed */
+  --on-page: #f3e6c8;        /* text right on the curtain */
+  --on-page-soft: #e6cfa6;
+
+  /* Bootstrap draws with these: its fields, windows and muted text */
+  --bs-body-font-family: 'Fira Sans Condensed', 'Arial Narrow', sans-serif;
+  --bs-body-color: var(--ink);
+  --bs-body-bg: var(--paper-light);
+  --bs-secondary-color: var(--ink-soft); /* .text-muted, .form-text */
+}
+
+/* The curtain shows when a phone scrolls past the page's edge */
+html {
+  background: #5c110b;
+}
+
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-family: var(--bs-body-font-family);
+  font-size: 1.0625rem;
+  line-height: 1.45;
+  color: var(--on-page);
+  /* A theatre curtain: a spotlight from above, velvet folds (200 px wide -
+     narrower ones ripple on a wide screen), deep red */
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255, 214, 170, .2), rgba(255, 214, 170, 0) 70%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, .24) 0, rgba(0, 0, 0, 0) 62px, rgba(255, 255, 255, .07) 100px, rgba(0, 0, 0, 0) 138px, rgba(0, 0, 0, .24) 200px),
+    linear-gradient(180deg, #7e1a13 0%, #5c110b 100%);
   min-height: 100vh;
   margin: 0;
   padding: 20px;
@@ -13,12 +124,191 @@ body {
   margin: 0 auto;
 }
 
+/* The sign: the h1 of the landing page and the room, a picture on 404 */
+.brand {
+  margin: 0 0 10px;
+}
+
+.brand-sign {
+  display: block;
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  margin-inline: auto;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .45));
+}
+
+/* Smaller in the room: the players should fit the first screen of a phone */
+.brand--room .brand-sign {
+  max-width: 300px;
+}
+
+@media (min-width: 768px) {
+  .brand--room .brand-sign {
+    max-width: 360px;
+  }
+}
+
+/* Font sizes inside the SVG are viewBox units: the sign scales as a whole */
+.brand-sign__name {
+  font-family: 'Ultra', serif;
+}
+
+.brand-sign__small {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600;
+}
+
+.tagline {
+  margin: 4px 0 0;
+  letter-spacing: .02em;
+  color: var(--on-page-soft);
+}
+
+/* A sheet of paper with a rule inside its edge, like the sign */
 .game-card {
-  background: white;
-  border-radius: 15px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 2px;
+  outline: 1.5px solid var(--ink);
+  outline-offset: -8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .4);
   padding: 30px;
   margin: 20px 0;
+}
+
+/* A sheet's title: playbill capitals between two stars, a rule under them.
+   The stars are cut out with clip-path: no font of the game has ★ */
+.sheet-title {
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  text-align: center;
+  padding-bottom: 10px;
+  margin: 0 0 16px;
+  border-bottom: 1.5px solid var(--ink);
+}
+
+.sheet-title::before,
+.sheet-title::after {
+  content: '';
+  display: inline-block;
+  width: .7em;
+  height: .7em;
+  margin: 0 .55em .1em;
+  background: currentColor;
+  clip-path: polygon(50% 0%, 61.7% 33.8%, 97.5% 34.5%, 69% 56.2%, 79.4% 90.5%, 50% 70%, 20.6% 90.5%, 31% 56.2%, 2.5% 34.5%, 38.3% 33.8%);
+}
+
+.form-label {
+  font-weight: 600;
+  font-size: .85rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.form-control {
+  background-color: var(--paper-light);
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+  color: var(--ink);
+}
+
+.form-control::placeholder {
+  color: #7d6858;
+}
+
+.form-control:focus {
+  background-color: var(--paper-light);
+  border-color: var(--ink);
+  color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(42, 29, 23, .3);
+}
+
+/* The room code typed on the landing page */
+input#roomCode {
+  text-transform: uppercase;
+  letter-spacing: .25em;
+  font-size: 1.2rem;
+}
+
+/* Buttons: letterpress capitals. Bootstrap draws them from its --bs-btn-*
+   variables, so the colors are given there */
+.btn {
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  border-width: 2px;
+}
+
+/* The main button is ink. The update banner's "Update Now" (pwa.js) is
+   btn-warning: the same main action */
+.btn-primary,
+.btn-warning {
+  --bs-btn-color: var(--paper);
+  --bs-btn-bg: var(--ink);
+  --bs-btn-border-color: var(--ink);
+  --bs-btn-hover-color: var(--paper);
+  --bs-btn-hover-bg: var(--ink-hover);
+  --bs-btn-hover-border-color: var(--ink);
+  --bs-btn-active-color: var(--paper);
+  --bs-btn-active-bg: var(--ink-hover);
+  --bs-btn-active-border-color: var(--ink);
+  --bs-btn-focus-shadow-rgb: 42, 29, 23;
+  /* Start Game waits for every character: then it is faded paper, not Bootstrap's blue */
+  --bs-btn-disabled-color: #6f5c4d;
+  --bs-btn-disabled-bg: #dccaa5;
+  --bs-btn-disabled-border-color: #a8916c;
+  --bs-btn-disabled-opacity: 1;
+}
+
+/* Secondary buttons are an ink outline. btn-secondary is the windows' Cancel
+   and the landing page's Join/Create while they are off (game.js) */
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-secondary {
+  --bs-btn-color: var(--ink);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: var(--ink);
+  --bs-btn-hover-color: var(--paper);
+  --bs-btn-hover-bg: var(--ink);
+  --bs-btn-hover-border-color: var(--ink);
+  --bs-btn-active-color: var(--paper);
+  --bs-btn-active-bg: var(--ink);
+  --bs-btn-active-border-color: var(--ink);
+  --bs-btn-focus-shadow-rgb: 42, 29, 23;
+  --bs-btn-disabled-color: #6f5c4d;
+  --bs-btn-disabled-bg: transparent;
+  --bs-btn-disabled-border-color: #a8916c;
+  --bs-btn-disabled-opacity: 1;
+}
+
+/* Red only for what cannot be undone: reveal, leave, restart */
+.btn-danger {
+  --bs-btn-color: var(--cream);
+  --bs-btn-bg: var(--red);
+  --bs-btn-border-color: var(--red);
+  --bs-btn-hover-color: var(--cream);
+  --bs-btn-hover-bg: var(--red-deep);
+  --bs-btn-hover-border-color: var(--red-deep);
+  --bs-btn-active-color: var(--cream);
+  --bs-btn-active-bg: var(--red-deep);
+  --bs-btn-active-border-color: var(--red-deep);
+  --bs-btn-focus-shadow-rgb: 179, 38, 30;
+}
+
+.btn-outline-danger {
+  --bs-btn-color: var(--red);
+  --bs-btn-border-color: var(--red);
+  --bs-btn-hover-color: var(--cream);
+  --bs-btn-hover-bg: var(--red);
+  --bs-btn-hover-border-color: var(--red);
+  --bs-btn-active-color: var(--cream);
+  --bs-btn-active-bg: var(--red-deep);
+  --bs-btn-active-border-color: var(--red-deep);
+  --bs-btn-focus-shadow-rgb: 179, 38, 30;
 }
 
 .avatar-selector {
@@ -34,11 +324,12 @@ body {
 .avatar-option {
   font-size: 2rem;
   padding: 10px;
-  border: 2px solid #ddd;
-  border-radius: 10px;
+  background: var(--paper-light);
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
   cursor: pointer;
   text-align: center;
-  transition: all 0.3s ease;
+  transition: transform 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -51,14 +342,13 @@ body {
 /* Hover effects only for a mouse: on a phone a hover state sticks after the tap */
 @media (hover: hover) and (pointer: fine) {
   .avatar-option:hover {
-    border-color: #667eea;
-    transform: scale(1.1);
+    transform: scale(1.06);
   }
 }
 
 .avatar-option.selected {
-  border-color: #667eea;
-  background: #f0f4ff;
+  border: 3px solid var(--red);
+  background: #f7dccf;
 }
 
 /* Uploaded custom avatar inside a selector tile. pointer-events: none makes a
@@ -68,7 +358,7 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 6px; /* tighter than the tile's 10px so the selection border stays visible */
+  border-radius: 2px;
   pointer-events: none;
 }
 
@@ -87,6 +377,36 @@ body {
   pointer-events: none;
 }
 
+/* The rules: numbers in the sign's red */
+.game-card ol li::marker {
+  font-weight: 700;
+  color: var(--red);
+}
+
+/* The room code in the room's header: a ticket stub */
+.room-ticket {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .6em;
+  margin-top: 6px;
+  padding: 6px 16px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 2px dashed var(--ink);
+  outline: 4px solid var(--paper);
+  font-size: .85rem;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.room-ticket #roomCode {
+  color: var(--red);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: .2em;
+}
+
 .player-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -95,25 +415,31 @@ body {
 }
 
 .player-card {
-  background: #f8f9fa;
-  border-radius: 10px;
-  padding: 15px;
+  background: var(--paper-light);
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  padding: 15px 12px 18px;
   text-align: center;
-  border: 2px solid transparent;
   position: relative;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* A player whose character is revealed (game-room.js) */
+.player-card.revealed {
+  background: var(--revealed-paper);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .player-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(42, 29, 23, .2);
   }
 }
 
 .player-avatar {
   font-size: 4.5rem;
-  margin-bottom: 10px;
+  line-height: 1.15;
+  margin-bottom: 6px;
 }
 
 /* Uploaded custom avatar on a player card: a rounded square, deliberately
@@ -122,186 +448,175 @@ body {
   width: 96px;
   height: 96px;
   object-fit: cover;
-  border-radius: 12px;
+  border-radius: 3px;
   vertical-align: bottom; /* removes the inline-image baseline gap */
 }
 
 .player-name {
-  font-size: 1.25rem;
-  font-weight: 500;
+  font-size: 1.2rem;
+  font-weight: 600;
   /* names can be up to 128 characters - never let one widen the card */
   overflow-wrap: break-word;
 }
 
+/* Character tags: a card pinned on the guest, the way the parlour game was
+   played. The server picks each player's color (stickerColor); the browser
+   paints the pin and the "handwriting" with it */
 .character-sticker {
   position: relative;
-  left: 8px;
-  right: 8px;
-  margin: 8px 8px 0 8px;
-  color: white;
-  padding: 12px 16px;
-  border-radius: 20px;
-  font-size: 1.4rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 2px solid white;
-  word-wrap: break-word;
-  white-space: normal;
-  text-align: center;
-  min-height: 40px;
+  margin: 16px 6px 0;
+  min-height: 56px;
+  padding: 18px 16px 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
+  background: var(--tag-paper);
+  color: var(--deep, var(--ink));
+  font-size: 1.4rem;
+  line-height: 1.2;
+  /* anywhere, not break-word: in a flex box only anywhere lets a long word
+     shrink the tag's minimum width, so it wraps instead of running out */
+  overflow-wrap: anywhere;
+  border: 1px solid rgba(42, 29, 23, .3);
+  border-radius: 2px;
+  box-shadow: 0 2px 5px rgba(42, 29, 23, .28);
+  transform: rotate(-1.5deg);
+  transition: transform 0.2s ease;
+  cursor: pointer;
 }
 
+/* Every other card leans the other way. The list is in join order on every
+   screen, so each tag leans the same way for everybody */
+.player-card:nth-child(even) .character-sticker {
+  transform: rotate(1.2deg);
+}
+
+/* The pin */
+.character-sticker:not(.mystery)::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .75) 0 18%, transparent 32%), var(--deep, var(--ink));
+  box-shadow: 1px 2px 2px rgba(0, 0, 0, .35);
+}
+
+/* With a mouse a tag straightens under the pointer */
 @media (hover: hover) and (pointer: fine) {
-  .character-sticker:hover {
-    transform: scale(1.05);
+  .character-sticker:hover,
+  .player-card:nth-child(even) .character-sticker:hover {
+    transform: none;
   }
 }
 
-/* Long characters (up to 128 chars) would otherwise produce a huge sticker */
+/* Long characters (up to 128 chars) would otherwise produce a huge tag */
 .character-sticker.long-text {
-  font-size: 1rem;
-  padding: 10px 12px;
+  font-size: 1.05rem;
 }
 
-/* Color variants for character stickers */
+/* The players' colors (stickerColor) */
 .character-sticker.color-red {
-  background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
-  box-shadow: 0 3px 8px rgba(255, 107, 107, 0.3);
+  --deep: #9e2a22;
 }
-/* Removed hover color change - colors are now fixed */
 
 .character-sticker.color-blue {
-  background: linear-gradient(45deg, #4ecdc4, #44a08d);
-  box-shadow: 0 3px 8px rgba(78, 205, 196, 0.3);
+  --deep: #1d5e66;
 }
-/* Removed hover color change - colors are now fixed */
 
 .character-sticker.color-purple {
-  background: linear-gradient(45deg, #9b59b6, #8e44ad);
-  box-shadow: 0 3px 8px rgba(155, 89, 182, 0.3);
+  --deep: #5b2a6e;
 }
-/* Removed hover color change - colors are now fixed */
 
 .character-sticker.color-orange {
-  background: linear-gradient(45deg, #f39c12, #e67e22);
-  box-shadow: 0 3px 8px rgba(243, 156, 18, 0.3);
+  --deep: #94461a;
 }
-/* Removed hover color change - colors are now fixed */
 
 .character-sticker.color-green {
-  background: linear-gradient(45deg, #2ecc71, #27ae60);
-  box-shadow: 0 3px 8px rgba(46, 204, 113, 0.3);
+  --deep: #2f5d3a;
 }
-/* Removed hover color change - colors are now fixed */
 
 .character-sticker.color-pink {
-  background: linear-gradient(45deg, #e91e63, #ad1457);
-  box-shadow: 0 3px 8px rgba(233, 30, 99, 0.3);
+  --deep: #9b2d58;
 }
-/* Removed hover color change - colors are now fixed */
 
 .character-sticker.color-indigo {
-  background: linear-gradient(45deg, #3f51b5, #303f9f);
-  box-shadow: 0 3px 8px rgba(63, 81, 181, 0.3);
-}
-/* Removed hover color change - colors are now fixed */
-
-/* Mystery sticker - your own hidden character (no player color on purpose:
-   a light dashed style reads as "unknown" and the dark glyph stays visible) */
-.character-sticker.mystery {
-  background: linear-gradient(45deg, #f8f9fa, #e9ecef);
-  border: 2px dashed #adb5bd;
-  color: #495057;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  --deep: #2e3a6e;
 }
 
-.character-sticker.editing {
-  transform: scale(1.1);
-  /* Removed background - preserves player's assigned color during editing */
+/* Writing a character in: the tag straightens and lifts, the text sits on a line */
+.character-sticker.editing,
+.player-card:nth-child(even) .character-sticker.editing {
+  transform: none;
+  box-shadow: 0 8px 18px rgba(42, 29, 23, .35);
 }
 
 .character-input {
-  background: rgba(255, 255, 255, 0.95);
-  border: 2px solid #4ecdc4;
-  border-radius: 8px;
-  padding: 4px 8px;
-  font-size: 14px;
-  font-weight: bold;
-  text-align: center;
   width: 100%;
-  box-sizing: border-box;
-  outline: none;
-}
-
-
-.character-sticker.revealed {
-  border: 3px solid #f1c40f;
-  box-shadow: 0 0 15px rgba(241, 196, 15, 0.5), 0 3px 8px rgba(0,0,0,0.2);
-  animation: revealPulse 2s ease-in-out;
-}
-
-@keyframes revealPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); border-color: #f39c12; }
-  100% { transform: scale(1); }
-}
-
-
-.character-input {
   background: transparent;
   border: none;
-  color: white;
-  font-weight: bold;
-  font-size: 1.4rem;
-  width: 100%;
-  outline: none;
+  border-bottom: 1.5px solid var(--deep, var(--ink));
+  color: var(--deep, var(--ink));
+  font: inherit;
   text-align: center;
-  resize: none;
+  outline: none;
 }
 
-.character-input::placeholder {
-  color: rgba(255, 255, 255, 0.8);
+/* A revealed character: a gold ring around the tag */
+.character-sticker.revealed {
+  box-shadow: 0 0 0 3px var(--gold), 0 2px 5px rgba(42, 29, 23, .28);
 }
 
-.add-character-btn {
-  position: relative;
-  left: 8px;
-  right: 8px;
-  margin: 8px 8px 0 8px;
-  background: linear-gradient(45deg, #667eea, #764ba2);
-  color: white;
-  height: 40px;
-  border-radius: 20px;
-  border: 2px solid white;
-  font-size: 1.2rem;
-  cursor: pointer;
+/* Your own hidden character: a sealed envelope (no player color on purpose).
+   The flap is two diagonal lines drawn by gradients */
+.character-sticker.mystery,
+.player-card:nth-child(even) .character-sticker.mystery {
+  min-height: 72px;
+  transform: none;
+  background:
+    linear-gradient(to top right, transparent calc(50% - .75px), rgba(42, 29, 23, .45) 50%, transparent calc(50% + .75px)) left top / 50% 62% no-repeat,
+    linear-gradient(to top left, transparent calc(50% - .75px), rgba(42, 29, 23, .45) 50%, transparent calc(50% + .75px)) right top / 50% 62% no-repeat,
+    var(--envelope);
+  border-color: rgba(42, 29, 23, .45);
+  box-shadow: 0 1px 3px rgba(42, 29, 23, .25);
+}
+
+/* The wax seal where the flap meets, a "?" pressed into it */
+.seal {
+  position: absolute;
+  left: 50%;
+  top: 62%;
+  transform: translate(-50%, -50%);
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
-  box-shadow: 0 3px 8px rgba(102, 126, 234, 0.3);
+  border-radius: 47% 53% 50% 48% / 52% 47% 53% 48%;
+  background: radial-gradient(circle at 38% 32%, #d4483c 0, #a8231b 55%, #7e1711 100%);
+  color: #f6dcc8;
+  font-family: 'Abril Fatface', serif;
+  font-size: 1.5rem;
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .45), inset 0 0 0 3px rgba(126, 23, 17, .6);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .add-character-btn:hover {
-    transform: scale(1.1);
-    background: linear-gradient(45deg, #5a67d8, #6b73ff);
-  }
-}
-
-.player-card.cannot-assign {
-  opacity: 1;
+/* "+ Assign character" on someone else's card: an outline button (game-room.js) */
+.add-character-btn {
+  display: block;
+  width: calc(100% - 12px);
+  margin: 16px 6px 0;
+  padding-block: 10px;
 }
 
 .player-card.cannot-assign .add-character-btn {
   display: none;
 }
 
-/* Custom button styles */
 #startGame {
   width: 200px !important;
 }
@@ -311,49 +626,30 @@ body {
   display: none;
 }
 
-/* The room code: typed on the landing page, shown in the room's header */
-input#roomCode {
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  font-size: 1.2rem;
-}
-
-span#roomCode {
-  font-family: monospace;
-  font-weight: bold;
-}
-
-/* Language switcher styles */
+/* The language switch (translations.js) sits on the curtain */
 .language-switcher {
   position: relative;
   z-index: 10;
 }
 
-.language-switcher .lang-toggle-btn {
-  font-size: 0.8rem;
-  padding: 4px 12px;
-  border-radius: 15px;
-  transition: all 0.3s ease;
-  background-color: white !important;
-  color: #333 !important;
-  border: 1px solid #ddd !important;
+.lang-toggle-btn {
+  --bs-btn-color: var(--on-page);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: var(--on-page);
+  --bs-btn-hover-color: #5c110b;
+  --bs-btn-hover-bg: var(--on-page);
+  --bs-btn-hover-border-color: var(--on-page);
+  --bs-btn-active-color: #5c110b;
+  --bs-btn-active-bg: var(--on-page);
+  --bs-btn-active-border-color: var(--on-page);
+  --bs-btn-focus-shadow-rgb: 243, 230, 200;
+  border-width: 1.5px;
   min-width: 100px;
-  font-weight: 500;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .language-switcher .lang-toggle-btn:hover {
-    transform: translateY(-1px);
-    background-color: #f8f9fa !important;
-    border-color: #ccc !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-}
-
-.language-switcher .lang-toggle-btn:active {
-  background-color: #e9ecef !important;
-  transform: scale(0.95);
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+/* The footer under the sheets: the coffee link and the version */
+.page-foot {
+  color: var(--on-page-soft);
 }
 
 /* Buy Me a Coffee: a link with the service's button image (index.html footer) */
@@ -373,7 +669,7 @@ span#roomCode {
 /* Focus ring for the keyboard */
 .bmc-button:focus,
 .bmc-button:focus-visible {
-  outline: 3px solid #fff;
+  outline: 3px solid var(--on-page);
   outline-offset: 4px;
 }
 
@@ -385,6 +681,72 @@ span#roomCode {
       0 0 30px rgba(255, 221, 0, 0.5);
     transform: translateY(-3px) scale(1.05);
   }
+}
+
+/* Alerts: paper slips; the colored left edge says what kind */
+.alert {
+  --bs-alert-bg: var(--paper);
+  --bs-alert-color: var(--ink);
+  --bs-alert-border-color: var(--ink);
+  --bs-alert-link-color: var(--ink);
+  --bs-alert-border-radius: 2px;
+  border-width: 1.5px;
+  border-left-width: 8px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .35);
+}
+
+.alert-danger {
+  border-left-color: var(--red);
+}
+
+.alert-success {
+  border-left-color: #2f5d3a;
+}
+
+.alert-info {
+  border-left-color: var(--ink-soft);
+}
+
+.alert-warning {
+  border-left-color: var(--gold);
+}
+
+/* Confirmation windows: a sheet of paper, like .game-card */
+.modal {
+  --bs-modal-bg: var(--paper);
+  --bs-modal-color: var(--ink);
+  --bs-modal-border-color: var(--ink);
+  --bs-modal-border-radius: 2px;
+  --bs-modal-inner-border-radius: 2px;
+  --bs-modal-header-border-color: var(--ink);
+  --bs-modal-footer-border-color: var(--ink);
+}
+
+.modal-content {
+  outline: 1.5px solid var(--ink);
+  outline-offset: -8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .45);
+}
+
+/* The rules under the title and over the buttons stay inside the inner frame */
+.modal-header,
+.modal-footer {
+  margin-inline: 14px;
+  padding-inline: 6px;
+}
+
+.modal-header {
+  border-bottom-width: 1.5px;
+}
+
+.modal-footer {
+  border-top-width: 1.5px;
+}
+
+.modal-title {
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
 }
 
 /* Desktop-only elements - hidden on mobile, visible on desktop (unless overridden by JS) */
@@ -400,7 +762,7 @@ span#roomCode {
   }
 
   .game-card {
-    padding: 20px;
+    padding: 24px 20px;
   }
 
   .avatar-selector {
@@ -421,20 +783,12 @@ span#roomCode {
     width: calc(100% - 30px);
   }
 
-  .mobile-friendly-modal .modal-content {
-    border-radius: 15px;
-    border: none;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  }
-
   .mobile-friendly-modal .modal-header {
-    padding: 20px 20px 15px;
-    border-bottom: 1px solid #e0e0e0;
+    padding: 20px 6px 15px;
   }
 
   .mobile-friendly-modal .modal-title {
-    font-size: 1.3rem;
-    font-weight: 600;
+    font-size: 1.15rem;
   }
 
   .mobile-friendly-modal .modal-body {
@@ -457,18 +811,16 @@ span#roomCode {
   }
 
   .mobile-modal-footer {
-    padding: 15px 20px 20px;
-    border-top: 1px solid #e0e0e0;
+    padding: 15px 6px 20px;
     display: flex;
     flex-direction: column;
+    align-items: stretch; /* Bootstrap centers them; a thumb wants the full width */
     gap: 12px;
   }
 
   .mobile-modal-btn {
     padding: 12px 20px;
-    font-size: 1.1rem;
-    font-weight: 500;
-    border-radius: 10px;
+    font-size: 1.05rem;
     min-height: 48px;
     display: flex;
     align-items: center;
