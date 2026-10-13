@@ -4,16 +4,8 @@
 Web application to play the "Who am I?" guessing game remotely with friends and family. Players join a room by a 6-character code, assign secret characters to each other, then guess who they are. Adaptive UI works on desktop and mobile browsers; installable as a PWA.
 
 - **Production:** https://whoami-game.onrender.com/ (Render.com, free plan)
+- **Repository:** https://github.com/mikhail-e/whoami-game — public, a showcase (see Decisions)
 - **Stack:** Node.js + Express + Socket.IO backend; vanilla JavaScript (ES6+) + Bootstrap 5 frontend (a local copy); Jest and Playwright for tests. No build step, no frontend framework.
-
-## About Me (project owner)
-- Beginner web developer; limited experience with Python, HTML, JavaScript
-- Explain code in simple terms and explain technical terms when you use them
-- Break complex tasks into small, clear steps; explain the "why" behind solutions
-- Show me where to put new code in my existing files
-- Prefer simple, straightforward solutions over complex ones
-- If there are multiple ways to solve something, explain the trade-offs
-- Setup: macOS, VS Code, Chrome
 
 ## Commands
 ```bash
@@ -60,6 +52,9 @@ docs/publishing.md         # Link previews, robots, where the site's address is 
 scripts/og-image.*         # The source of the link preview picture and the script that takes it (not served)
 scripts/icon.html, icons.js # The source of the app icons and the script that takes every size and favicon.ico (not served)
 README.md                  # What the game is, how to run it
+LICENSE                    # MIT for the code; the sign, the app icon and the link preview picture are not covered (README, License)
+SECURITY.md                # How to report a vulnerability privately (GitHub's private vulnerability reporting)
+.github/FUNDING.yml        # The Sponsor button on GitHub: the owner's Buy Me a Coffee
 eslint.config.mjs          # ESLint: one block per environment (server, pages, service worker, tests and scripts)
 .vscode/                   # Shared VS Code settings: ESLint fixes on save, the ESLint extension recommended
 render.yaml                # Render.com deploy config (auto-deploys master branch)
@@ -130,6 +125,7 @@ Steps and commands: `docs/release.md`.
 ## Decisions (why it is so)
 The owner's decisions, with the reason.
 - **No CI**: `npm test` on the developer's machine is the only check before code reaches `develop` and production
+- **The repository is public — a showcase**: anyone may read the code and learn from it; issues are welcome, pull requests are not expected (only collaborators can open them). The code is MIT (`LICENSE`); the sign, the app icon and the link preview picture are not covered (README, License). Vulnerabilities are reported privately (`SECURITY.md`). Commits to GitHub are signed with the owner's GitHub noreply address (`includeIf` in `~/.gitconfig`), never a personal address
 - **The version is written only in package.json**: the server reads it (`/api/version`), the pages ask the server — no copy to keep in sync
 - **Online only, no offline mode**: a room lives in server memory (see the service worker gotcha above)
 - **Browser tests in Chromium only** — a phone (Pixel 7) and a desktop, like the owner's other apps; WebKit (Safari) is not covered
@@ -140,6 +136,7 @@ The owner's decisions, with the reason.
 - **Docs hold principles, not history**: CLAUDE.md, `docs/` and the skills say how things work and why; no development history, dates or measured numbers (sizes, counts, timings) — those live in the code and in git. A design spec or plan of a feature leaves the repository once the feature is merged; what stays true goes here
 
 ## Ideas for later
+- **Rate limit** on creating rooms: a script can create thousands of rooms through `/api/create-game` and `/api/recreate-game` and run the free server out of memory; its restart interrupts every game
 - Concurrent editing protection (two players editing the same character simultaneously)
 - Rooms persistence, custom game rules, spectator mode
 - `copyRoomLink()` (used by Copy Link and the Share fallback) still uses the deprecated `document.execCommand('copy')` — migrate to the async Clipboard API

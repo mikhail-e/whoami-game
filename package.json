@@ -3,6 +3,16 @@
   "version": "1.7.0",
   "private": true,
   "description": "Who am I? game for friends and family",
+  "homepage": "https://whoami-game.onrender.com/",
+  "bugs": {
+    "url": "https://github.com/mikhail-e/whoami-game/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mikhail-e/whoami-game.git"
+  },
+  "license": "MIT",
+  "author": "Mikhail Elychev",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

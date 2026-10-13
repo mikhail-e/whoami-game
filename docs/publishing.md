@@ -61,8 +61,8 @@ Facebook и мессенджеры хранят картинку у себя п�
 | `public/index.html` | `canonical`, `og:url`, `og:image`, `twitter:image`, `url` и `screenshot` в JSON-LD |
 | `public/game.html` | `og:image`, `twitter:image` |
 | `public/llms.txt` | ссылка в разделе Links |
-| `package.json` | `test:e2e:prod` |
-| `README.md`, `CLAUDE.md`, `docs/release.md`, `docs/testing.md` | адрес прода в тексте |
+| `package.json` | `test:e2e:prod`, `homepage` |
+| `README.md`, `CLAUDE.md`, `SECURITY.md`, `docs/release.md`, `docs/testing.md` | адрес прода в тексте |
 
 Переход на свой домен: `git grep -n "whoami-game.onrender.com"` и замена во всех найденных местах.
 

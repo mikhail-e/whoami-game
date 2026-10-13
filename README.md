@@ -1,5 +1,7 @@
 # Who am I?
 
+![The game room: player cards with their characters pinned on as tags](public/img/og-image-2.jpg)
+
 The classic guessing party game, played remotely. Every player gets a secret character chosen by the others and asks yes/no questions to find out who they are. Create a room, send the link to friends and family, play — no accounts, nothing to install.
 
 **Play:** https://whoami-game.onrender.com/
@@ -36,12 +38,28 @@ npm run test:e2e   # browser tests only: a phone and a desktop, several players 
 - `docs/release.md` — releases, hotfixes and the check of production
 - `docs/publishing.md` — link previews, robots, where the site's address is written
 
+The documents in `docs/` are written in Russian.
+
 ## Technologies
 
 - Server: Node.js, Express, Socket.IO
 - Browser: plain JavaScript and Bootstrap 5 — no framework, no build step
 - Checks: ESLint, Jest and supertest, Playwright and axe-core
 - Hosting: Render
+
+## Contributing
+
+This is a personal project, open to read and to learn from. Bug reports and ideas are welcome as [issues](https://github.com/mikhail-e/whoami-game/issues); I don't plan to accept pull requests.
+
+To report a security problem, see [SECURITY.md](SECURITY.md) — please don't open a public issue for it.
+
+## License
+
+The code is released under the [MIT License](LICENSE).
+
+The license does not cover the game's brand: the "WHO AM I?" sign (`svg.brand-sign` in the pages), the wax-seal app icon (`public/icons/`, `public/favicon.ico`, `scripts/icon.html`) and the link preview picture (`public/img/og-image-2.jpg`, `scripts/og-image.html`). All rights to them are reserved; a copy of the game should replace them with its own.
+
+Third-party files keep their own licenses: the fonts in `public/fonts/` (SIL Open Font License; Ultra — Apache License 2.0; the license files are next to the fonts) and Bootstrap in `public/vendor/bootstrap/` (MIT). The cup in the Buy Me a Coffee button (`public/img/bmc-cup.svg`) is Buy Me a Coffee's logo.
 
 ## Credits
 
