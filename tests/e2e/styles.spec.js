@@ -53,5 +53,5 @@ test('the pages draw with their own fonts, Cyrillic included', async ({ newPlaye
             `${face.family.replace(/["']/g, '')} ${face.weight} ${/U\+0?400/i.test(face.unicodeRange) ? 'cyrillic' : 'latin'}`);
     });
 
-    expect(loaded).toEqual(expect.arrayContaining(['Oswald 400 latin', 'Oswald 400 cyrillic', 'Oswald 600 cyrillic', 'Abril Fatface 400 latin']));
+    expect(loaded).toEqual(expect.arrayContaining(['Oswald 400 latin', 'Oswald 400 cyrillic', 'Oswald 600 cyrillic', 'Ultra 400 latin']));
 });

@@ -12,6 +12,11 @@ test('your own character is a sealed envelope that reveals it', async ({ newPlay
     await expect(own).toHaveClass(/\bmystery\b/);
     await expect(own).not.toHaveClass(/\bcolor-/);
     await expect(own.locator('.seal')).toHaveText('?');
+    // The seal's "?" is the one place Abril Fatface draws: its own file, not a fallback serif
+    await expect.poll(() => alice.page.evaluate(async () => {
+        await document.fonts.ready;
+        return [...document.fonts].some(face => face.family.replace(/["']/g, '') === 'Abril Fatface' && face.status === 'loaded');
+    })).toBe(true);
     await expect(own).toHaveAttribute('title', text('yourCharacterClickReveal'));
     // A light envelope: every channel of its paper is pale
     const paper = await own.evaluate(sticker => getComputedStyle(sticker).backgroundColor);

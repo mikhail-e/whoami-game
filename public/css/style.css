@@ -1,13 +1,14 @@
 /* Who am I? Game - Custom Styles */
 
-/* Fonts. The files live in public/fonts/ (Fontsource, SIL OFL - licenses next
-   to them), not on a CDN: the Content Security Policy allows fonts only from
-   the game's own site (font-src 'self', server.js).
+/* Fonts. The files live in public/fonts/ (Fontsource; licenses next to them),
+   not on a CDN: the Content Security Policy allows fonts only from the game's
+   own site (font-src 'self', server.js).
    Oswald sets all the text. Latin and Cyrillic are separate files: the browser
    downloads Cyrillic only for a page that has it.
-   Abril Fatface draws only the sign. It has no Cyrillic - that is why the sign
-   is English in both languages. font-display: block - a logo flashing in a
-   fallback serif looks worse than a short pause */
+   Ultra draws only the sign. It has no Cyrillic - that is why the sign is
+   English in both languages. Abril Fatface draws only the seal's "?".
+   font-display: block for both - a logo flashing in a fallback serif looks
+   worse than a short pause */
 @font-face {
   font-family: 'Oswald';
   font-weight: 400;
@@ -49,6 +50,12 @@
   font-display: swap;
   src: url('../fonts/oswald-cyrillic-700-normal.woff2') format('woff2');
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Ultra';
+  font-weight: 400;
+  font-display: block;
+  src: url('../fonts/ultra-latin-400-normal.woff2') format('woff2');
 }
 @font-face {
   font-family: 'Abril Fatface';
@@ -135,7 +142,7 @@ body {
 
 /* Font sizes inside the SVG are viewBox units: the sign scales as a whole */
 .brand-sign__name {
-  font-family: 'Abril Fatface', serif;
+  font-family: 'Ultra', serif;
 }
 
 .brand-sign__small {
