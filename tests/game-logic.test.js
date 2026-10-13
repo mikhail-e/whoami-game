@@ -119,8 +119,7 @@ describe('Player Joining', () => {
         expect(result.isNewPlayer).toBe(true);
         expect(result.player).toMatchObject({
             name: 'Alice',
-            avatar: '😀',
-            connected: true
+            avatar: '😀'
         });
         expect(result.player.id).toBeDefined();
         expect(result.game.players).toHaveLength(1);
@@ -230,7 +229,6 @@ describe('Player Joining', () => {
             id: expect.any(String),
             name: 'Alice',
             avatar: '😀',
-            connected: true,
             joinedAt: expect.any(Date)
         });
     });

@@ -5,7 +5,10 @@
 const {
     createGame,
     addPlayerToGame,
-    assignCharacter
+    assignCharacter,
+    markPlayerConnected,
+    markPlayerDisconnected,
+    removeStaleDisconnectedPlayers
 } = require('../game-logic');
 
 describe('Timeout Protection System', () => {
@@ -19,42 +22,57 @@ describe('Timeout Protection System', () => {
     });
 
     describe('Player Connection State Management', () => {
-        test('new players should have connection properties', () => {
+        test('a new player is online only once their page connects', () => {
             const result = addPlayerToGame(games, gameId, 'Alice', '😀');
+            const game = games.get(gameId);
 
             expect(result.success).toBe(true);
-            expect(result.player.connected).toBe(true);
-            expect(result.player.isConnected).toBe(true);
-            expect(result.player.connectedAt).toBeDefined();
-            expect(typeof result.player.connectedAt).toBe('number');
             expect(result.player.joinedAt).toBeDefined();
+            // Joined, but the room page has not connected yet: the ghost clock runs
+            expect(result.player.isConnected).toBe(false);
+            expect(typeof result.player.disconnectedAt).toBe('number');
+
+            markPlayerConnected(game, result.player.id);
+
+            expect(result.player.isConnected).toBe(true);
+            expect(result.player.disconnectedAt).toBeUndefined();
         });
 
-        test('reconnecting players should update connection status', (done) => {
-            // Add player initially
-            const firstResult = addPlayerToGame(games, gameId, 'Alice', '😀');
-            const playerId = firstResult.player.id;
-            const originalConnectedAt = firstResult.player.connectedAt;
+        test('a player whose page never connects becomes a ghost', () => {
+            const { player } = addPlayerToGame(games, gameId, 'Alice', '😀');
+            player.disconnectedAt = Date.now() - (11 * 60 * 1000);
 
-            // Simulate disconnection
+            const removals = removeStaleDisconnectedPlayers(games);
+
+            expect(removals.map(removal => removal.removedPlayer.id)).toEqual([player.id]);
+        });
+
+        test('rejoining while offline restarts the ghost clock', () => {
+            const { player } = addPlayerToGame(games, gameId, 'Alice', '😀');
             const game = games.get(gameId);
-            const player = game.players.find(p => p.id === playerId);
-            player.isConnected = false;
-            player.disconnectedAt = Date.now();
+            markPlayerConnected(game, player.id);
+            markPlayerDisconnected(game, player.id);
+            player.disconnectedAt = Date.now() - (9 * 60 * 1000);
 
-            // Wait a moment to ensure different timestamp
-            setTimeout(() => {
-                // Reconnect player
-                const reconnectResult = addPlayerToGame(games, gameId, 'Alice', '😀', playerId);
+            const reconnectResult = addPlayerToGame(games, gameId, 'Alice', '😀', player.id);
 
-                expect(reconnectResult.success).toBe(true);
-                expect(reconnectResult.isNewPlayer).toBe(false);
-                expect(reconnectResult.player.isConnected).toBe(true);
-                expect(reconnectResult.player.connected).toBe(true);
-                expect(reconnectResult.player.connectedAt).toBeGreaterThan(originalConnectedAt);
-                expect(reconnectResult.player.disconnectedAt).toBeUndefined();
-                done();
-            }, 10);
+            expect(reconnectResult.isNewPlayer).toBe(false);
+            expect(Date.now() - reconnectResult.player.disconnectedAt).toBeLessThan(1000);
+        });
+
+        test('connect and disconnect mark the player and nobody else', () => {
+            const alice = addPlayerToGame(games, gameId, 'Alice', '😀').player;
+            const bob = addPlayerToGame(games, gameId, 'Bob', '😎').player;
+            const game = games.get(gameId);
+            markPlayerConnected(game, alice.id);
+            markPlayerConnected(game, bob.id);
+
+            expect(markPlayerDisconnected(game, alice.id)).toBe(alice);
+
+            expect(alice.isConnected).toBe(false);
+            expect(typeof alice.disconnectedAt).toBe('number');
+            expect(bob.isConnected).toBe(true);
+            expect(markPlayerConnected(game, 'someone-else')).toBeNull();
         });
 
         test('should preserve player data during reconnection', () => {

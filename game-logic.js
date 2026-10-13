@@ -187,12 +187,10 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
     let isNewPlayer = false;
 
     if (existingPlayer) {
-        // Player reconnecting - update their connection status
-        existingPlayer.connected = true;
-        existingPlayer.isConnected = true;
-        existingPlayer.connectedAt = Date.now();
+        // Player coming back (a reload, a reconnect): their page is about
+        // to connect. One who is offline gets a fresh ghost clock meanwhile
         existingPlayer.avatar = cleanAvatar; // Allow avatar update
-        delete existingPlayer.disconnectedAt; // Clear disconnect timestamp
+        if (!existingPlayer.isConnected) existingPlayer.disconnectedAt = Date.now();
         player = existingPlayer;
     } else {
         // Prefer the returning player's old color if nobody took it meanwhile
@@ -206,12 +204,14 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null) {
             id: isValidPlayerId(playerId) ? playerId : crypto.randomUUID(),
             name: cleanName,
             avatar: cleanAvatar,
-            connected: true,
-            isConnected: true,
+            // Online only once their page connects (markPlayerConnected). A
+            // player whose page never opens the room - a closed tab, a lost
+            // network - is removed as a ghost instead of staying forever
+            isConnected: false,
+            disconnectedAt: Date.now(),
             // A returning leaver keeps their original join time, which puts
             // them back at their old position in the list (see sort below)
             joinedAt: (returningSnapshot && returningSnapshot.joinedAt) || new Date(),
-            connectedAt: Date.now(),
             stickerColor: stickerColor
         };
 
@@ -544,7 +544,6 @@ function restoreGame(roomCode, saved) {
                 ? savedPlayer.stickerColor
                 : assignUniqueColor(players),
             joinedAt: toDate(savedPlayer.joinedAt) || new Date(now),
-            connected: false,
             isConnected: false,
             disconnectedAt: now
         });
@@ -605,43 +604,85 @@ function recreateGameFromState(games, roomCode, savedGameState) {
     };
 }
 
-// Tracks which socket belongs to which player.
-//
-// The tricky part is the page refresh: the browser opens a NEW socket before
-// the OLD one reports its disconnect. Without care, the late disconnect of the
-// old socket would mark the freshly reconnected player as offline. Every
-// disconnect is therefore checked against the player's current socket.
+// A page of this player has connected to the room: they are online.
+// Returns the player, or null when they are not in the game
+function markPlayerConnected(game, playerId) {
+    const player = game.players.find(p => p.id === playerId);
+    if (!player) return null;
+    player.isConnected = true;
+    delete player.disconnectedAt;
+    touchGame(game);
+    return player;
+}
+
+// The player's last page went away: they stay in the room, offline, and may
+// come back (removeStaleDisconnectedPlayers removes a ghost later).
+// Returns the player, or null when they are not in the game
+function markPlayerDisconnected(game, playerId) {
+    const player = game.players.find(p => p.id === playerId);
+    if (!player) return null;
+    player.isConnected = false;
+    player.disconnectedAt = Date.now();
+    touchGame(game);
+    return player;
+}
+
+// Tracks which sockets belong to which player of which room. A player may
+// have several: two tabs of one browser are the same player, and on a page
+// refresh the browser opens the NEW socket before the OLD one reports its
+// disconnect. A player goes offline only when their LAST socket goes, so
+// neither a closed second tab nor a late disconnect after a refresh marks
+// a player who is still playing as offline.
 function createConnectionTracker() {
     const socketToPlayer = new Map(); // socketId -> { gameId, playerId }
-    const playerToSocket = new Map(); // playerId -> socketId
+    const playerSockets = new Map();  // "gameId playerId" -> Set of socketIds
+    const keyOf = (gameId, playerId) => `${gameId} ${playerId}`;
+
+    function forgetSocket(socketId) {
+        const playerInfo = socketToPlayer.get(socketId);
+        if (!playerInfo) return null;
+        socketToPlayer.delete(socketId);
+
+        const key = keyOf(playerInfo.gameId, playerInfo.playerId);
+        const sockets = playerSockets.get(key);
+        sockets.delete(socketId);
+        if (sockets.size > 0) return null;
+        playerSockets.delete(key);
+        return playerInfo;
+    }
 
     return {
-        // Register a socket as the player's current connection
+        // Register a socket as one of the player's connections (a socket
+        // belongs to one player: registering it again moves it)
         register(socketId, gameId, playerId) {
+            forgetSocket(socketId);
             socketToPlayer.set(socketId, { gameId, playerId });
-            playerToSocket.set(playerId, socketId);
+            const key = keyOf(gameId, playerId);
+            if (!playerSockets.has(key)) playerSockets.set(key, new Set());
+            playerSockets.get(key).add(socketId);
         },
 
         // Handle a socket disconnect.
-        // Returns { gameId, playerId } if the player really went offline,
-        // or null if the socket was stale (player already reconnected) / unknown.
+        // Returns { gameId, playerId } if it was the player's last socket (the
+        // player really went offline), or null if they still have another
+        // one, or the socket is unknown
         unregister(socketId) {
-            const playerInfo = socketToPlayer.get(socketId);
-            if (!playerInfo) return null;
-
-            socketToPlayer.delete(socketId);
-
-            // Stale disconnect: the player already has a newer socket
-            if (playerToSocket.get(playerInfo.playerId) !== socketId) {
-                return null;
-            }
-
-            playerToSocket.delete(playerInfo.playerId);
-            return playerInfo;
+            return forgetSocket(socketId);
         },
 
-        getSocketId(playerId) {
-            return playerToSocket.get(playerId);
+        // The player left the room: none of their sockets speaks for them any more
+        unregisterPlayer(gameId, playerId) {
+            const key = keyOf(gameId, playerId);
+            for (const socketId of playerSockets.get(key) || []) {
+                socketToPlayer.delete(socketId);
+            }
+            playerSockets.delete(key);
+        },
+
+        // Is this socket registered for this player of this room?
+        isPlayerSocket(socketId, gameId, playerId) {
+            const playerInfo = socketToPlayer.get(socketId);
+            return Boolean(playerInfo) && playerInfo.gameId === gameId && playerInfo.playerId === playerId;
         },
 
         get size() {
@@ -738,6 +779,8 @@ module.exports = {
     isCustomAvatar,
     isValidPlayerId,
     touchGame,
+    markPlayerConnected,
+    markPlayerDisconnected,
     cleanupInactiveGames,
     removeStaleDisconnectedPlayers,
     createConnectionTracker,

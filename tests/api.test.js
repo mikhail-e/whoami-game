@@ -73,7 +73,6 @@ describe('API Integration Tests', () => {
                 player: {
                     name: 'Alice',
                     avatar: '😀',
-                    connected: true,
                     id: expect.any(String)
                 },
                 game: {
