@@ -23,6 +23,18 @@ test('both pages show the version the server answers', async ({ newPlayer, reque
     await expect(footerVersion).toHaveText(`v${version}`);
 });
 
+// iOS cannot read an SVG apple-touch-icon: the home-screen icon must be a PNG
+test('the icons the pages name are served, the iPhone one as a PNG', async ({ newPlayer, request }) => {
+    const { page } = await newPlayer('Alice');
+    await page.goto('/');
+
+    for (const [rel, type] of [['icon', 'image/x-icon'], ['apple-touch-icon', 'image/png']]) {
+        const answer = await request.get(await page.locator(`link[rel="${rel}"]`).getAttribute('href'));
+        expect(answer.status(), rel).toBe(200);
+        expect(answer.headers()['content-type'], rel).toBe(type);
+    }
+});
+
 test('the guard fails a test when a page throws', async ({ newPlayer }) => {
     test.fail(true, 'a JavaScript error on any player page must fail the test');
     const alice = await newPlayer('Alice');
