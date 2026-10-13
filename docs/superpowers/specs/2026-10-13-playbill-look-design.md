@@ -121,7 +121,7 @@ linear-gradient(180deg, #7e1a13 0%, #5c110b 100%)
 
 **Уведомления** (`.alert`): бумажная полоска `--paper`, рамка 1.5 px `--ink`, слева кромка 8 px: `danger` — `--red`, `success` — `#2f5d3a`, `info` — `--ink-soft`, `warning` (обновление) — `--gold`. Тень `0 6px 16px rgba(0, 0, 0, .35)`.
 
-**Окна подтверждения** (`.modal-content`): лист `--paper` с внутренней рамкой, как `.game-card`; заголовок — как заголовок листа, но слева (без звёзд). Кнопки: «Отмена» — `btn-secondary` (обводка), «Да, раскрыть» / «Да, покинуть» — `btn-danger`, «Да, начать заново» — `btn-outline-danger`. Пояснения (`text-muted`) — `--ink-soft`.
+**Окна подтверждения** (`.modal-content`): лист `--paper` с внутренней рамкой, как `.game-card`; заголовок — как заголовок листа, но слева (без звёзд). Кнопки: «Отмена» — `btn-secondary` (обводка), «Да, раскрыть» / «Да, покинуть» — `btn-danger`, «Да, начать заново» — `btn-outline-danger`. Пояснения (`text-muted`) — `--ink-soft` (через `--bs-secondary-color`).
 
 **404**: вывеска, под ней лист с заголовком «Страница не найдена», текстом и главной кнопкой «Открыть игру».
 
@@ -161,7 +161,7 @@ linear-gradient(180deg, #7e1a13 0%, #5c110b 100%)
 | Файл | Что |
 |---|---|
 | `public/css/style.css` | Переписывается: шрифты, токены, занавес, все элементы §5. Старые фиолетовые градиенты, белые карточки и `!important` у переключателя языка уходят |
-| `public/index.html`, `game.html`, `404.html` | Вывеска, preload шрифта, `theme-color`; вместо `text-white`/`text-white-50`/`badge bg-light`/`text-muted` — свои классы; заголовки листов — `.sheet-title`; превью — новый alt |
+| `public/index.html`, `game.html`, `404.html` | Вывеска, preload шрифта, `theme-color`; вместо `text-white`/`text-white-50`/`badge bg-light` — свои классы; `text-muted` остаётся — его цвет `--ink-soft` приходит через переменную Bootstrap `--bs-secondary-color`; заголовки листов — `.sheet-title`; превью — новый alt |
 | `public/js/game-room.js` | Конверт с печатью вместо «🎭»; `<button>` «+ Задать персонажа»; карточка раскрытого — класс `revealed` вместо `bg-warning bg-opacity-25`; билет ищется по `.room-ticket` |
 | `public/js/translations.js` | Тексты §6; переключатель языка без `btn-outline-light` |
 | `public/manifest.json`, `public/sw.js` | Цвета, иконки, версия кэша (§7) |
