@@ -54,7 +54,6 @@ const translations = {
         refresh: "Refresh Page",
         
         // Character assignment
-        assignmentInstructions: "Click the + button next to other players to assign them characters",
         assignCharacter: "Assign character",
         characterName: "Character name...",
         you: "You",
@@ -224,7 +223,6 @@ const translations = {
         refresh: "Обновить страницу",
         
         // Character assignment
-        assignmentInstructions: "Нажмите кнопку + рядом с другими игроками, чтобы назначить им персонажей",
         assignCharacter: "Задать персонажа",
         characterName: "Имя персонажа...",
         you: "Вы",
@@ -506,9 +504,9 @@ class Localization {
             // If current language is English, show "🇷🇺 Русский" button
             // If current language is Russian, show "🇬🇧 English" button
             if (this.currentLanguage === 'en') {
-                toggleText.innerHTML = '🇷🇺 Русский';
+                toggleText.textContent = '🇷🇺 Русский';
             } else {
-                toggleText.innerHTML = '🇬🇧 English';
+                toggleText.textContent = '🇬🇧 English';
             }
         }
     }
