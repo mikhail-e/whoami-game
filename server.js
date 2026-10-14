@@ -67,8 +67,8 @@ const SECURITY_HEADERS = {
     // a room's address holds its code. The coffee link sends nothing at all
     // (rel="noreferrer"); this covers any link without it
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    // Browser features the game never uses (Web Share and the photo picker
-    // are not among them)
+    // Browser features the game never uses (Web Share, the photo picker and
+    // the screen wake lock of a started round are not among them)
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
     // A file is what its Content-Type says, never guessed from its content
     'X-Content-Type-Options': 'nosniff',

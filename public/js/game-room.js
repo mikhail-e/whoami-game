@@ -1,6 +1,8 @@
 // Who am I? Game Room - Frontend JavaScript
 // Names from utils.js (loaded before this file; see the note at the top of utils.js)
 /* global debugLog, MAX_CHARACTER_LENGTH, isCustomAvatar, getText, serverErrorText, showNotification, AppStorage, handleApiError, PLAYER_ID, PLAYER_SECRET */
+// From wake-lock.js
+/* global keepScreenAwake */
 
 let socket;
 let currentGame = null;
@@ -464,6 +466,11 @@ function updateGameDisplay() {
     const startButton = document.getElementById('startGame');
     const restartButton = document.getElementById('restartGame');
     const gameState = currentGame.state || 'waiting';
+
+    // The round is on from Start until every envelope is open: the screen
+    // stays awake meanwhile (wake-lock.js)
+    const revealedPlayers = currentGame.revealedPlayers || [];
+    keepScreenAwake(gameState === 'started' && !currentGame.players.every(player => revealedPlayers.includes(player.id)));
 
     if (gameState === 'started') {
         // Hide room sharing functionality and assignment instructions when game has started
