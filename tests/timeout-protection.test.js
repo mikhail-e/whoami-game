@@ -40,11 +40,23 @@ describe('Timeout Protection System', () => {
 
         test('a player whose page never connects becomes a ghost', () => {
             const { player } = addPlayerToGame(games, gameId, 'Alice', '😀');
-            player.disconnectedAt = Date.now() - (11 * 60 * 1000);
+            player.disconnectedAt = Date.now() - (61 * 60 * 1000);
 
             const removals = removeStaleDisconnectedPlayers(games);
 
             expect(removals.map(removal => removal.removedPlayer.id)).toEqual([player.id]);
+        });
+
+        test('a player offline for under an hour stays in the room', () => {
+            // A phone asleep through a break: the player is still on everyone's list
+            const { player } = addPlayerToGame(games, gameId, 'Alice', '😀');
+            const game = games.get(gameId);
+            markPlayerConnected(game, player.id);
+            markPlayerDisconnected(game, player.id);
+            player.disconnectedAt = Date.now() - (59 * 60 * 1000);
+
+            expect(removeStaleDisconnectedPlayers(games)).toEqual([]);
+            expect(game.players.map(p => p.id)).toEqual([player.id]);
         });
 
         test('rejoining while offline restarts the ghost clock', () => {

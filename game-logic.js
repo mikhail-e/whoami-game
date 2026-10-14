@@ -740,12 +740,13 @@ function createConnectionTracker() {
     };
 }
 
-// How long a disconnected player stays in the room before being removed.
-// Long enough to survive a locked phone or a network drop (Socket.IO takes
-// ~2 minutes to even notice a disconnect), short enough that a "ghost" -
-// the same person who came back under a NEW player ID (cleared localStorage,
-// messenger in-app browser, installed PWA) - stops blocking Start Game soon.
-const MAX_DISCONNECTED_MS = 10 * 60 * 1000;
+// How long a disconnected player stays in the room before being removed: an
+// hour (the owner's decision). A player whose phone sleeps through a break
+// stays on everyone's list, card and character in place. The price is paid in
+// the lobby: a "ghost" - the same person who came back under a NEW player ID
+// (cleared localStorage, messenger in-app browser, installed PWA) - keeps Start
+// Game disabled for up to that hour, unless someone gives it a character.
+const MAX_DISCONNECTED_MS = 60 * 60 * 1000;
 
 // Remove players who have been disconnected for longer than maxDisconnectedMs.
 // Runs from the keep-alive cycle. A removed player is not locked out: if they
