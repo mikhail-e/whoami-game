@@ -186,6 +186,22 @@ async function joinRoom(player, code) {
     await expect(playerCard(page, player.name).first()).toBeVisible();
 }
 
+// Ask to join a started game the way a latecomer does: the room link (or the
+// landing page it led to), a name, Join - and the room page that waits for a
+// player to let them in. A player already on /?join=CODE stays on it
+async function askToJoin(player, code) {
+    const { page } = player;
+    if (!page.url().includes(`/?join=${code}`)) {
+        await page.goto(`/game/${code}`);
+        await expect(page).toHaveURL(new RegExp(`/\\?join=${code}$`));
+    }
+    await waitForLanding(page);
+    await page.fill('#playerName', player.name);
+    await page.click('#joinBtn');
+    await expect(page).toHaveURL(new RegExp(`/game/${code}$`));
+    await expect(page.locator('#waitingSheet')).toBeVisible();
+}
+
 // Give the player named toName a character: "+ Assign character" on their card, type, Enter
 async function assignCharacter(player, toName, character) {
     const card = playerCard(player.page, toName);
@@ -366,6 +382,7 @@ module.exports = {
     waitForPlayers,
     createRoom,
     joinRoom,
+    askToJoin,
     assignCharacter,
     countSentEvents,
     holdRoomJoin,

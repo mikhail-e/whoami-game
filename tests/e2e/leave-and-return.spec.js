@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const {
     test, expect, text, seedStorage, createRoom, joinRoom, playerCard, waitForPlayers, startedGame, leaveGame,
-    waitForLanding, holdRoomJoin, releaseRoomJoin,
+    holdRoomJoin, releaseRoomJoin,
 } = require('./helpers');
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -119,23 +119,6 @@ test('a leaver returns to the started round with the same character, color and p
     await expect(bobsSticker()).toHaveClass(new RegExp(`\\b${colorBefore}\\b`));
     await expect(playerCard(bob.page, 'Bob').locator('.character-sticker.mystery')).toBeVisible();
     await expect(bob.page.locator('#restartGame')).toBeVisible();
-});
-
-test('a newcomer cannot join a started game', async ({ newPlayer }) => {
-    const { code } = await startedGame(newPlayer, ['Alice', 'Bob']);
-    const dave = await newPlayer('Dave');
-    dave.expectDialog(/already started/i);
-    // The server answers 400; the browser logs that response itself
-    dave.allowConsoleError(/status of 400/);
-
-    await dave.page.goto(`/game/${code}`);
-    await expect(dave.page).toHaveURL(new RegExp(`/\\?join=${code}$`));
-    await waitForLanding(dave.page);
-    await dave.page.fill('#playerName', 'Dave');
-    await dave.page.click('#joinBtn');
-
-    await expect.poll(() => dave.expectedDialogs.length).toBe(0);
-    await expect(dave.page).toHaveURL(new RegExp(`/\\?join=${code}$`));
 });
 
 test('reloading keeps the same player', async ({ newPlayer }) => {

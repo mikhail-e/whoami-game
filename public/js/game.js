@@ -210,6 +210,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle errors
     if (errorParam === 'room-not-found') {
         showError(getText('roomNotFound', 'Room not found. Please check the room code and try again.'));
+    } else if (errorParam === 'join-declined') {
+        showError(getText('joinDeclined', 'The players did not let you into the game'));
     }
     
     if (joinRoomCode && roomCodeInput) {
@@ -437,7 +439,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const result = await response.json();
             
-            if (result.success) {
+            // A started game lets a newcomer in only when a player agrees: the
+            // room page waits for that (game-room.js)
+            if (result.success || result.waitingForApproval) {
                 // Store player data and redirect to game room
                 AppStorage.session.set('playerData', playerData);
                 window.location.href = `/game/${playerData.roomCode}`;

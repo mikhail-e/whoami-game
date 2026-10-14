@@ -125,6 +125,16 @@ const translations = {
         leaveNote: "Your card and character will disappear for everyone. The other players can keep playing.",
         confirmLeave: "Yes, Leave Game",
         playerLeftNotification: "👋 {playerName} left the game",
+        // Joining a started game (game-room.js, game.js)
+        gameAlreadyOn: "The game is already on",
+        waitingForAdmission: "Waiting for the players to let you in. They have your request.",
+        joinRequestTitle: "🚪 Asking to join",
+        joinRequestText: "wants to join the game",
+        joinRequestQuestion: "Let them into the started game?",
+        admitPlayer: "Let in",
+        declinePlayer: "Decline",
+        playerAdmittedNotification: "👋 {playerName} is in the game now",
+        joinDeclined: "The players did not let you into the game",
 
         waiting: "Waiting for players to join...",
 
@@ -294,6 +304,16 @@ const translations = {
         leaveNote: "Ваша карточка и персонаж исчезнут у всех игроков. Остальные смогут продолжить игру.",
         confirmLeave: "Да, покинуть игру",
         playerLeftNotification: "👋 {playerName} покинул(а) игру",
+        // Joining a started game (game-room.js, game.js)
+        gameAlreadyOn: "Игра уже идёт",
+        waitingForAdmission: "Ждём, пока игроки вас впустят. Им уже пришёл ваш запрос.",
+        joinRequestTitle: "🚪 Просится в игру",
+        joinRequestText: "хочет войти в игру",
+        joinRequestQuestion: "Впустить в начатую игру?",
+        admitPlayer: "Впустить",
+        declinePlayer: "Отказать",
+        playerAdmittedNotification: "👋 {playerName} теперь в игре",
+        joinDeclined: "Игроки не впустили вас в игру",
 
         waiting: "Ожидание присоединения игроков...",
 

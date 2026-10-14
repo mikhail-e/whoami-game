@@ -48,6 +48,10 @@ function ensureGameLoaded(roomCode) {
 // Track socket connections for better disconnect handling
 // (handles the refresh race: new socket connects before old one disconnects)
 const connections = gameLogic.createConnectionTracker();
+// The sockets of newcomers waiting to be let into a started round (ask-to-join):
+// the same bookkeeping as the players', kept apart - playerHandler looks only
+// at `connections`, so a waiting socket can never act as a player
+const waiting = gameLogic.createConnectionTracker();
 
 // Security headers on every answer of Express: pages, files, API, 404 and
 // redirects (Socket.IO answers its own /socket.io/ requests before Express).
@@ -157,6 +161,13 @@ app.post('/api/join-game', jsonBody, (req, res) => {
 
     const result = gameLogic.addPlayerToGame(games, gameId, playerName, avatar, playerId, playerSecret);
 
+    // A newcomer to a started round: not an error - their room page waits and
+    // asks over its socket (ask-to-join) for a player to let them in
+    if (result.waitingForApproval) {
+        console.log(`Player ${forLog(playerId)} has to ask to join started game ${gameId}`);
+        return res.json(result);
+    }
+
     if (!result.success) {
         console.log('Failed to add player to game:', result.error);
         return res.status(400).json(result);
@@ -247,6 +258,32 @@ function playerHandler(socket, eventName, handler) {
     });
 }
 
+// Tell the waiting pages of these newcomers that their request is over:
+// 'declined' sends them home, 'retry' makes them join again and follow the
+// answer (let in, the lobby, or a room that is gone)
+function endJoinRequests(gameId, playerIds, outcome) {
+    for (const playerId of playerIds) {
+        const socketIds = waiting.unregisterPlayer(gameId, playerId);
+        // io.to([]) would reach every socket of the server
+        if (socketIds.length > 0) {
+            io.to(socketIds).emit('join-request-ended', { outcome });
+        }
+    }
+}
+
+// A waiting socket goes away: when it was the newcomer's last waiting page,
+// the request goes too, and the players' windows close
+function withdrawWaitingSocket(socketId) {
+    const lastOfRequest = waiting.unregister(socketId);
+    if (!lastOfRequest) return;
+    const { gameId, playerId } = lastOfRequest;
+    const game = games.get(gameId);
+    if (game && gameLogic.withdrawJoinRequest(game, playerId)) {
+        console.log(`🚪 Player ${playerId} no longer asks to join game ${gameId}`);
+        io.to(gameId).emit('join-request-closed', { playerId, outcome: 'withdrawn' });
+    }
+}
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -281,6 +318,75 @@ io.on('connection', (socket) => {
 
         // Send current game state to the user
         socket.emit('game-state', gameLogic.serializeGame(game));
+    });
+
+    // A newcomer's waiting page asks to join the started round (its HTTP join
+    // answered waitingForApproval). The socket does not join the room's
+    // channel: until a player lets them in, the newcomer hears nothing of it
+    safeHandler(socket, 'ask-to-join', (data) => {
+        // A player's page has nothing to ask
+        if (connections.getPlayer(socket.id)) return;
+        const { playerId, playerSecret, playerName, avatar } = data;
+        const gameId = typeof data.gameId === 'string' ? data.gameId.toUpperCase() : '';
+
+        const result = gameLogic.requestToJoin(games, gameId, playerName, avatar, playerId, playerSecret);
+        if (result.retryJoin) {
+            socket.emit('join-request-ended', { outcome: 'retry' });
+            return;
+        }
+        if (!result.success) {
+            socket.emit('error', result.error);
+            return;
+        }
+
+        // A socket waits for one request: one it waited for before goes first
+        const previous = waiting.getPlayer(socket.id);
+        if (previous && (previous.gameId !== gameId || previous.playerId !== playerId)) {
+            withdrawWaitingSocket(socket.id);
+        }
+        waiting.register(socket.id, gameId, playerId);
+        console.log(`🚪 Player ${playerId} asks to join game ${gameId}`);
+        io.to(gameId).emit('join-requested', result.request);
+    });
+
+    // Any player answers a request; the first answer decides (game-logic.js)
+    playerHandler(socket, 'admit-player', (data, me) => {
+        const result = gameLogic.admitPlayer(games, me.gameId, data.playerId, me.playerId);
+        if (!result.success) {
+            socket.emit('error', result.error);
+            return;
+        }
+
+        console.log(`🚪 Player ${result.player.id} let into game ${me.gameId} by ${me.playerId}`);
+        io.to(me.gameId).emit('player-joined', {
+            player: result.player,
+            players: result.players,
+            characters: result.characters,
+            revealedPlayers: result.revealedPlayers
+        });
+        io.to(me.gameId).emit('join-request-closed', {
+            playerId: result.player.id,
+            outcome: 'admitted',
+            playerName: result.player.name
+        });
+        // Their page joins the usual way now: the HTTP join lets them in
+        endJoinRequests(me.gameId, [result.player.id], 'retry');
+    });
+
+    playerHandler(socket, 'decline-player', (data, me) => {
+        const result = gameLogic.declinePlayer(games, me.gameId, data.playerId, me.playerId);
+        if (!result.success) {
+            socket.emit('error', result.error);
+            return;
+        }
+
+        console.log(`🚪 Player ${data.playerId} declined in game ${me.gameId} by ${me.playerId}`);
+        io.to(me.gameId).emit('join-request-closed', {
+            playerId: data.playerId,
+            outcome: 'declined',
+            playerName: result.playerName
+        });
+        endJoinRequests(me.gameId, [data.playerId], 'declined');
     });
 
     // Final character assignment (when editing completes): `playerId` is the
