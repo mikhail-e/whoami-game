@@ -232,10 +232,22 @@ test("a newcomer who cancels is gone from the players' window", async ({ newPlay
     await askToJoin(dasha, code);
     await expectRequestFrom(alice.page, 'Dasha');
 
-    await dasha.page.getByRole('button', { name: text('cancel') }).click();
+    // The landing page answers slowly (a poor network, a busy server): the
+    // request must go at once, not when the next page has loaded
+    let releaseLanding;
+    const landingHeld = new Promise(resolve => { releaseLanding = resolve; });
+    await dasha.page.route(/\/\?join=/, async route => {
+        await landingHeld;
+        await route.continue();
+    });
 
-    await expect(dasha.page).toHaveURL(new RegExp(`/\\?join=${code}$`));
+    // click() waits for the next page to start loading: let it wait aside
+    const cancelled = dasha.page.getByRole('button', { name: text('cancel') }).click();
+
     await expect(requestWindow(alice.page)).not.toHaveClass(/\bshow\b/);
+    releaseLanding();
+    await cancelled;
+    await expect(dasha.page).toHaveURL(new RegExp(`/\\?join=${code}$`));
 });
 
 test('a newcomer who closes the page is gone too', async ({ newPlayer }) => {

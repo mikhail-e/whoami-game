@@ -918,9 +918,12 @@ function copyRoomLink(button) {
 }
 
 function setupEventListeners(roomCode) {
-    // A waiting newcomer gives up: home, with the room code ready. Their
-    // socket goes with the page, and that withdraws the request
+    // A waiting newcomer gives up: home, with the room code ready. The socket
+    // goes first, and that withdraws the request at once - the page's own
+    // socket would close only once the next page has loaded, which on a slow
+    // network leaves the players a request nobody waits for
     document.getElementById('cancelJoinRequest').addEventListener('click', () => {
+        socket.disconnect();
         window.location.href = `/?join=${roomCode}`;
     });
 
