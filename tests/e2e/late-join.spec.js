@@ -354,3 +354,41 @@ test('the waiting newcomer learns that the room is gone', async ({ newPlayer }) 
     await expect.poll(() => dasha.expectedDialogs.length).toBe(0);
     await expect(dasha.page).toHaveURL(/\/$/);
 });
+
+// Escape, or a tap elsewhere with the field still empty, takes the newcomer's
+// card back to its button - a character after the start is never empty
+test('backing out of a character for the newcomer shows no error', async ({ newPlayer }) => {
+    const { alice } = await admittedNewcomer(newPlayer);
+    const card = playerCard(alice.page, 'Dasha');
+
+    await card.locator('.add-character-btn').click();
+    await alice.page.keyboard.press('Escape');
+    await expect(card.locator('.add-character-btn')).toBeVisible();
+
+    await card.locator('.add-character-btn').click();
+    await alice.page.locator('#gameStatus').click();
+    await expect(card.locator('.add-character-btn')).toBeVisible();
+    // An error alert would have failed the test (the guard of newPlayer)
+});
+
+// A character given after the start is for good: a request window must not
+// take the focus from a half-typed one and send it
+test('a request waits while a player types a character', async ({ newPlayer }) => {
+    const { alice, dasha } = await admittedNewcomer(newPlayer);
+    const card = playerCard(alice.page, 'Dasha');
+    await card.locator('.add-character-btn').click();
+    await card.locator('.character-input').fill('Gand');
+    const code = new URL(dasha.page.url()).pathname.split('/').pop();
+    const eve = await newPlayer('Eve');
+
+    await askToJoin(eve, code);
+    await expect.poll(() => alice.page.evaluate(() => joinRequestQueue.length)).toBe(1);
+    expect(await requestWindow(alice.page).evaluate(modal => modal.classList.contains('show'))).toBe(false);
+    await expect(card.locator('.character-input')).toBeFocused();
+
+    await card.locator('.character-input').pressSequentially('alf');
+    await card.locator('.character-input').press('Enter');
+    await expect(playerCard(dasha.page, 'Dasha').locator('.character-sticker .seal')).toBeVisible();
+    await expect(card.locator('.character-sticker')).toHaveText('Gandalf');
+    await expectRequestFrom(alice.page, 'Eve');
+});

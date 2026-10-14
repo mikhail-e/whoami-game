@@ -458,6 +458,9 @@ function showWaitingScreen() {
     document.getElementById('waitingName').textContent = currentPlayer.name;
     document.getElementById('waitingSheet').hidden = false;
     document.body.classList.add('waiting-for-admission');
+    // The request lives as long as this page's socket: a phone gone to sleep
+    // would drop it. Once in, updateGameDisplay decides (wake-lock.js)
+    keepScreenAwake(true);
 }
 
 function hideWaitingScreen() {
@@ -476,10 +479,14 @@ function queueJoinRequest(request) {
 }
 
 // Show the first request, unless a window is open or still closing (Bootstrap
-// keeps aria-modal until it has gone): the request waits for hidden.bs.modal
+// keeps aria-modal until it has gone): the request waits for hidden.bs.modal.
+// It waits for a character being typed too: the window would take the focus,
+// and the blur would send a half-typed character - for good after the start
+// (updatePlayersList shows the request once the field has gone)
 function showNextJoinRequest() {
     if (shownJoinRequest || joinRequestQueue.length === 0) return;
     if (document.querySelector('.modal[aria-modal="true"]')) return;
+    if (document.querySelector('#playerList .character-input')) return;
     shownJoinRequest = joinRequestQueue[0];
     renderAvatar(document.getElementById('joinRequestAvatar'), shownJoinRequest.avatar);
     document.getElementById('joinRequestName').textContent = shownJoinRequest.name;
@@ -832,6 +839,9 @@ function updatePlayersList() {
 
         playerListEl.appendChild(playerCard);
     });
+
+    // No character is being typed now: a request that waited for it may show
+    showNextJoinRequest();
 }
 
 // "+ Assign character" pressed: the button becomes an empty tag with an input
@@ -878,13 +888,23 @@ function openCharacterInput(playerId, stickerElement, originalCharacter) {
         // Characters are locked once the game has started (e.g. a blur event
         // can fire after another player pressed Start Game) - except for a
         // newcomer let into the round who has none yet
-        if (currentGame.state !== 'waiting' && currentGame.characters && currentGame.characters[playerId]) return;
+        const started = currentGame.state !== 'waiting';
+        if (started && currentGame.characters && currentGame.characters[playerId]) return;
         sent = true;
+
+        // After the start a character is never empty: backing out of a
+        // newcomer's first one (Escape, a tap elsewhere) just closes the field
+        const character = inputElement.value.trim();
+        if (started && character === '') {
+            cancelActiveEdits();
+            updatePlayersList();
+            return;
+        }
 
         // playerId is who gets the character; the server knows who gives it
         const assignData = {
             playerId: playerId,
-            character: inputElement.value.trim()
+            character
         };
         debugLog('🔧 Sending assign-character:', assignData);
         sendMove('assign-character', assignData);

@@ -289,8 +289,9 @@ function addNewPlayer(game, id, name, avatar, returningSnapshot) {
 }
 
 // No room for one more: the players and the newcomers waiting to join count
-// together, so letting everybody in can never go past MAX_PLAYERS. A
-// newcomer's own request does not count against them
+// together. A newcomer's own request does not count against them. A leaver
+// returning to the round does not wait in line, so admitPlayer checks the
+// seats once more
 function isRoomFull(game, playerId) {
     const othersWaiting = [...game.joinRequests.keys()].filter(id => id !== playerId).length;
     return game.players.length + othersWaiting >= MAX_PLAYERS;
@@ -365,6 +366,11 @@ function admitPlayer(games, gameId, playerId, admittedBy) {
     const { game, request, error } = findJoinRequest(games, gameId, playerId, admittedBy);
     if (error) {
         return { success: false, error };
+    }
+    // A leaver returning to the round may have taken the last seat: the
+    // request stays, and the newcomer gets in once somebody leaves
+    if (game.players.length >= MAX_PLAYERS) {
+        return { success: false, error: 'Game is full' };
     }
 
     const player = addNewPlayer(game, playerId, request.name, request.avatar, null);

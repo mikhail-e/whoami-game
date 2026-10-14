@@ -10,7 +10,7 @@
 // the very thing that keeps a screen on, or whether the site's
 // Permissions-Policy lets it.
 const {
-    test, expect, playerCard, startedGame, createRoom, joinRoom, assignCharacter, startGame, revealOwnCharacter,
+    test, expect, playerCard, startedGame, createRoom, joinRoom, assignCharacter, startGame, revealOwnCharacter, askToJoin,
 } = require('./helpers');
 
 // The stand-in. Call before the page loads. With refuseFirst the first request
@@ -173,6 +173,17 @@ test('a refused lock is taken by the next tap', async ({ newPlayer }) => {
 
     await bob.page.locator('#gameStatus').click();
     await expect.poll(() => locksHeld(bob)).toBe(1);
+});
+
+// The request lives as long as the waiting page's socket: a phone gone to
+// sleep would drop it, and the players could not let the newcomer in
+test('a newcomer waiting to be let in keeps the screen awake', async ({ newPlayer }) => {
+    const { code } = await startedGame(newPlayer, ['Alice', 'Bob']);
+    const dasha = await withStubbedWakeLock(newPlayer)('Dasha');
+
+    await askToJoin(dasha, code);
+
+    await expect.poll(() => locksHeld(dasha)).toBe(1);
 });
 
 test('after a reload the started round keeps the screen awake', async ({ newPlayer }) => {

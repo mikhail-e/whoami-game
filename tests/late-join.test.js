@@ -25,13 +25,14 @@ const uuid = () => crypto.randomUUID();
 function startedGame(names = ['Alice', 'Bob']) {
     const games = new Map();
     const gameId = createGame(games).gameId;
-    const players = names.map(name => addPlayerToGame(games, gameId, name, '😀', uuid(), uuid()).player);
+    const secrets = names.map(() => uuid());
+    const players = names.map((name, i) => addPlayerToGame(games, gameId, name, '😀', uuid(), secrets[i]).player);
     players.forEach((player, index) => {
         const next = players[(index + 1) % players.length];
         assignCharacter(games, gameId, next.id, `Character of ${next.name}`, player.id);
     });
     expect(startGame(games, gameId, players[0].id).success).toBe(true);
-    return { games, gameId, game: games.get(gameId), players };
+    return { games, gameId, game: games.get(gameId), players, secrets };
 }
 
 describe('Asking to join a started game', () => {
@@ -205,6 +206,21 @@ describe('Answering a request', () => {
         const last = removePlayerFromGame(games, gameId, bob.id);
         expect(last.gameDeleted).toBe(true);
         expect(last.endedJoinRequests).toEqual([dasha.id]);
+    });
+
+    test('a full room lets nobody else in, not even someone already waiting', () => {
+        // 12 players asked to start; one leaves, Dasha asks, the leaver comes back
+        const names = Array.from({ length: 12 }, (_, i) => `P${i + 1}`);
+        const { games, gameId, game, players, secrets } = startedGame(names);
+        removePlayerFromGame(games, gameId, players[11].id);
+        const dasha = uuid();
+        expect(requestToJoin(games, gameId, 'Dasha', '🐻', dasha, uuid()).success).toBe(true);
+        expect(addPlayerToGame(games, gameId, 'P12', '😀', players[11].id, secrets[11]).success).toBe(true);
+
+        expect(admitPlayer(games, gameId, dasha, players[0].id).error).toBe('Game is full');
+        expect(game.players).toHaveLength(12);
+        // The request stays: somebody may leave, and then Dasha can be let in
+        expect(game.joinRequests.has(dasha)).toBe(true);
     });
 
     test('after the start a character goes only to a player who has none, and stays', () => {
