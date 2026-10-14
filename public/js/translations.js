@@ -37,6 +37,7 @@ const translations = {
         shareLink: "Share Link",
         shareLinkLabel: "Room link",
         copyLink: "Copy Link",
+        copyRoomLink: "Copy Link",
         copied: "✅ Copied!",
         share: "Share",
         shareText: "Join my \"Who am I?\" game!",
@@ -90,6 +91,7 @@ const translations = {
         
         // Game room additional
         inviteFriends: "Invite Friends",
+        inviteDuringGame: "The game is on: a newcomer will ask to join, and any of you can let them in.",
         characterAssignment: "Character Assignment",
         clickPlus: "Press “Assign character”",
         clickStickers: "Click character tags",
@@ -219,6 +221,7 @@ const translations = {
         shareLink: "Ссылка для друзей",
         shareLinkLabel: "Ссылка на комнату",
         copyLink: "Скопировать",
+        copyRoomLink: "Скопировать ссылку",
         copied: "✅ Скопировано!",
         share: "Поделиться",
         shareText: "Присоединяйся к моей игре «Кто я?»!",
@@ -272,6 +275,7 @@ const translations = {
         
         // Game room additional
         inviteFriends: "Пригласить друзей",
+        inviteDuringGame: "Игра уже идёт: новичок попросится войти, и впустить его сможет любой из вас.",
         characterAssignment: "Назначение персонажей",
         clickPlus: "Нажмите «Задать персонажа»",
         clickStickers: "Нажмите на бирки персонажей",

@@ -73,8 +73,8 @@
                     <text class="brand-sign__small" x="302" y="203" text-anchor="middle" font-size="16" letter-spacing="4" fill="#2a1d17">FOR FRIENDS &amp; FAMILY · PLAYED ONLINE</text>
                 </svg>
             </h1>
-            <!-- The room code as a ticket stub; game-room.js hides it once the game
-                 has started (a latecomer has to ask to join then) -->
+            <!-- The room code as a ticket stub, in the lobby and during the game
+                 (a latecomer asks to join then) -->
             <div class="room-ticket">
                 <span data-i18n="roomCode">Room Code</span>
                 <span id="roomCode"></span>
@@ -151,6 +151,26 @@
                     </button>
                     <button class="btn btn-outline-secondary me-2 mb-2 mb-md-0" id="leaveGame">
                         🚪 <span data-i18n="leaveGame">Leave Game</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- The invitation of a started game, instead of #shareCard: shorter, and
+             below the controls, so the round's screen starts with the players
+             (game-room.js shows it; the link is #shareLink's) -->
+        <div class="game-card" id="gameInviteCard" hidden>
+            <h6 class="sheet-title" data-i18n="inviteFriends">Invite Friends</h6>
+            <p class="small text-muted mb-3" data-i18n="inviteDuringGame">The game is on: a newcomer will ask to join, and any of you can let them in.</p>
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <button type="button" class="btn btn-outline-primary w-100" id="gameCopyLink">
+                        📋 <span data-i18n="copyRoomLink">Copy Link</span>
+                    </button>
+                </div>
+                <div class="col-md-6">
+                    <button type="button" class="btn btn-outline-primary w-100" id="gameShareButton">
+                        📤 <span data-i18n="share">Share</span>
                     </button>
                 </div>
             </div>
