@@ -297,10 +297,17 @@ test('a newcomer whose connection drops keeps waiting', async ({ newPlayer }) =>
     await askToJoin(dasha, code);
     await expectRequestFrom(alice.page, 'Dasha');
 
-    // The phone loses its socket for a moment: the request goes with it...
-    await dasha.page.evaluate(() => socket.io.engine.close());
-    await expect(requestWindow(alice.page)).not.toHaveClass(/\bshow\b/);
-    // ...and comes back with the socket (after Socket.IO's reconnection delay)
+    // The phone loses its socket for a moment and Socket.IO connects a new one
+    // (after its reconnection delay), which asks again. Whether the players'
+    // window closes meanwhile depends on how soon the server hears of the
+    // drop: at once here, only after the reconnect behind Render's proxy
+    const lost = await dasha.page.evaluate(() => {
+        const id = socket.id;
+        socket.io.engine.close();
+        return id;
+    });
+    await expect.poll(() => dasha.page.evaluate(id => socket.connected && socket.id !== id, lost),
+        { timeout: 15_000 }).toBe(true);
     await expect(requestWindow(alice.page)).toHaveClass(/\bshow\b/, { timeout: 15_000 });
     await expect(dasha.page.locator('#waitingSheet')).toBeVisible();
 
