@@ -2,7 +2,9 @@
 // axe cannot measure contrast on the page's gradient background (it reports
 // such text as "incomplete", not as a violation): that needs a pixel check
 const { AxeBuilder } = require('@axe-core/playwright');
-const { test, expect, text, PAGE_STATUS_404, createRoom, joinRoom, waitForPlayers, playerCard, startedGame } = require('./helpers');
+const {
+    test, expect, text, PAGE_STATUS_404, createRoom, joinRoom, waitForPlayers, playerCard, startedGame, askToJoin,
+} = require('./helpers');
 
 const WCAG_21_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
@@ -78,6 +80,24 @@ test('the update banner', async ({ newPlayer }) => {
     await expect(page.getByRole('button', { name: text('updateNow') })).toBeVisible();
 
     expect(await violations(page, '.alert-warning')).toEqual([]);
+});
+
+// A newcomer to a started game waits for a player to let them in
+test('the waiting screen', async ({ newPlayer }) => {
+    const { code } = await startedGame(newPlayer, ['Alice', 'Bob']);
+    const dasha = await newPlayer('Dasha');
+    await askToJoin(dasha, code);
+
+    expect(await violations(dasha.page)).toEqual([]);
+});
+
+test('the joinRequestModal window', async ({ newPlayer }) => {
+    const { code, players: { Alice: alice } } = await startedGame(newPlayer, ['Alice', 'Bob']);
+    const dasha = await newPlayer('Dasha');
+    await askToJoin(dasha, code);
+    await expect(alice.page.locator('#joinRequestModal')).toHaveClass(/\bshow\b/);
+
+    expect(await violations(alice.page, '#joinRequestModal')).toEqual([]);
 });
 
 const windows = [

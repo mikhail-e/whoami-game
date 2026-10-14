@@ -114,7 +114,7 @@ const translations = {
         restartWarning: "⚠️ This will:",
         restartAction1: "Reset all revealed characters",
         restartAction2: "Allow players to reassign characters",
-        restartAction3: "Enable new players to join again",
+        restartAction3: "New players can join without asking",
         restartAction4: "Return everyone to the setup phase",
         restartNote: "All players will be able to see this action.",
 
@@ -296,7 +296,7 @@ const translations = {
         restartWarning: "⚠️ После перезапуска:",
         restartAction1: "Все персонажи будут удалены",
         restartAction2: "Игроки снова смогут назначать персонажей",
-        restartAction3: "К игре смогут присоединиться новые игроки",
+        restartAction3: "Новые игроки смогут входить без спроса",
         restartAction4: " ",
         restartNote: "Это действие повлияет на всех игроков",
 
