@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const {
     test, expect, text, seedStorage, createRoom, joinRoom, playerCard, waitForPlayers, startedGame, leaveGame,
-    waitForLanding,
+    holdRoomJoin, releaseRoomJoin,
 } = require('./helpers');
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -59,6 +59,34 @@ test('Leave in one tab takes the player out of the room in every tab', async ({ 
     await waitForPlayers(bob.page, 1);
 });
 
+test('a tab whose connection joins just after its player left goes home too', async ({ newPlayer }) => {
+    const { players: [alice, bob], code } = await roomWith(newPlayer, ['Alice', 'Bob']);
+    // A second tab on a slow connection: the room is drawn, its socket not in the room yet
+    const secondTab = { name: 'Alice', page: await alice.context.newPage() };
+    await holdRoomJoin(secondTab.page);
+    await joinRoom(secondTab, code);
+
+    await leaveGame(alice);
+    await waitForPlayers(bob.page, 1);
+    await releaseRoomJoin(secondTab.page);
+
+    await expect(secondTab.page).toHaveURL(new RegExp(`/\\?join=${code}$`));
+});
+
+test('a tab whose connection joins just after the room was deleted goes home', async ({ newPlayer }) => {
+    const alice = await newPlayer('Alice');
+    const code = await createRoom(alice);
+    const secondTab = { name: 'Alice', page: await alice.context.newPage() };
+    await holdRoomJoin(secondTab.page);
+    await joinRoom(secondTab, code);
+
+    // The last player leaves: the room is deleted
+    await leaveGame(alice);
+    await releaseRoomJoin(secondTab.page);
+
+    await expect(secondTab.page).toHaveURL(/\/$/);
+});
+
 test('a room its last player left does not come back from its backup', async ({ newPlayer }) => {
     test.skip(!!process.env.BASE_URL, 'writes a backup into the folder of the local test server');
     const { players: [alice, bob], code } = await roomWith(newPlayer, ['Alice', 'Bob']);
@@ -91,23 +119,6 @@ test('a leaver returns to the started round with the same character, color and p
     await expect(bobsSticker()).toHaveClass(new RegExp(`\\b${colorBefore}\\b`));
     await expect(playerCard(bob.page, 'Bob').locator('.character-sticker.mystery')).toBeVisible();
     await expect(bob.page.locator('#restartGame')).toBeVisible();
-});
-
-test('a newcomer cannot join a started game', async ({ newPlayer }) => {
-    const { code } = await startedGame(newPlayer, ['Alice', 'Bob']);
-    const dave = await newPlayer('Dave');
-    dave.expectDialog(/already started/i);
-    // The server answers 400; the browser logs that response itself
-    dave.allowConsoleError(/status of 400/);
-
-    await dave.page.goto(`/game/${code}`);
-    await expect(dave.page).toHaveURL(new RegExp(`/\\?join=${code}$`));
-    await waitForLanding(dave.page);
-    await dave.page.fill('#playerName', 'Dave');
-    await dave.page.click('#joinBtn');
-
-    await expect.poll(() => dave.expectedDialogs.length).toBe(0);
-    await expect(dave.page).toHaveURL(new RegExp(`/\\?join=${code}$`));
 });
 
 test('reloading keeps the same player', async ({ newPlayer }) => {

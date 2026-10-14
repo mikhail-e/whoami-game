@@ -40,7 +40,11 @@ module.exports = defineConfig({
         // ('block' makes register() resolve to nothing, and pwa.js reports that
         // as an error a real browser never gives.)
         serviceWorkers: 'allow',
-        trace: 'retain-on-failure',
+        // No traces by default. Recording one snapshots the page after every
+        // action of every test, and on a full parallel run that load now and
+        // then left a page not answering the recorder: a test failed with the
+        // game working fine. To look into a failure: `--trace on`
+        trace: 'off',
     },
 
     // The game is played on phones first

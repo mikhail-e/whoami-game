@@ -122,7 +122,7 @@ describe('Inactive Game Cleanup', () => {
 // person who came back under a NEW player ID (cleared localStorage, messenger
 // in-app browser, installed PWA). Ghosts used to stay in the room forever and
 // blocked the Start Game button; now the keep-alive cycle removes anyone
-// disconnected for over 10 minutes.
+// disconnected for longer than the timeout (an hour, MAX_DISCONNECTED_MS).
 describe('Stale Disconnected Player Cleanup (ghosts)', () => {
     let games;
 

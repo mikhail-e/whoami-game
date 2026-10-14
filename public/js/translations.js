@@ -37,6 +37,7 @@ const translations = {
         shareLink: "Share Link",
         shareLinkLabel: "Room link",
         copyLink: "Copy Link",
+        copyRoomLink: "Copy Link",
         copied: "✅ Copied!",
         share: "Share",
         shareText: "Join my \"Who am I?\" game!",
@@ -90,6 +91,7 @@ const translations = {
         
         // Game room additional
         inviteFriends: "Invite Friends",
+        inviteDuringGame: "The game is on: a newcomer will ask to join, and any of you can let them in.",
         characterAssignment: "Character Assignment",
         clickPlus: "Press “Assign character”",
         clickStickers: "Click character tags",
@@ -114,7 +116,7 @@ const translations = {
         restartWarning: "⚠️ This will:",
         restartAction1: "Reset all revealed characters",
         restartAction2: "Allow players to reassign characters",
-        restartAction3: "Enable new players to join again",
+        restartAction3: "New players can join without asking",
         restartAction4: "Return everyone to the setup phase",
         restartNote: "All players will be able to see this action.",
 
@@ -125,6 +127,19 @@ const translations = {
         leaveNote: "Your card and character will disappear for everyone. The other players can keep playing.",
         confirmLeave: "Yes, Leave Game",
         playerLeftNotification: "👋 {playerName} left the game",
+        // Joining a started game (game-room.js, game.js)
+        gameAlreadyOn: "The game is already on",
+        waitingForAdmission: "Waiting for the players to let you in. They have your request.",
+        joinRequestTitle: "🚪 Asking to join",
+        joinRequestText: "wants to join the game",
+        joinRequestQuestion: "Let them into the started game?",
+        admitPlayer: "Let in",
+        declinePlayer: "Decline",
+        playerAdmittedNotification: "👋 {playerName} is in the game now",
+        joinDeclined: "The players did not let you into the game",
+        envelopeEmpty: "empty for now",
+        noCharacterYet: "No character yet - another player will give you one",
+        waitingForCharacter: "Game in progress - waiting for someone to give you a character",
 
         waiting: "Waiting for players to join...",
 
@@ -206,6 +221,7 @@ const translations = {
         shareLink: "Ссылка для друзей",
         shareLinkLabel: "Ссылка на комнату",
         copyLink: "Скопировать",
+        copyRoomLink: "Скопировать ссылку",
         copied: "✅ Скопировано!",
         share: "Поделиться",
         shareText: "Присоединяйся к моей игре «Кто я?»!",
@@ -259,6 +275,7 @@ const translations = {
         
         // Game room additional
         inviteFriends: "Пригласить друзей",
+        inviteDuringGame: "Игра уже идёт: новичок попросится войти, и впустить его сможет любой из вас.",
         characterAssignment: "Назначение персонажей",
         clickPlus: "Нажмите «Задать персонажа»",
         clickStickers: "Нажмите на бирки персонажей",
@@ -283,7 +300,7 @@ const translations = {
         restartWarning: "⚠️ После перезапуска:",
         restartAction1: "Все персонажи будут удалены",
         restartAction2: "Игроки снова смогут назначать персонажей",
-        restartAction3: "К игре смогут присоединиться новые игроки",
+        restartAction3: "Новые игроки смогут входить без спроса",
         restartAction4: " ",
         restartNote: "Это действие повлияет на всех игроков",
 
@@ -294,6 +311,19 @@ const translations = {
         leaveNote: "Ваша карточка и персонаж исчезнут у всех игроков. Остальные смогут продолжить игру.",
         confirmLeave: "Да, покинуть игру",
         playerLeftNotification: "👋 {playerName} покинул(а) игру",
+        // Joining a started game (game-room.js, game.js)
+        gameAlreadyOn: "Игра уже идёт",
+        waitingForAdmission: "Ждём, пока игроки вас впустят. Им уже пришёл ваш запрос.",
+        joinRequestTitle: "🚪 Просится в игру",
+        joinRequestText: "хочет войти в игру",
+        joinRequestQuestion: "Впустить в начатую игру?",
+        admitPlayer: "Впустить",
+        declinePlayer: "Отказать",
+        playerAdmittedNotification: "👋 {playerName} теперь в игре",
+        joinDeclined: "Игроки не впустили вас в игру",
+        envelopeEmpty: "пока пусто",
+        noCharacterYet: "Персонажа пока нет — его даст другой игрок",
+        waitingForCharacter: "Игра идёт — ждём, пока вам дадут персонажа",
 
         waiting: "Ожидание присоединения игроков...",
 
@@ -352,6 +382,7 @@ const serverErrors = {
         'Invalid avatar': "Недопустимый аватар",
         'Game has already started': "Игра уже началась",
         'Game is full': "В комнате нет свободных мест",
+        'This request has already been answered': "На этот запрос уже ответили",
         'Player not found in game': "Игрок не найден в комнате",
         'Assigner not found in game': "Игрок, назначающий персонажа, не найден в комнате",
         'Cannot assign character to yourself': "Нельзя назначить персонажа самому себе",
