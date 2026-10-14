@@ -40,7 +40,7 @@ function serverErrorText(error, lang = 'en') {
     return serverErrors[lang][error];
 }
 
-// The trace Playwright records for a failed test (trace: 'retain-on-failure')
+// A trace Playwright records (a run with --trace on, docs/testing.md)
 // copies the page's images, a blob: one too, with fetch(), and the Content
 // Security Policy's connect-src 'self' blocks that. The game itself never
 // fetches a blob: address: this violation is the test tool's own
@@ -261,6 +261,44 @@ async function stubShare(page, behaviour) {
     }, behaviour);
 }
 
+// A slow connection: the room page draws the room from its HTTP join, but its
+// socket asks to join the room (join-room) only after releaseRoomJoin(page).
+// Call before the page loads
+async function holdRoomJoin(page) {
+    await page.addInitScript(() => {
+        let realIo;
+        let heldJoin = null;
+        let released = false;
+        window.releaseRoomJoin = () => {
+            released = true;
+            if (heldJoin) heldJoin();
+        };
+        // socket.io.js sets window.io as it loads: hand game-room.js a wrapper
+        Object.defineProperty(window, 'io', {
+            configurable: true,
+            set(value) { realIo = value; },
+            get() {
+                return realIo && ((...args) => {
+                    const socket = realIo(...args);
+                    const emit = socket.emit.bind(socket);
+                    socket.emit = (event, ...rest) => {
+                        if (event === 'join-room' && !released) {
+                            heldJoin = () => emit(event, ...rest);
+                            return socket;
+                        }
+                        return emit(event, ...rest);
+                    };
+                    return socket;
+                });
+            },
+        });
+    });
+}
+
+async function releaseRoomJoin(page) {
+    await page.evaluate(() => window.releaseRoomJoin());
+}
+
 // Count the Socket.IO events of this name the page sends to the server, over
 // the WebSocket and over HTTP polling (used before the upgrade). Call it before
 // the player opens the room: the socket connects as the room page loads.
@@ -330,6 +368,8 @@ module.exports = {
     joinRoom,
     assignCharacter,
     countSentEvents,
+    holdRoomJoin,
+    releaseRoomJoin,
     startGame,
     revealOwnCharacter,
     startedGame,
