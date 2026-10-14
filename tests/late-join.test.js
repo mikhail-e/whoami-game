@@ -8,7 +8,11 @@ const {
     assignCharacter,
     startGame,
     removePlayerFromGame,
+    restartGame,
+    checkPlayerSecret,
     requestToJoin,
+    admitPlayer,
+    declinePlayer,
     withdrawJoinRequest,
     listJoinRequests,
     serializeGame,
@@ -130,5 +134,88 @@ describe('Asking to join a started game', () => {
         const saved = serializeGame(game, { withSecrets: true });
         expect(saved).not.toHaveProperty('joinRequests');
         expect(restoreGame(gameId, JSON.parse(JSON.stringify(saved))).joinRequests.size).toBe(0);
+    });
+});
+
+describe('Answering a request', () => {
+    // A started round of Alice and Bob, Dasha asking to join
+    function withRequest() {
+        const setup = startedGame();
+        const dasha = { id: uuid(), secret: uuid() };
+        requestToJoin(setup.games, setup.gameId, 'Dasha', '🐻', dasha.id, dasha.secret);
+        return { ...setup, dasha };
+    }
+
+    test('any player lets the newcomer in: last in the list, with a color of their own and their secret', () => {
+        const { games, gameId, game, players: [alice, bob], dasha } = withRequest();
+
+        const result = admitPlayer(games, gameId, dasha.id, bob.id);
+
+        expect(result.success).toBe(true);
+        expect(result.player).toMatchObject({ id: dasha.id, name: 'Dasha', avatar: '🐻', isConnected: false });
+        expect(result.players.map(p => p.id)).toEqual([alice.id, bob.id, dasha.id]);
+        expect(result.player.stickerColor).toEqual(expect.any(String));
+        expect([alice.stickerColor, bob.stickerColor]).not.toContain(result.player.stickerColor);
+        expect(checkPlayerSecret(game, dasha.id, dasha.secret)).toBe(true);
+        expect(game.joinRequests.size).toBe(0);
+        // No character yet: the round goes on without one for Dasha
+        expect(result.characters[dasha.id]).toBeUndefined();
+    });
+
+    test('the first answer decides: a second one is refused', () => {
+        const { games, gameId, players: [alice, bob], dasha } = withRequest();
+        admitPlayer(games, gameId, dasha.id, alice.id);
+
+        expect(admitPlayer(games, gameId, dasha.id, bob.id).error).toBe('This request has already been answered');
+        expect(declinePlayer(games, gameId, dasha.id, bob.id).error).toBe('This request has already been answered');
+        expect(admitPlayer(games, gameId, uuid(), bob.id).error).toBe('This request has already been answered');
+    });
+
+    test('only a player of the room answers', () => {
+        const { games, gameId, game, dasha } = withRequest();
+
+        expect(admitPlayer(games, gameId, dasha.id, uuid()).error).toBe('Player not found in game');
+        expect(declinePlayer(games, gameId, dasha.id, dasha.id).error).toBe('Player not found in game');
+        expect(game.joinRequests.size).toBe(1);
+    });
+
+    test('a declined newcomer is not let in', () => {
+        const { games, gameId, game, players: [, bob], dasha } = withRequest();
+
+        expect(declinePlayer(games, gameId, dasha.id, bob.id)).toEqual({ success: true, playerName: 'Dasha' });
+        expect(game.joinRequests.size).toBe(0);
+        expect(game.players).toHaveLength(2);
+    });
+
+    test('a restart ends every request', () => {
+        const { games, gameId, game, players: [alice], dasha } = withRequest();
+        const eve = uuid();
+        requestToJoin(games, gameId, 'Eve', '🦊', eve, uuid());
+
+        const result = restartGame(games, gameId, alice.id);
+
+        expect(result.endedJoinRequests).toEqual([dasha.id, eve]);
+        expect(game.joinRequests.size).toBe(0);
+    });
+
+    test('the room deleted by its last leaver ends the requests; an ordinary leave does not', () => {
+        const { games, gameId, players: [alice, bob], dasha } = withRequest();
+
+        expect(removePlayerFromGame(games, gameId, alice.id).endedJoinRequests).toEqual([]);
+        const last = removePlayerFromGame(games, gameId, bob.id);
+        expect(last.gameDeleted).toBe(true);
+        expect(last.endedJoinRequests).toEqual([dasha.id]);
+    });
+
+    test('after the start a character goes only to a player who has none, and stays', () => {
+        const { games, gameId, players: [alice, bob], dasha } = withRequest();
+        admitPlayer(games, gameId, dasha.id, bob.id);
+        const locked = 'Cannot change characters after the game has started';
+
+        expect(assignCharacter(games, gameId, dasha.id, '   ', alice.id).error).toBe(locked);
+        expect(assignCharacter(games, gameId, dasha.id, 'Gandalf', alice.id).success).toBe(true);
+        expect(assignCharacter(games, gameId, dasha.id, 'Frodo', bob.id).error).toBe(locked);
+        expect(assignCharacter(games, gameId, alice.id, 'Frodo', dasha.id).error).toBe(locked);
+        expect(games.get(gameId).characters.get(dasha.id).character).toBe('Gandalf');
     });
 });

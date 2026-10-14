@@ -352,6 +352,7 @@ const serverErrors = {
         'Invalid avatar': "Недопустимый аватар",
         'Game has already started': "Игра уже началась",
         'Game is full': "В комнате нет свободных мест",
+        'This request has already been answered': "На этот запрос уже ответили",
         'Player not found in game': "Игрок не найден в комнате",
         'Assigner not found in game': "Игрок, назначающий персонажа, не найден в комнате",
         'Cannot assign character to yourself': "Нельзя назначить персонажа самому себе",

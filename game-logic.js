@@ -225,43 +225,10 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null, pla
         if (!existingPlayer.isConnected) existingPlayer.disconnectedAt = Date.now();
         player = existingPlayer;
     } else {
-        // Prefer the returning player's old color if nobody took it meanwhile
-        const usedColors = new Set(game.players.map(p => p.stickerColor));
-        const stickerColor = (returningSnapshot && !usedColors.has(returningSnapshot.stickerColor))
-            ? returningSnapshot.stickerColor
-            : assignUniqueColor(game.players);
-
         // New player joining - use provided playerId if valid, otherwise generate one
-        player = {
-            id: isValidPlayerId(playerId) ? playerId : crypto.randomUUID(),
-            name: cleanName,
-            avatar: cleanAvatar,
-            // Online only once their page connects (markPlayerConnected). A
-            // player whose page never opens the room - a closed tab, a lost
-            // network - is removed as a ghost instead of staying forever
-            isConnected: false,
-            disconnectedAt: Date.now(),
-            // A returning leaver keeps their original join time, which puts
-            // them back at their old position in the list (see sort below)
-            joinedAt: (returningSnapshot && returningSnapshot.joinedAt) || new Date(),
-            stickerColor: stickerColor
-        };
-
-        game.players.push(player);
-        sortPlayersByJoinTime(game.players);
+        const id = isValidPlayerId(playerId) ? playerId : crypto.randomUUID();
+        player = addNewPlayer(game, id, cleanName, cleanAvatar, returningSnapshot);
         isNewPlayer = true;
-
-        // A returning leaver gets their character and reveal status back,
-        // so they can continue the round as if they never left
-        if (returningSnapshot) {
-            if (returningSnapshot.character) {
-                game.characters.set(player.id, returningSnapshot.character);
-            }
-            if (returningSnapshot.revealed) {
-                game.revealedPlayers.add(player.id);
-            }
-            game.recentlyLeft.delete(player.id);
-        }
     }
     if (secretHash) game.secrets.set(player.id, secretHash);
     touchGame(game);
@@ -278,6 +245,47 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null, pla
         },
         isNewPlayer
     };
+}
+
+// Put a new player into the list: a color of their own, their place by join
+// time. A leaver returning to the round (their recentlyLeft snapshot) gets
+// back their color if nobody took it, their place, character and reveal
+function addNewPlayer(game, id, name, avatar, returningSnapshot) {
+    const usedColors = new Set(game.players.map(p => p.stickerColor));
+    const stickerColor = (returningSnapshot && !usedColors.has(returningSnapshot.stickerColor))
+        ? returningSnapshot.stickerColor
+        : assignUniqueColor(game.players);
+
+    const player = {
+        id,
+        name,
+        avatar,
+        // Online only once their page connects (markPlayerConnected). A
+        // player whose page never opens the room - a closed tab, a lost
+        // network - is removed as a ghost instead of staying forever
+        isConnected: false,
+        disconnectedAt: Date.now(),
+        // A returning leaver keeps their original join time, which puts
+        // them back at their old position in the list (see sort below)
+        joinedAt: (returningSnapshot && returningSnapshot.joinedAt) || new Date(),
+        stickerColor
+    };
+
+    game.players.push(player);
+    sortPlayersByJoinTime(game.players);
+
+    // A returning leaver gets their character and reveal status back,
+    // so they can continue the round as if they never left
+    if (returningSnapshot) {
+        if (returningSnapshot.character) {
+            game.characters.set(player.id, returningSnapshot.character);
+        }
+        if (returningSnapshot.revealed) {
+            game.revealedPlayers.add(player.id);
+        }
+        game.recentlyLeft.delete(player.id);
+    }
+    return player;
 }
 
 // No room for one more: the players and the newcomers waiting to join count
@@ -332,6 +340,58 @@ function requestToJoin(games, gameId, playerName, avatar, playerId, playerSecret
     return { success: true, request: { playerId, name: request.name, avatar: request.avatar } };
 }
 
+// A player answers a newcomer's request. Any player of the room may, and the
+// first answer decides: a request already answered - or withdrawn, or ended
+// by a restart - is gone, and a second answer is refused
+function findJoinRequest(games, gameId, playerId, answeredBy) {
+    const game = games.get(gameId);
+    if (!game) {
+        return { error: 'Game not found' };
+    }
+    if (!game.players.some(p => p.id === answeredBy)) {
+        return { error: 'Player not found in game' };
+    }
+    const request = game.joinRequests.get(playerId);
+    if (!request) {
+        return { error: 'This request has already been answered' };
+    }
+    return { game, request };
+}
+
+// Let the newcomer in: last in the list, offline until their page joins the
+// room, with their browser's secret recorded. No character yet - a player
+// gives one (assignCharacter lets a player without one get it after the start)
+function admitPlayer(games, gameId, playerId, admittedBy) {
+    const { game, request, error } = findJoinRequest(games, gameId, playerId, admittedBy);
+    if (error) {
+        return { success: false, error };
+    }
+
+    const player = addNewPlayer(game, playerId, request.name, request.avatar, null);
+    game.secrets.set(playerId, request.secretHash);
+    game.joinRequests.delete(playerId);
+    touchGame(game);
+
+    return {
+        success: true,
+        player,
+        players: game.players,
+        characters: Object.fromEntries(game.characters),
+        revealedPlayers: Array.from(game.revealedPlayers)
+    };
+}
+
+// Turn the newcomer away. They may ask again
+function declinePlayer(games, gameId, playerId, declinedBy) {
+    const { game, request, error } = findJoinRequest(games, gameId, playerId, declinedBy);
+    if (error) {
+        return { success: false, error };
+    }
+    game.joinRequests.delete(playerId);
+    touchGame(game);
+    return { success: true, playerName: request.name };
+}
+
 // The newcomer went away (their last waiting page closed). True if there was a request
 function withdrawJoinRequest(game, playerId) {
     return game.joinRequests.delete(playerId);
@@ -368,16 +428,18 @@ function assignCharacter(games, gameId, playerId, character, assignedBy) {
         return { success: false, error: 'Cannot assign character to yourself' };
     }
 
-    // Characters are locked once the game has started (client hides editing,
-    // but the server must enforce it too - e.g. a blur event can arrive late)
-    if (game.state !== 'waiting') {
-        return { success: false, error: 'Cannot change characters after the game has started' };
-    }
-
     // Validate and clean the character text (trim + length limit)
     const cleanCharacter = sanitizeCharacter(character);
     if (cleanCharacter === null) {
         return { success: false, error: 'Invalid character' };
+    }
+
+    // Characters are locked once the game has started (client hides editing,
+    // but the server must enforce it too - e.g. a blur event can arrive late).
+    // The one exception: a newcomer let into the round has none yet, and a
+    // player gives them one - after that it is locked like everybody's
+    if (game.state !== 'waiting' && (cleanCharacter === '' || game.characters.has(playerId))) {
+        return { success: false, error: 'Cannot change characters after the game has started' };
     }
 
     // Assign the character or remove it if empty
@@ -507,6 +569,10 @@ function restartGame(games, gameId, playerId) {
     game.revealedPlayers.clear();
     game.characters.clear(); // Clear all character assignments
     game.recentlyLeft.clear(); // the old round's leavers get no special treatment
+    // The lobby is open to everybody: the newcomers waiting to join the old
+    // round just join (server.js tells their pages to try again)
+    const endedJoinRequests = [...game.joinRequests.keys()];
+    game.joinRequests.clear();
     game.restartedAt = new Date();
     touchGame(game);
 
@@ -519,7 +585,8 @@ function restartGame(games, gameId, playerId) {
         state: game.state,
         restartedBy: playerId,
         revealedPlayers: Array.from(game.revealedPlayers),
-        characters: Object.fromEntries(game.characters) // Empty object now
+        characters: Object.fromEntries(game.characters), // Empty object now
+        endedJoinRequests
     };
 }
 
@@ -564,6 +631,9 @@ function removePlayerFromGame(games, gameId, playerId) {
     // A game with zero players ceases to exist (server.js deletes its disk
     // backup too, so the old link cannot bring it back)
     const gameDeleted = game.players.length === 0;
+    // Nobody is left to answer the newcomers waiting to join: their requests
+    // end with the room (server.js tells their pages)
+    const endedJoinRequests = gameDeleted ? [...game.joinRequests.keys()] : [];
     if (gameDeleted) {
         games.delete(gameId);
     }
@@ -575,7 +645,8 @@ function removePlayerFromGame(games, gameId, playerId) {
         players: game.players,
         characters: Object.fromEntries(game.characters),
         revealedPlayers: Array.from(game.revealedPlayers),
-        gameDeleted
+        gameDeleted,
+        endedJoinRequests
     };
 }
 
@@ -893,6 +964,8 @@ module.exports = {
     restartGame,
     removePlayerFromGame,
     requestToJoin,
+    admitPlayer,
+    declinePlayer,
     withdrawJoinRequest,
     listJoinRequests,
     checkPlayerSecret,
