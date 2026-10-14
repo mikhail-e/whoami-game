@@ -144,6 +144,10 @@ function createGame(games) {
         revealedPlayers: new Set(), // Track who has revealed their character
         recentlyLeft: new Map(), // playerId -> snapshot, lets leavers return to a started game
         secrets: new Map(), // playerId -> hash of the player's secret (checkPlayerSecret); never sent to a page
+        // playerId -> { name, avatar, secretHash, requestedAt }: newcomers asking
+        // to join the started round (requestToJoin). Never saved: a request
+        // lives as long as the newcomer's waiting page
+        joinRequests: new Map(),
         created: new Date()
     };
     touchGame(game);
@@ -187,10 +191,16 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null, pla
     // reveal status and color were snapshotted on the way out)
     const returningSnapshot = playerId ? game.recentlyLeft.get(playerId) : undefined;
 
-    // Check if game has already started (only allow existing players to
-    // reconnect and recent leavers to return)
+    // A started round takes back its players and its leavers. A newcomer has
+    // to ask (requestToJoin) and wait for a player to let them in
     if (game.state === 'started' && !existingPlayer && !returningSnapshot) {
-        return { success: false, error: 'Game has already started' };
+        if (!isValidPlayerId(playerId)) {
+            return { success: false, error: 'Game has already started' };
+        }
+        if (isRoomFull(game, playerId)) {
+            return { success: false, error: 'Game is full' };
+        }
+        return { success: false, waitingForApproval: true };
     }
 
     // Somebody else's browser cannot take this player's place
@@ -268,6 +278,69 @@ function addPlayerToGame(games, gameId, playerName, avatar, playerId = null, pla
         },
         isNewPlayer
     };
+}
+
+// No room for one more: the players and the newcomers waiting to join count
+// together, so letting everybody in can never go past MAX_PLAYERS. A
+// newcomer's own request does not count against them
+function isRoomFull(game, playerId) {
+    const othersWaiting = [...game.joinRequests.keys()].filter(id => id !== playerId).length;
+    return game.players.length + othersWaiting >= MAX_PLAYERS;
+}
+
+// A newcomer asks to join the started round: their waiting page sends this
+// once its socket is up. The request lives until a player answers it, the
+// newcomer goes away (withdrawJoinRequest) or the round ends (restartGame).
+// Whoever may simply join - a player of the room, a leaver of this round,
+// anybody when the game is in the lobby - is told to join again instead
+function requestToJoin(games, gameId, playerName, avatar, playerId, playerSecret) {
+    const game = games.get(gameId);
+    if (!game) {
+        return { success: false, error: 'Game not found' };
+    }
+    if (!isValidPlayerId(playerId) || !isValidPlayerId(playerSecret)) {
+        return { success: false, error: 'Missing required fields' };
+    }
+    const name = sanitizePlayerName(playerName);
+    if (!name) {
+        return { success: false, error: 'Invalid player name' };
+    }
+    const cleanAvatar = sanitizeAvatar(avatar);
+    if (!cleanAvatar) {
+        return { success: false, error: 'Invalid avatar' };
+    }
+
+    if (game.state !== 'started' || game.players.some(p => p.id === playerId) || game.recentlyLeft.has(playerId)) {
+        return { success: false, retryJoin: true };
+    }
+
+    // One request per browser: a second tab of it waits on the same one
+    const secretHash = hashSecret(playerSecret);
+    const existing = game.joinRequests.get(playerId);
+    if (existing && existing.secretHash !== secretHash) {
+        return { success: false, error: 'This player is playing in another browser' };
+    }
+    if (!existing) {
+        if (isRoomFull(game, playerId)) {
+            return { success: false, error: 'Game is full' };
+        }
+        game.joinRequests.set(playerId, { name, avatar: cleanAvatar, secretHash, requestedAt: Date.now() });
+        touchGame(game);
+    }
+
+    const request = game.joinRequests.get(playerId);
+    return { success: true, request: { playerId, name: request.name, avatar: request.avatar } };
+}
+
+// The newcomer went away (their last waiting page closed). True if there was a request
+function withdrawJoinRequest(game, playerId) {
+    return game.joinRequests.delete(playerId);
+}
+
+// The waiting newcomers, in the order they asked, as the players' pages show
+// them - the secret's hash stays on the server
+function listJoinRequests(game) {
+    return [...game.joinRequests].map(([playerId, request]) => ({ playerId, name: request.name, avatar: request.avatar }));
 }
 
 // Assign a character to a player
@@ -621,6 +694,7 @@ function restoreGame(roomCode, saved) {
         revealedPlayers,
         recentlyLeft: new Map(),
         secrets,
+        joinRequests: new Map(),
         created: toDate(saved.created) || new Date(now)
     };
     touchGame(game);
@@ -818,6 +892,9 @@ module.exports = {
     revealCharacter,
     restartGame,
     removePlayerFromGame,
+    requestToJoin,
+    withdrawJoinRequest,
+    listJoinRequests,
     checkPlayerSecret,
     isValidRoomCode,
     assignUniqueColor,
