@@ -425,7 +425,7 @@ const BACKUP_MAX_AGE = 4 * 60 * 60 * 1000;
 
 // Keep-alive functionality for active games
 function keepGamesAlive() {
-    // First remove "ghosts" - players disconnected for over 10 minutes
+    // First remove "ghosts" - players disconnected for over an hour
     // (usually the same person who came back under a new player ID, e.g.
     // after clearing localStorage or joining from a messenger's in-app
     // browser). Done before saving so the disk backup is already clean.
