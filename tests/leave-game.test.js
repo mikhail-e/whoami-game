@@ -122,15 +122,16 @@ describe('Player Leaving', () => {
         expect(rejoin.isNewPlayer).toBe(true);
     });
 
-    test('a stranger still cannot join a started game', () => {
+    test('a stranger has to ask to join a started game', () => {
         assignCharacter(games, gameId, alice.id, 'Batman', bob.id);
         assignCharacter(games, gameId, bob.id, 'Superman', alice.id);
         startGame(games, gameId, alice.id);
 
         const stranger = addPlayerToGame(games, gameId, 'Mallory', '🐍', 'cccccccc-3333-4333-9333-333333333333');
 
-        expect(stranger.success).toBe(false);
-        expect(stranger.error).toBe('Game has already started');
+        // Not let in: a player of the room has to let them in (requestToJoin)
+        expect(stranger).toEqual({ success: false, waitingForApproval: true });
+        expect(games.get(gameId).players).toHaveLength(2);
     });
 
     describe('returning to a started game', () => {
@@ -220,8 +221,8 @@ describe('Player Leaving', () => {
 
             const rejoin = addPlayerToGame(games, gameId, 'Charlie', '🐱', charlie.id);
 
-            expect(rejoin.success).toBe(false);
-            expect(rejoin.error).toBe('Game has already started');
+            // A lobby leaver is a newcomer to the round: they have to ask
+            expect(rejoin).toEqual({ success: false, waitingForApproval: true });
         });
     });
 

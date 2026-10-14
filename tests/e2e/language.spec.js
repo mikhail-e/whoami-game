@@ -122,13 +122,13 @@ test("the reveal notification reads in each player's language", async ({ newPlay
 });
 
 test("a server error reads in the player's language", async ({ newPlayer }) => {
-    const { code } = await startedGame(newPlayer, ['Alice', 'Bob']);
     const dasha = await newPlayer('Даша', { locale: 'ru-RU' });
-    dasha.expectDialog(serverErrorText('Game has already started', 'ru'));
+    dasha.expectDialog(serverErrorText('Game not found', 'ru'));
     // The server answers 400; the browser logs that response itself
     dasha.allowConsoleError(/status of 400/);
 
-    await dasha.page.goto(`/?join=${code}`);
+    // A room that does not exist
+    await dasha.page.goto('/?join=ZZZZZZ');
     await waitForLanding(dasha.page);
     await dasha.page.fill('#playerName', 'Даша');
     await dasha.page.click('#joinBtn');

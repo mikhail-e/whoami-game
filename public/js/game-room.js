@@ -12,6 +12,12 @@ let restartModal = null;
 let leaveModal = null;
 let leaveFallbackTimer = null;
 let leavingGame = false;
+let joinRequestModal = null;
+
+// Newcomers asking to join the started game, in the order they asked; the
+// request window shows the first of them (shownJoinRequest)
+const joinRequestQueue = [];
+let shownJoinRequest = null;
 
 // The server takes a move only from a socket that has joined the room
 // (join-room, answered with game-state). After a reconnect - a phone waking
@@ -110,7 +116,7 @@ async function recreateRoomFromStorage(roomCode, savedGameState) {
             debugLog('✅ Room recreated successfully, now joining...');
 
             // Now join the recreated game (with flag to prevent recursion)
-            await joinGameRoom(roomCode, true);
+            return await joinGameRoom(roomCode, true);
         } else {
             throw new Error(createResult.error || `Failed to recreate room: ${createResponse.status}`);
         }
@@ -159,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeSocket(roomCode);
     
     // Set up event listeners
-    setupEventListeners();
+    setupEventListeners(roomCode);
 
     // Re-render dynamic text (game status, player cards) when the language changes
     document.addEventListener('languagechanged', () => {
@@ -181,26 +187,44 @@ function initializeSocket(roomCode) {
     
     socket.on('connect', () => {
         debugLog('Connected to server');
+        enterRoom(roomCode);
+    });
 
-        // First join the game via API, then join the socket room. The secret
-        // proves the socket is this player's: from now on the server takes
-        // everything this socket sends as this player's move, so the events
-        // below carry no player ID
-        joinGameRoom(roomCode).then(() => {
-            socket.emit('join-room', {
-                gameId: roomCode,
-                playerId: currentPlayer.id,
-                playerSecret: PLAYER_SECRET
-            });
-        }).catch((error) => {
-            console.error('Failed to join game via API:', error);
-        });
+    // A newcomer's request is over: declined - home, with the room code ready
+    // to ask again; anything else (let in, the game restarted, the room gone)
+    // - join again and follow the answer
+    socket.on('join-request-ended', (data) => {
+        if (data && data.outcome === 'declined') {
+            window.location.href = `/?join=${roomCode}&error=join-declined`;
+            return;
+        }
+        enterRoom(roomCode);
+    });
+
+    // A newcomer asks to join the started game: any player may answer
+    socket.on('join-requested', (request) => {
+        queueJoinRequest(request);
+    });
+
+    // A request is answered (here or by another player) or withdrawn
+    socket.on('join-request-closed', (data) => {
+        if (!data) return;
+        closeJoinRequest(data.playerId);
+        if (data.outcome === 'admitted') {
+            showNotification(
+                getText('playerAdmittedNotification', `👋 ${data.playerName} is in the game now`, { playerName: data.playerName }),
+                'info'
+            );
+        }
     });
     
     socket.on('game-state', (game) => {
         debugLog('Received game state:', game);
         currentGame = game;
         updateGameDisplay();
+        // The newcomers waiting now: requests answered while this page was
+        // away are gone, the ones still waiting show
+        syncJoinRequests(game.joinRequests || []);
 
         // The socket is in the room: the moves made while it was not go now
         roomJoined = true;
@@ -330,6 +354,8 @@ function initializeSocket(roomCode) {
         debugLog('Game restarted! Returning to setup phase.');
         if (currentGame) {
             currentGame.state = 'waiting';
+            // The lobby is open: the waiting newcomers join by themselves
+            syncJoinRequests([]);
             currentGame.revealedPlayers = data.revealedPlayers || [];
             currentGame.characters = data.characters || {}; // Clear all character assignments
             saveGameStateToStorage();
@@ -354,6 +380,16 @@ function initializeSocket(roomCode) {
     });
 
     socket.on('error', (error) => {
+        // Another player answered this request first: the window has closed
+        // or is closing by itself, nothing went wrong
+        if (error === 'This request has already been answered') return;
+        // A newcomer's request was refused (the room is full, say): nothing
+        // to wait for
+        if (isWaitingForAdmission()) {
+            alert(serverErrorText(error));
+            window.location.href = '/';
+            return;
+        }
         console.error('Socket error:', error);
         // The server refused something. If it was our Leave, we are still in
         // the game: the fallback must not take us home after all
@@ -372,6 +408,115 @@ function initializeSocket(roomCode) {
         debugLog('Disconnected from server');
         roomJoined = false;
     });
+}
+
+// Enter the room: the HTTP join first, then the socket. The secret proves the
+// socket is this player's: from now on the server takes everything this
+// socket sends as this player's move, so the moves carry no player ID. A
+// newcomer to a started game waits instead and asks for a player to let them in
+function enterRoom(roomCode) {
+    joinGameRoom(roomCode).then((status) => {
+        if (status === 'joined') {
+            hideWaitingScreen();
+            socket.emit('join-room', {
+                gameId: roomCode,
+                playerId: currentPlayer.id,
+                playerSecret: PLAYER_SECRET
+            });
+        } else if (status === 'waiting') {
+            socket.emit('ask-to-join', {
+                gameId: roomCode,
+                playerId: currentPlayer.id,
+                playerSecret: PLAYER_SECRET,
+                playerName: currentPlayer.name,
+                avatar: currentPlayer.avatar
+            });
+        }
+    }).catch((error) => {
+        console.error('Failed to join game via API:', error);
+    });
+}
+
+// A player's avatar into an element: a photo (a validated data:image URL,
+// set as a property - never innerHTML) or an emoji as text
+function renderAvatar(element, avatar) {
+    element.textContent = '';
+    if (isCustomAvatar(avatar)) {
+        const img = document.createElement('img');
+        img.alt = '';
+        img.src = avatar;
+        element.appendChild(img);
+    } else {
+        element.textContent = avatar;
+    }
+}
+
+// The newcomer's waiting screen: the room stays hidden (style.css) until a
+// player lets them in
+function showWaitingScreen() {
+    renderAvatar(document.getElementById('waitingAvatar'), currentPlayer.avatar);
+    document.getElementById('waitingName').textContent = currentPlayer.name;
+    document.getElementById('waitingSheet').hidden = false;
+    document.body.classList.add('waiting-for-admission');
+    // The request lives as long as this page's socket: a phone gone to sleep
+    // would drop it. Once in, updateGameDisplay decides (wake-lock.js)
+    keepScreenAwake(true);
+}
+
+function hideWaitingScreen() {
+    document.getElementById('waitingSheet').hidden = true;
+    document.body.classList.remove('waiting-for-admission');
+}
+
+function isWaitingForAdmission() {
+    return document.body.classList.contains('waiting-for-admission');
+}
+
+function queueJoinRequest(request) {
+    if (!request || joinRequestQueue.some(waiting => waiting.playerId === request.playerId)) return;
+    joinRequestQueue.push(request);
+    showNextJoinRequest();
+}
+
+// Show the first request, unless a window is open or still closing (Bootstrap
+// keeps aria-modal until it has gone): the request waits for hidden.bs.modal.
+// It waits for a character being typed too: the window would take the focus,
+// and the blur would send a half-typed character - for good after the start
+// (updatePlayersList shows the request once the field has gone)
+function showNextJoinRequest() {
+    if (shownJoinRequest || joinRequestQueue.length === 0) return;
+    if (document.querySelector('.modal[aria-modal="true"]')) return;
+    if (document.querySelector('#playerList .character-input')) return;
+    shownJoinRequest = joinRequestQueue[0];
+    renderAvatar(document.getElementById('joinRequestAvatar'), shownJoinRequest.avatar);
+    document.getElementById('joinRequestName').textContent = shownJoinRequest.name;
+    joinRequestModal.show();
+}
+
+// Make the queue the server's list of waiting newcomers
+function syncJoinRequests(requests) {
+    const waitingIds = new Set(requests.map(request => request.playerId));
+    joinRequestQueue
+        .filter(request => !waitingIds.has(request.playerId))
+        .forEach(request => closeJoinRequest(request.playerId));
+    requests.forEach(queueJoinRequest);
+}
+
+function closeJoinRequest(playerId) {
+    const index = joinRequestQueue.findIndex(waiting => waiting.playerId === playerId);
+    if (index !== -1) joinRequestQueue.splice(index, 1);
+    if (shownJoinRequest && shownJoinRequest.playerId === playerId) {
+        joinRequestModal.hide();
+    }
+}
+
+// Let in or decline the shown newcomer. The window closes at once; the
+// server's join-request-closed closes it for everybody else
+function answerJoinRequest(eventName) {
+    if (!shownJoinRequest) return;
+    const { playerId } = shownJoinRequest;
+    closeJoinRequest(playerId);
+    sendMove(eventName, { playerId });
 }
 
 async function joinGameRoom(roomCode, skipRecreation = false) {
@@ -397,7 +542,13 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
 
         const result = await response.json();
         debugLog('Join game result:', result);
-        
+
+        // A newcomer to a started game: wait for a player to let them in
+        if (result.waitingForApproval) {
+            showWaitingScreen();
+            return 'waiting';
+        }
+
         if (result.success) {
             debugLog('Successfully joined game');
             currentGame = result.game;
@@ -417,6 +568,7 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
             saveGameStateToStorage();
 
             updateGameDisplay();
+            return 'joined';
         } else {
             console.error('Join game failed:', result.error);
 
@@ -436,8 +588,7 @@ async function joinGameRoom(roomCode, skipRecreation = false) {
 
                 if (savedGameState && savedGameState.playerId === currentPlayer.id) {
                     debugLog('🎯 Found matching saved game state, recreating room...');
-                    await recreateRoomFromStorage(roomCode, savedGameState);
-                    return;
+                    return await recreateRoomFromStorage(roomCode, savedGameState);
                 }
             }
 
@@ -478,7 +629,13 @@ function updateGameDisplay() {
         if (roomTicket) roomTicket.style.display = 'none';
         if (assignmentInstructions) assignmentInstructions.style.display = 'none';
 
-        if (statusEl) statusEl.textContent = getText('gameInProgress', 'Game in progress - Click your envelope to reveal your character!');
+        // A newcomer let into the round has no envelope to open yet
+        const hasOwnCharacter = Boolean(currentGame.characters && currentGame.characters[currentPlayer.id]);
+        if (statusEl) {
+            statusEl.textContent = hasOwnCharacter
+                ? getText('gameInProgress', 'Game in progress - Click your envelope to reveal your character!')
+                : getText('waitingForCharacter', 'Game in progress - waiting for someone to give you a character');
+        }
         if (startButton) startButton.style.display = 'none';
         if (restartButton) restartButton.style.display = 'inline-block';
     } else {
@@ -586,15 +743,7 @@ function updatePlayersList() {
         // values (name, avatar) can never inject HTML (XSS protection)
         const avatarEl = document.createElement('div');
         avatarEl.className = 'player-avatar';
-        if (isCustomAvatar(player.avatar)) {
-            // Validated data:image/... URL assigned as a property - never innerHTML
-            const img = document.createElement('img');
-            img.alt = '';
-            img.src = player.avatar;
-            avatarEl.appendChild(img);
-        } else {
-            avatarEl.textContent = player.avatar;
-        }
+        renderAvatar(avatarEl, player.avatar);
         playerCard.appendChild(avatarEl);
 
         const nameEl = document.createElement('div');
@@ -663,9 +812,10 @@ function updatePlayersList() {
             }
             playerCard.appendChild(characterSticker);
 
-        } else if (!isCurrentPlayer && gameState === 'waiting') {
+        } else if (!isCurrentPlayer) {
             // No character for other player - a real button: Tab reaches it, Enter presses it.
-            // Only in the lobby: once the game has started, characters are locked
+            // After the start only a newcomer let into the round has none, and
+            // any player gives them one (then it is locked like everybody's)
             const addButton = document.createElement('button');
             addButton.type = 'button';
             addButton.className = 'btn btn-outline-primary add-character-btn';
@@ -676,11 +826,22 @@ function updatePlayersList() {
             });
             playerCard.appendChild(addButton);
 
+        } else if (gameState === 'started') {
+            // Current player let into the started round, no character yet: an
+            // envelope still open - nothing in it, nothing to press
+            const openEnvelope = document.createElement('div');
+            openEnvelope.className = 'character-sticker mystery open-envelope';
+            openEnvelope.textContent = getText('envelopeEmpty', 'empty for now');
+            openEnvelope.title = getText('noCharacterYet', 'No character yet - another player will give you one');
+            playerCard.appendChild(openEnvelope);
         }
-        // Current player with no character - show nothing (clean look)
+        // Current player with no character in the lobby - show nothing (clean look)
 
         playerListEl.appendChild(playerCard);
     });
+
+    // No character is being typed now: a request that waited for it may show
+    showNextJoinRequest();
 }
 
 // "+ Assign character" pressed: the button becomes an empty tag with an input
@@ -725,14 +886,25 @@ function openCharacterInput(playerId, stickerElement, originalCharacter) {
     const sendCharacter = () => {
         if (sent) return;
         // Characters are locked once the game has started (e.g. a blur event
-        // can fire after another player pressed Start Game)
-        if (currentGame.state !== 'waiting') return;
+        // can fire after another player pressed Start Game) - except for a
+        // newcomer let into the round who has none yet
+        const started = currentGame.state !== 'waiting';
+        if (started && currentGame.characters && currentGame.characters[playerId]) return;
         sent = true;
+
+        // After the start a character is never empty: backing out of a
+        // newcomer's first one (Escape, a tap elsewhere) just closes the field
+        const character = inputElement.value.trim();
+        if (started && character === '') {
+            cancelActiveEdits();
+            updatePlayersList();
+            return;
+        }
 
         // playerId is who gets the character; the server knows who gives it
         const assignData = {
             playerId: playerId,
-            character: inputElement.value.trim()
+            character
         };
         debugLog('🔧 Sending assign-character:', assignData);
         sendMove('assign-character', assignData);
@@ -765,7 +937,30 @@ function copyRoomLink(button) {
     }, 2000);
 }
 
-function setupEventListeners() {
+function setupEventListeners(roomCode) {
+    // A waiting newcomer gives up: home, with the room code ready. The socket
+    // goes first, and that withdraws the request at once - the page's own
+    // socket would close only once the next page has loaded, which on a slow
+    // network leaves the players a request nobody waits for
+    document.getElementById('cancelJoinRequest').addEventListener('click', () => {
+        socket.disconnect();
+        window.location.href = `/?join=${roomCode}`;
+    });
+
+    // The request window: only its buttons answer (static backdrop, no Escape)
+    joinRequestModal = new bootstrap.Modal(document.getElementById('joinRequestModal'));
+    document.getElementById('admitPlayer').addEventListener('click', () => answerJoinRequest('admit-player'));
+    document.getElementById('declinePlayer').addEventListener('click', () => answerJoinRequest('decline-player'));
+    // A request closed while its window was still opening: close it now
+    document.getElementById('joinRequestModal').addEventListener('shown.bs.modal', () => {
+        if (shownJoinRequest && !joinRequestQueue.includes(shownJoinRequest)) joinRequestModal.hide();
+    });
+    // Any window gone: the next request may show
+    document.addEventListener('hidden.bs.modal', (event) => {
+        if (event.target.id === 'joinRequestModal') shownJoinRequest = null;
+        showNextJoinRequest();
+    });
+
     // Copy link button
     document.getElementById('copyLink').addEventListener('click', () => {
         copyRoomLink(document.getElementById('copyLink'));

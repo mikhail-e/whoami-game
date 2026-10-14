@@ -444,7 +444,8 @@ input#roomCode.prefilled {
   }
 }
 
-.player-avatar {
+.player-avatar,
+.waiting-sheet__avatar {
   font-size: 4.5rem;
   line-height: 1.15;
   margin-bottom: 6px;
@@ -452,7 +453,8 @@ input#roomCode.prefilled {
 
 /* Uploaded custom avatar on a player card: a rounded square, deliberately
    larger than the 4.5rem emoji avatar (~72px) so photos stay recognizable */
-.player-avatar img {
+.player-avatar img,
+.waiting-sheet__avatar img {
   width: 96px;
   height: 96px;
   object-fit: cover;
@@ -460,7 +462,8 @@ input#roomCode.prefilled {
   vertical-align: bottom; /* removes the inline-image baseline gap */
 }
 
-.player-name {
+.player-name,
+.waiting-sheet__name {
   font-size: 1.2rem;
   font-weight: 600;
   /* names can be up to 128 characters - never let one widen the card */
@@ -611,6 +614,105 @@ input#roomCode.prefilled {
   font-size: 1.5rem;
   line-height: 1;
   box-shadow: 0 1px 2px rgba(0, 0, 0, .45), inset 0 0 0 3px rgba(126, 23, 17, .6);
+}
+
+/* A newcomer waiting to be let into a started game (#waitingSheet): the room
+   itself stays hidden from them */
+body.waiting-for-admission .room-ticket,
+body.waiting-for-admission .container > .game-card:not(#waitingSheet) {
+  display: none;
+}
+
+.waiting-sheet {
+  text-align: center;
+}
+
+.waiting-sheet p {
+  color: var(--ink-soft);
+  margin: 18px auto 20px;
+  max-width: 340px;
+}
+
+.waiting-spinner {
+  height: 76px;
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The wax seal, a thin ink arc running round it: the page is not stuck */
+.seal-spinner {
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
+
+.seal-spinner .seal {
+  top: 50%;
+}
+
+.seal-spinner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid rgba(42, 29, 23, .15);
+  border-top-color: var(--ink);
+  animation: seal-spinner-turn 1.1s linear infinite;
+}
+
+/* Slower, never still: a still arc would look like a page that hangs */
+@media (prefers-reduced-motion: reduce) {
+  .seal-spinner::after {
+    animation-duration: 2.2s;
+  }
+}
+
+@keyframes seal-spinner-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The newcomer in the players' request window (#joinRequestModal) */
+.join-request__who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.join-request__avatar {
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.join-request__avatar img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 3px;
+}
+
+.join-request__name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.join-request__text {
+  color: var(--ink-soft);
+}
+
+/* Your own envelope while it is still empty: a newcomer let into the started
+   round waits for a player to give them a character (no seal, nothing to press) */
+.character-sticker.open-envelope {
+  cursor: default;
+  align-items: flex-end;
+  padding-bottom: 8px;
+  font-size: .95rem;
+  color: var(--ink-soft);
 }
 
 /* "+ Assign character" on someone else's card: an outline button (game-room.js) */
