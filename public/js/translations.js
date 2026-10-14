@@ -135,6 +135,9 @@ const translations = {
         declinePlayer: "Decline",
         playerAdmittedNotification: "👋 {playerName} is in the game now",
         joinDeclined: "The players did not let you into the game",
+        envelopeEmpty: "empty for now",
+        noCharacterYet: "No character yet - another player will give you one",
+        waitingForCharacter: "Game in progress - waiting for someone to give you a character",
 
         waiting: "Waiting for players to join...",
 
@@ -314,6 +317,9 @@ const translations = {
         declinePlayer: "Отказать",
         playerAdmittedNotification: "👋 {playerName} теперь в игре",
         joinDeclined: "Игроки не впустили вас в игру",
+        envelopeEmpty: "пока пусто",
+        noCharacterYet: "Персонажа пока нет — его даст другой игрок",
+        waitingForCharacter: "Игра идёт — ждём, пока вам дадут персонажа",
 
         waiting: "Ожидание присоединения игроков...",
 

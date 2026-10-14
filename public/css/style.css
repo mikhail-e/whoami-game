@@ -705,6 +705,16 @@ body.waiting-for-admission .container > .game-card:not(#waitingSheet) {
   color: var(--ink-soft);
 }
 
+/* Your own envelope while it is still empty: a newcomer let into the started
+   round waits for a player to give them a character (no seal, nothing to press) */
+.character-sticker.open-envelope {
+  cursor: default;
+  align-items: flex-end;
+  padding-bottom: 8px;
+  font-size: .95rem;
+  color: var(--ink-soft);
+}
+
 /* "+ Assign character" on someone else's card: an outline button (game-room.js) */
 .add-character-btn {
   display: block;

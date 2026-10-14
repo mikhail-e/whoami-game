@@ -2,7 +2,8 @@
 // seeing the room, and any player lets them in or declines (the rules:
 // tests/late-join.test.js)
 const {
-    test, expect, text, playerCard, startedGame, waitForPlayers, askToJoin, waitForLanding,
+    test, expect, text, playerCard, startedGame, waitForPlayers, askToJoin, waitForLanding, assignCharacter,
+    revealOwnCharacter,
 } = require('./helpers');
 
 /* global socket, io, joinRequestQueue, PLAYER_ID, PLAYER_SECRET -- the room page's names (game-room.js, utils.js), inside page.evaluate() */
@@ -179,4 +180,48 @@ test('a waiting socket cannot let itself in', async ({ newPlayer }) => {
     expect(error).toBe('You are not in this game');
     await waitForPlayers(alice.page, 2);
     await expect(dasha.page.locator('#waitingSheet')).toBeVisible();
+});
+
+// A started round of Alice and Bob, and Dasha let in by Bob
+async function admittedNewcomer(newPlayer) {
+    const { code, players: { Alice: alice, Bob: bob } } = await startedGame(newPlayer, ['Alice', 'Bob']);
+    const dasha = await newPlayer('Dasha');
+    await askToJoin(dasha, code);
+    await expectRequestFrom(bob.page, 'Dasha');
+    await bob.page.getByRole('button', { name: text('admitPlayer') }).click();
+    await waitForPlayers(dasha.page, 3);
+    return { alice, bob, dasha };
+}
+
+test('a newcomer gets a character from any player and plays on', async ({ newPlayer }) => {
+    const { alice, bob, dasha } = await admittedNewcomer(newPlayer);
+    const own = playerCard(dasha.page, 'Dasha').locator('.character-sticker');
+
+    // An envelope still open: nothing in it yet, nothing to press
+    await expect(own).toHaveClass(/\bopen-envelope\b/);
+    await expect(own).toHaveText(text('envelopeEmpty'));
+    await expect(own).toHaveAttribute('title', text('noCharacterYet'));
+    await expect(own.locator('.seal')).toHaveCount(0);
+    await expect(dasha.page.locator('#gameStatus')).toHaveText(text('waitingForCharacter'));
+
+    await assignCharacter(bob, 'Dasha', 'Gandalf');
+
+    await expect(own.locator('.seal')).toBeVisible();
+    await expect(own).not.toHaveClass(/\bopen-envelope\b/);
+    await expect(dasha.page.locator('#gameStatus')).toHaveText(text('gameInProgress'));
+    // Given once, the character stays
+    await playerCard(alice.page, 'Dasha').locator('.character-sticker').click();
+    expect(await alice.page.locator('.character-input').count()).toBe(0);
+
+    await revealOwnCharacter(dasha);
+    await expect(own).toHaveText('Gandalf');
+});
+
+test('a newcomer without a character keeps the empty envelope after a reload', async ({ newPlayer }) => {
+    const { alice, dasha } = await admittedNewcomer(newPlayer);
+
+    await dasha.page.reload();
+
+    await expect(playerCard(dasha.page, 'Dasha').locator('.character-sticker.open-envelope')).toBeVisible();
+    await expect(playerCard(alice.page, 'Dasha').locator('.add-character-btn')).toBeVisible();
 });

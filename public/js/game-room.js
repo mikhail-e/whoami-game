@@ -608,7 +608,13 @@ function updateGameDisplay() {
         if (roomTicket) roomTicket.style.display = 'none';
         if (assignmentInstructions) assignmentInstructions.style.display = 'none';
 
-        if (statusEl) statusEl.textContent = getText('gameInProgress', 'Game in progress - Click your envelope to reveal your character!');
+        // A newcomer let into the round has no envelope to open yet
+        const hasOwnCharacter = Boolean(currentGame.characters && currentGame.characters[currentPlayer.id]);
+        if (statusEl) {
+            statusEl.textContent = hasOwnCharacter
+                ? getText('gameInProgress', 'Game in progress - Click your envelope to reveal your character!')
+                : getText('waitingForCharacter', 'Game in progress - waiting for someone to give you a character');
+        }
         if (startButton) startButton.style.display = 'none';
         if (restartButton) restartButton.style.display = 'inline-block';
     } else {
@@ -785,9 +791,10 @@ function updatePlayersList() {
             }
             playerCard.appendChild(characterSticker);
 
-        } else if (!isCurrentPlayer && gameState === 'waiting') {
+        } else if (!isCurrentPlayer) {
             // No character for other player - a real button: Tab reaches it, Enter presses it.
-            // Only in the lobby: once the game has started, characters are locked
+            // After the start only a newcomer let into the round has none, and
+            // any player gives them one (then it is locked like everybody's)
             const addButton = document.createElement('button');
             addButton.type = 'button';
             addButton.className = 'btn btn-outline-primary add-character-btn';
@@ -798,8 +805,16 @@ function updatePlayersList() {
             });
             playerCard.appendChild(addButton);
 
+        } else if (gameState === 'started') {
+            // Current player let into the started round, no character yet: an
+            // envelope still open - nothing in it, nothing to press
+            const openEnvelope = document.createElement('div');
+            openEnvelope.className = 'character-sticker mystery open-envelope';
+            openEnvelope.textContent = getText('envelopeEmpty', 'empty for now');
+            openEnvelope.title = getText('noCharacterYet', 'No character yet - another player will give you one');
+            playerCard.appendChild(openEnvelope);
         }
-        // Current player with no character - show nothing (clean look)
+        // Current player with no character in the lobby - show nothing (clean look)
 
         playerListEl.appendChild(playerCard);
     });
@@ -847,8 +862,9 @@ function openCharacterInput(playerId, stickerElement, originalCharacter) {
     const sendCharacter = () => {
         if (sent) return;
         // Characters are locked once the game has started (e.g. a blur event
-        // can fire after another player pressed Start Game)
-        if (currentGame.state !== 'waiting') return;
+        // can fire after another player pressed Start Game) - except for a
+        // newcomer let into the round who has none yet
+        if (currentGame.state !== 'waiting' && currentGame.characters && currentGame.characters[playerId]) return;
         sent = true;
 
         // playerId is who gets the character; the server knows who gives it
