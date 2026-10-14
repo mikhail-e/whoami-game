@@ -88,8 +88,9 @@ test('restart returns the room to assigning characters', async ({ newPlayer }) =
     }
 });
 
-// The ticket invites friends in; once the game has started nobody can join
-test('the room code ticket shows in the lobby and hides once the game starts', async ({ newPlayer }) => {
+// The ticket shows friends the room code, in the lobby and during the game
+// too: a latecomer asks to join then
+test('the room code ticket shows in the lobby and stays once the game starts', async ({ newPlayer }) => {
     const alice = await newPlayer('Alice');
     const bob = await newPlayer('Bob');
     const code = await createRoom(alice);
@@ -100,7 +101,8 @@ test('the room code ticket shows in the lobby and hides once the game starts', a
     await assignCharacter(bob, 'Alice', 'Cleopatra');
     await startGame(alice);
 
-    await expect(alice.page.locator('.room-ticket')).toBeHidden();
+    await expect(alice.page.locator('.room-ticket')).toBeVisible();
+    await expect(alice.page.locator('.room-ticket')).toContainText(code);
 });
 
 test('a reveal made while the connection is down happens once it is back', async ({ newPlayer }) => {

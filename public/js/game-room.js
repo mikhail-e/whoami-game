@@ -611,7 +611,7 @@ function updateGameDisplay() {
     
     // Show/hide elements based on game state
     const shareCard = document.getElementById('shareCard');
-    const roomTicket = document.querySelector('.room-ticket'); // the room code in the header
+    const gameInviteCard = document.getElementById('gameInviteCard');
     const assignmentInstructions = document.getElementById('assignmentInstructions');
     const statusEl = document.getElementById('gameStatus');
     const startButton = document.getElementById('startGame');
@@ -623,10 +623,13 @@ function updateGameDisplay() {
     const revealedPlayers = currentGame.revealedPlayers || [];
     keepScreenAwake(gameState === 'started' && !currentGame.players.every(player => revealedPlayers.includes(player.id)));
 
+    // The lobby invites at the top, with the link field; a started game below
+    // the controls, shorter (a latecomer asks to join then)
+    if (shareCard) shareCard.hidden = gameState === 'started';
+    if (gameInviteCard) gameInviteCard.hidden = gameState !== 'started';
+
     if (gameState === 'started') {
-        // Hide room sharing functionality and assignment instructions when game has started
-        if (shareCard) shareCard.style.display = 'none';
-        if (roomTicket) roomTicket.style.display = 'none';
+        // Hide assignment instructions when game has started
         if (assignmentInstructions) assignmentInstructions.style.display = 'none';
 
         // A newcomer let into the round has no envelope to open yet
@@ -639,9 +642,7 @@ function updateGameDisplay() {
         if (startButton) startButton.style.display = 'none';
         if (restartButton) restartButton.style.display = 'inline-block';
     } else {
-        // Show room sharing functionality and assignment instructions when waiting
-        if (shareCard) shareCard.style.display = 'block';
-        if (roomTicket) roomTicket.style.display = ''; // back to the stylesheet's inline-flex
+        // Show assignment instructions when waiting
         if (assignmentInstructions) assignmentInstructions.style.display = 'block';
 
         // Check if all players have characters assigned
@@ -924,17 +925,49 @@ function openCharacterInput(playerId, stickerElement, originalCharacter) {
     inputElement.addEventListener('blur', sendCharacter);
 }
 
-// Copy the room link and flash "Copied!" on the button that was pressed
-function copyRoomLink(button) {
+// Copy the room link and flash "Copied!" on the button that was pressed. The
+// link goes straight to the clipboard: a started game's invitation has no link
+// field to select. A page the clipboard is closed to (plain http, as a phone on
+// the home network) copies the old way, selecting the lobby's link field -
+// hidden in a started game, where not every browser copies from it
+async function copyRoomLink(button) {
     const shareLink = document.getElementById('shareLink');
-    shareLink.select();
-    document.execCommand('copy');
+    try {
+        await navigator.clipboard.writeText(shareLink.value);
+    } catch {
+        shareLink.select();
+        document.execCommand('copy');
+    }
 
     const originalText = button.textContent;
     button.textContent = getText('copiedSuccess', '✅ Copied!');
     setTimeout(() => {
         button.textContent = originalText;
     }, 2000);
+}
+
+// Open the native share sheet with the room link, or copy the link as a fallback.
+// No await before navigator.share: iOS refuses a share sheet that is not
+// opened right in the click
+async function shareRoomLink(button) {
+    const url = document.getElementById('shareLink').value;
+
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: getText('title', 'Who am I?'),
+                text: getText('shareText', 'Join my "Who am I?" game!'),
+                url: url
+            });
+        } catch (error) {
+            // AbortError = the user closed the share sheet - not a failure
+            if (error.name !== 'AbortError') {
+                copyRoomLink(button);
+            }
+        }
+    } else {
+        copyRoomLink(button);
+    }
 }
 
 function setupEventListeners(roomCode) {
@@ -961,33 +994,15 @@ function setupEventListeners(roomCode) {
         showNextJoinRequest();
     });
 
-    // Copy link button
-    document.getElementById('copyLink').addEventListener('click', () => {
-        copyRoomLink(document.getElementById('copyLink'));
-    });
-
-    // Share button - open the native share sheet, or copy the link as a fallback
-    document.getElementById('shareButton').addEventListener('click', async () => {
-        const shareBtn = document.getElementById('shareButton');
-        const url = document.getElementById('shareLink').value;
-
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: getText('title', 'Who am I?'),
-                    text: getText('shareText', 'Join my "Who am I?" game!'),
-                    url: url
-                });
-            } catch (error) {
-                // AbortError = the user closed the share sheet - not a failure
-                if (error.name !== 'AbortError') {
-                    copyRoomLink(shareBtn);
-                }
-            }
-        } else {
-            copyRoomLink(shareBtn);
-        }
-    });
+    // Copy and Share: the lobby's invitation and the started game's
+    for (const id of ['copyLink', 'gameCopyLink']) {
+        const button = document.getElementById(id);
+        button.addEventListener('click', () => copyRoomLink(button));
+    }
+    for (const id of ['shareButton', 'gameShareButton']) {
+        const button = document.getElementById(id);
+        button.addEventListener('click', () => shareRoomLink(button));
+    }
 
     // Start game button
     document.getElementById('startGame').addEventListener('click', () => {

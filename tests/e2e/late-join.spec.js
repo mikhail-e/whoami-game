@@ -27,9 +27,12 @@ test('a newcomer waits without seeing the room', async ({ newPlayer }) => {
     await expect(dasha.page.locator('.seal-spinner')).toBeVisible();
     await expect(dasha.page.getByRole('status')).toHaveText(text('waitingForAdmission'));
     await expect(dasha.page.locator('.player-card')).toHaveCount(0);
-    // Nothing of the room: not its status line, not its buttons
+    // Nothing of the room: not its status line, not its buttons, not its invitations
     await expect(dasha.page.locator('#gameStatus')).toBeHidden();
     await expect(dasha.page.locator('#leaveGame')).toBeHidden();
+    await expect(dasha.page.locator('.room-ticket')).toBeHidden();
+    await expect(dasha.page.locator('#shareCard')).toBeHidden();
+    await expect(dasha.page.locator('#gameInviteCard')).toBeHidden();
 });
 
 test('any player can let a newcomer in', async ({ newPlayer }) => {
