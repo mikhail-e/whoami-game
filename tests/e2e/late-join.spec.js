@@ -2,8 +2,8 @@
 // seeing the room, and any player lets them in or declines (the rules:
 // tests/late-join.test.js)
 const {
-    test, expect, text, playerCard, startedGame, waitForPlayers, askToJoin, waitForLanding, assignCharacter,
-    revealOwnCharacter,
+    test, expect, text, serverErrorText, playerCard, startedGame, waitForPlayers, askToJoin, waitForLanding,
+    assignCharacter, revealOwnCharacter,
 } = require('./helpers');
 
 /* global socket, io, joinRequestQueue, PLAYER_ID, PLAYER_SECRET -- the room page's names (game-room.js, utils.js), inside page.evaluate() */
@@ -224,4 +224,121 @@ test('a newcomer without a character keeps the empty envelope after a reload', a
 
     await expect(playerCard(dasha.page, 'Dasha').locator('.character-sticker.open-envelope')).toBeVisible();
     await expect(playerCard(alice.page, 'Dasha').locator('.add-character-btn')).toBeVisible();
+});
+
+test("a newcomer who cancels is gone from the players' window", async ({ newPlayer }) => {
+    const { code, players: { Alice: alice } } = await startedGame(newPlayer, ['Alice', 'Bob']);
+    const dasha = await newPlayer('Dasha');
+    await askToJoin(dasha, code);
+    await expectRequestFrom(alice.page, 'Dasha');
+
+    await dasha.page.getByRole('button', { name: text('cancel') }).click();
+
+    await expect(dasha.page).toHaveURL(new RegExp(`/\\?join=${code}$`));
+    await expect(requestWindow(alice.page)).not.toHaveClass(/\bshow\b/);
+});
+
+test('a newcomer who closes the page is gone too', async ({ newPlayer }) => {
+    const { code, players: { Alice: alice } } = await startedGame(newPlayer, ['Alice', 'Bob']);
+    const dasha = await newPlayer('Dasha');
+    await askToJoin(dasha, code);
+    await expectRequestFrom(alice.page, 'Dasha');
+
+    await dasha.page.close();
+
+    await expect(requestWindow(alice.page)).not.toHaveClass(/\bshow\b/);
+});
+
+test('a newcomer waiting in two tabs is let in in both', async ({ newPlayer }) => {
+    const { code, players: { Alice: alice, Bob: bob } } = await startedGame(newPlayer, ['Alice', 'Bob']);
+    const dasha = await newPlayer('Dasha');
+    await askToJoin(dasha, code);
+    await expectRequestFrom(alice.page, 'Dasha');
+    // A tab of its own: the same browser, the landing page and Join again.
+    // Its request reaches the players as one more join-requested
+    await alice.page.evaluate(() => {
+        window.requestsHeard = 0;
+        socket.on('join-requested', () => { window.requestsHeard += 1; });
+    });
+    const second = { name: 'Dasha', page: await dasha.context.newPage() };
+    await askToJoin(second, code);
+    await expect.poll(() => alice.page.evaluate(() => window.requestsHeard)).toBe(1);
+
+    // The first tab's socket goes, as when the tab is closed. An explicit
+    // disconnect reaches the server at once (a closed tab's socket a moment
+    // later), so Bob's page opened next learns what is still waiting
+    await dasha.page.evaluate(() => socket.disconnect());
+    await bob.page.reload();
+    await expectRequestFrom(bob.page, 'Dasha');
+    await expect(requestWindow(alice.page)).toHaveClass(/\bshow\b/);
+
+    await alice.page.getByRole('button', { name: text('admitPlayer') }).click();
+    await waitForPlayers(second.page, 3);
+});
+
+test('a newcomer whose connection drops keeps waiting', async ({ newPlayer }) => {
+    const { code, players: { Alice: alice } } = await startedGame(newPlayer, ['Alice', 'Bob']);
+    const dasha = await newPlayer('Dasha');
+    await askToJoin(dasha, code);
+    await expectRequestFrom(alice.page, 'Dasha');
+
+    // The phone loses its socket for a moment: the request goes with it...
+    await dasha.page.evaluate(() => socket.io.engine.close());
+    await expect(requestWindow(alice.page)).not.toHaveClass(/\bshow\b/);
+    // ...and comes back with the socket (after Socket.IO's reconnection delay)
+    await expect(requestWindow(alice.page)).toHaveClass(/\bshow\b/, { timeout: 15_000 });
+    await expect(dasha.page.locator('#waitingSheet')).toBeVisible();
+
+    await alice.page.getByRole('button', { name: text('admitPlayer') }).click();
+    await waitForPlayers(dasha.page, 3);
+});
+
+test('a reloaded player page shows the waiting newcomer', async ({ newPlayer }) => {
+    const { code, players: { Alice: alice } } = await startedGame(newPlayer, ['Alice', 'Bob']);
+    const dasha = await newPlayer('Dasha');
+    await askToJoin(dasha, code);
+    await expectRequestFrom(alice.page, 'Dasha');
+
+    await alice.page.reload();
+
+    await expectRequestFrom(alice.page, 'Dasha');
+});
+
+test('a restart lets the waiting newcomer into the lobby', async ({ newPlayer }) => {
+    const { code, players: { Alice: alice, Bob: bob } } = await startedGame(newPlayer, ['Alice', 'Bob']);
+    await alice.page.click('#restartGame');
+    await expect(alice.page.locator('#restartModal')).toHaveClass(/\bshow\b/);
+    const dasha = await newPlayer('Dasha');
+    await askToJoin(dasha, code);
+    await expectRequestFrom(bob.page, 'Dasha');
+
+    await alice.page.click('#confirmRestart');
+
+    await waitForPlayers(dasha.page, 3);
+    await expect(dasha.page.locator('#startGame')).toBeVisible();
+    await expect(dasha.page.locator('#waitingSheet')).toBeHidden();
+    await expect(requestWindow(bob.page)).not.toHaveClass(/\bshow\b/);
+    await waitForPlayers(bob.page, 3);
+});
+
+test('the waiting newcomer learns that the room is gone', async ({ newPlayer }) => {
+    const { code, players: { Alice: alice, Bob: bob } } = await startedGame(newPlayer, ['Alice', 'Bob']);
+    for (const player of [alice, bob]) {
+        await player.page.click('#leaveGame');
+        await expect(player.page.locator('#leaveModal')).toHaveClass(/\bshow\b/);
+    }
+    const dasha = await newPlayer('Dasha');
+    dasha.expectDialog(serverErrorText('Game not found'));
+    // Joining a room that is gone: the server answers 400, the page logs it
+    dasha.allowConsoleError(/status of 400|Join game failed/);
+    await askToJoin(dasha, code);
+    // The request has reached Alice's page, behind her open window
+    await expect.poll(() => alice.page.evaluate(() => joinRequestQueue.length)).toBe(1);
+
+    await bob.page.click('#confirmLeave');
+    await waitForPlayers(alice.page, 1);
+    await alice.page.click('#confirmLeave');
+
+    await expect.poll(() => dasha.expectedDialogs.length).toBe(0);
+    await expect(dasha.page).toHaveURL(/\/$/);
 });

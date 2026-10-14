@@ -222,6 +222,9 @@ function initializeSocket(roomCode) {
         debugLog('Received game state:', game);
         currentGame = game;
         updateGameDisplay();
+        // The newcomers waiting now: requests answered while this page was
+        // away are gone, the ones still waiting show
+        syncJoinRequests(game.joinRequests || []);
 
         // The socket is in the room: the moves made while it was not go now
         roomJoined = true;
@@ -351,6 +354,8 @@ function initializeSocket(roomCode) {
         debugLog('Game restarted! Returning to setup phase.');
         if (currentGame) {
             currentGame.state = 'waiting';
+            // The lobby is open: the waiting newcomers join by themselves
+            syncJoinRequests([]);
             currentGame.revealedPlayers = data.revealedPlayers || [];
             currentGame.characters = data.characters || {}; // Clear all character assignments
             saveGameStateToStorage();
@@ -479,6 +484,15 @@ function showNextJoinRequest() {
     renderAvatar(document.getElementById('joinRequestAvatar'), shownJoinRequest.avatar);
     document.getElementById('joinRequestName').textContent = shownJoinRequest.name;
     joinRequestModal.show();
+}
+
+// Make the queue the server's list of waiting newcomers
+function syncJoinRequests(requests) {
+    const waitingIds = new Set(requests.map(request => request.playerId));
+    joinRequestQueue
+        .filter(request => !waitingIds.has(request.playerId))
+        .forEach(request => closeJoinRequest(request.playerId));
+    requests.forEach(queueJoinRequest);
 }
 
 function closeJoinRequest(playerId) {

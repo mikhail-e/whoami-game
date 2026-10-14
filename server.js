@@ -316,8 +316,9 @@ io.on('connection', (socket) => {
         gameLogic.markPlayerConnected(game, playerId);
         console.log(`📍 Socket ${socket.id} → Player ${playerId} in game ${gameId}`);
 
-        // Send current game state to the user
-        socket.emit('game-state', gameLogic.serializeGame(game));
+        // Send current game state to the user, with the newcomers waiting to
+        // be let in: a page that opens now shows their request too
+        socket.emit('game-state', { ...gameLogic.serializeGame(game), joinRequests: gameLogic.listJoinRequests(game) });
     });
 
     // A newcomer's waiting page asks to join the started round (its HTTP join
@@ -460,6 +461,8 @@ io.on('connection', (socket) => {
 
         // Broadcast game restart to all players in the room
         io.to(me.gameId).emit('game-restarted', result);
+        // The lobby is open to everybody: the newcomers waiting just join
+        endJoinRequests(me.gameId, result.endedJoinRequests, 'retry');
     });
 
     // A player leaves the room themselves: nobody can remove anybody else
@@ -489,6 +492,10 @@ io.on('connection', (socket) => {
         // more; their later disconnects become no-ops
         io.in(connections.unregisterPlayer(gameId, playerId)).socketsLeave(gameId);
 
+        // Nobody is left to answer the newcomers waiting: their pages join
+        // again and learn that the room is gone
+        endJoinRequests(gameId, result.endedJoinRequests, 'retry');
+
         if (result.gameDeleted) {
             console.log(`🗑️ Game ${gameId} removed - last player left`);
             // Its old link must not bring it back from the backup
@@ -498,6 +505,9 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
+
+        // A newcomer's waiting page: its request goes with its last page
+        withdrawWaitingSocket(socket.id);
 
         // Returns null while the player still has another socket (a second
         // tab, or the new page after a refresh)
@@ -548,6 +558,7 @@ function keepGamesAlive() {
             revealedPlayers: removal.revealedPlayers,
             gameDeleted: removal.gameDeleted
         });
+        endJoinRequests(removal.gameId, removal.endedJoinRequests, 'retry');
         // A room emptied here keeps its disk backup: when every phone of a
         // group slept through a break, the room link still brings it back
     }
