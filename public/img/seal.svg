@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="30 30 132 132">
+  <!-- The envelope's wax seal on the page (.seal in style.css): the app icon's
+       seal from scripts/icon.html, drips and all, without its "?" - the page
+       writes that as text. tests/wax-seal.test.js keeps the two equal -->
+  <defs>
+    <radialGradient id="wax" cx=".4" cy=".35" r=".7">
+      <stop offset="0" stop-color="#d4483c"/>
+      <stop offset=".55" stop-color="#a8231b"/>
+      <stop offset="1" stop-color="#7e1711"/>
+    </radialGradient>
+  </defs>
+  <polygon fill="url(#wax)" points="160.6,96.0 159.7,102.7 157.8,109.1 156.8,115.7 154.0,121.8 150.5,127.5 147.7,133.6 142.4,137.8 134.7,139.0 129.4,142.0 126.3,148.5 121.5,153.4 115.2,155.2 109.1,157.5 102.7,159.3 96.0,159.1 89.3,159.9 82.3,160.5 76.5,156.0 72.3,149.1 67.0,146.3 60.3,145.1 55.1,141.4 50.7,136.8 45.7,132.5 42.1,127.1 39.0,121.4 33.7,116.2 30.3,110.0 33.0,102.6 36.6,96.0 36.4,89.7 36.5,83.4 38.8,77.4 40.7,71.4 43.1,65.5 47.4,60.7 50.3,54.8 51.7,46.8 56.5,41.7 64.3,41.1 71.1,40.1 76.9,37.2 83.3,36.2 89.7,36.0 96.0,35.1 102.2,36.6 108.1,39.2 114.8,38.0 122.8,35.8 129.0,38.9 133.2,44.8 138.1,49.2 142.9,53.8 146.0,59.7 149.5,65.1 152.3,70.9 151.6,77.9 151.6,84.2 156.4,89.7"/>
+  <circle cx="96" cy="97" r="47" fill="none" stroke="#7e1711" stroke-opacity=".7" stroke-width="4"/>
+</svg>
