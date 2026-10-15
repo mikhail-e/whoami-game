@@ -927,6 +927,21 @@ body.waiting-for-admission .container > .game-card:not(#waitingSheet) {
     padding: 24px 20px;
   }
 
+  /* The others' names and tags are read at arm's length, the phone on the
+     table. The empty envelope keeps its small text (.open-envelope wins) */
+  .player-name,
+  .waiting-sheet__name {
+    font-size: 1.6rem;
+  }
+
+  .character-sticker {
+    font-size: 2rem;
+  }
+
+  .character-sticker.long-text {
+    font-size: 1.45rem;
+  }
+
   .avatar-selector {
     /* Six columns do not fit on a phone; four give three even rows of 12 */
     grid-template-columns: repeat(4, minmax(0, 80px));
