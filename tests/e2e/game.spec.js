@@ -19,6 +19,17 @@ test('your own character is a sealed envelope that reveals it', async ({ newPlay
         await document.fonts.ready;
         return [...document.fonts].some(face => face.family.replace(/["']/g, '') === 'Abril Fatface' && face.status === 'loaded');
     })).toBe(true);
+    // The wax is a picture, the app icon's seal with its drips (public/img/seal.svg):
+    // decode() fails on a picture that is missing or broken
+    const waxDrawn = await own.locator('.seal').evaluate(async seal => {
+        const [, address] = getComputedStyle(seal, '::before').backgroundImage.match(/url\("?(.+?)"?\)/) || [];
+        if (!address) return 'no picture';
+        const wax = new Image();
+        wax.src = address;
+        await wax.decode();
+        return address.endsWith('/img/seal.svg') || address;
+    });
+    expect(waxDrawn).toBe(true);
     await expect(own).toHaveAttribute('title', text('yourCharacterClickReveal'));
     // A light envelope: every channel of its paper is pale
     const paper = await own.evaluate(sticker => getComputedStyle(sticker).backgroundColor);
