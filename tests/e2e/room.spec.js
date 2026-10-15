@@ -61,6 +61,31 @@ test('a long character stays inside its card', async ({ newPlayer }) => {
     expect(await tag.evaluate(sticker => sticker.scrollWidth - sticker.clientWidth)).toBeLessThanOrEqual(0);
 });
 
+// The others' names and tags are read at arm's length, the phone on the
+// table: a phone writes them larger than a computer does
+test('names and tags are larger on a phone', async ({ newPlayer }) => {
+    const { players: [alice] } = await roomWith(newPlayer, ['Alice', 'Bob', 'Carol']);
+    await assignCharacter(alice, 'Bob', 'Napoleon');
+    await assignCharacter(alice, 'Carol', 'Captain Jack Sparrow of the Pirates of the Caribbean');
+
+    const fontSize = locator => locator.evaluate(element => parseFloat(getComputedStyle(element).fontSize));
+    const fontSizes = async () => ({
+        name: await fontSize(playerCard(alice.page, 'Bob').locator('.player-name')),
+        tag: await fontSize(playerCard(alice.page, 'Bob').locator('.character-sticker')),
+        longTag: await fontSize(playerCard(alice.page, 'Carol').locator('.character-sticker')),
+    });
+    await alice.page.setViewportSize({ width: 412, height: 915 });
+    const phone = await fontSizes();
+    await alice.page.setViewportSize({ width: 1280, height: 800 });
+    const computer = await fontSizes();
+
+    expect(phone.name).toBeGreaterThan(computer.name);
+    expect(phone.tag).toBeGreaterThan(computer.tag);
+    expect(phone.longTag).toBeGreaterThan(computer.longTag);
+    // A long character is still written smaller than a short one
+    expect(phone.longTag).toBeLessThan(phone.tag);
+});
+
 test('Enter saves a character; the target does not see it, the others do', async ({ newPlayer }) => {
     const { players: [alice, bob, carol] } = await roomWith(newPlayer, ['Alice', 'Bob', 'Carol']);
 
