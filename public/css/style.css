@@ -602,18 +602,27 @@ input#roomCode.prefilled {
   left: 50%;
   top: 62%;
   transform: translate(-50%, -50%);
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 47% 53% 50% 48% / 52% 47% 53% 48%;
-  background: radial-gradient(circle at 38% 32%, #d4483c 0, #a8231b 55%, #7e1711 100%);
   color: #f6dcc8;
   font-family: 'Abril Fatface', serif;
-  font-size: 1.5rem;
+  font-size: 1.95rem; /* the icon's proportion: the "?" fills the ring */
   line-height: 1;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .45), inset 0 0 0 3px rgba(126, 23, 17, .6);
+}
+
+/* The wax: the app icon's seal, drips and the stamp's ring (img/seal.svg),
+   under the "?" - the transform above makes the seal a stacking context, so
+   z-index: -1 stays inside it. The shadow follows the wax's uneven edge */
+.seal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: url('../img/seal.svg') center / contain no-repeat;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, .45));
 }
 
 /* A newcomer waiting to be let into a started game (#waitingSheet): the room
